@@ -4,7 +4,7 @@ set(HEADER_FILES
         )
 
 set(SOURCE_FILES
-        main.cc
+        main.cpp
         )
 
 # set binary path and lib storage path for compiling process.
