@@ -1,3 +1,8 @@
+# 项目管理
+- 每个策略新建一个分支，最终在dev分支上合并所有策略
+- 每种策略新建一个文件夹（${HOME}/src/spgemm/${Folder_name}）
+- 将每种策略编译为一个库，编译方式：1、项目${HOME}目录下config.cmake中添加库名称；2、${HOME}/src/spgemm目录下在CMakeLists.txt文件中添加新策略的路径；3、${HOME}/src/spgemm/${Folder_name}目录下添加CMakeLists.txt文件（可直接复制hip文件夹中的CMakeLists.txt文件进行修改）进行库的编译
+
 # SpGEMM
 > SpGEMM for GPU
 
