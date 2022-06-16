@@ -1,5 +1,5 @@
 #include <vector>
-#include "building_config.h"
+#include <iostream>
 
 using namespace std;
 
@@ -128,7 +128,7 @@ void init_csr_dense_vector(char *buf, vector<T> &vec)
 void read_file(char *path)
 {
     FILE *fp = fopen(path, "r");
-    char buf[1024L*1024L*1024L*5L];
+    char buf[1024*1024*1024*5];
     int line_num=0;
 
     while( fgets(buf, sizeof(buf), fp) != NULL )
@@ -436,7 +436,7 @@ void verify(dtype* mat_kernel, dtype* mat_compare, size_t nnz)
             #endif
 
             cout<<"Failed verification,please check your code!"<<endl;
-            return ;
+            // return ;
         }
         total_validation = i;
     }
@@ -535,7 +535,7 @@ size_t host_spgemm()
 //=============================================================================
 
 #ifdef gpu
-size_t rocsparse_spgemm()
+size_t rocsparse_spgemm(csrIdxType *host_offsetC)
 {
     rocsparse_handle handle = NULL;
     ROCSPARSE_CHECK( rocsparse_create_handle(&handle) );
@@ -608,9 +608,17 @@ size_t rocsparse_spgemm()
                                descr_B, B_nnz, device_valueB, device_offsetB, device_colindexB,
                                &beta, descr_D, D_nnz, device_valueD, device_offsetD, device_colindexD,
                                descr_C, csr_val_C, csr_row_ptr_C, csr_col_ind_C, info_C, buffer) )
+    
+    csrIdxType *host_compare_offsetC = new csrIdxType[A_num_rows+1];
+    host_compare_valueC = new dtype[nonzero];
+    HIP_CHECK( hipMemcpy(host_compare_valueC, csr_val_C, nonzero * sizeof(dtype), hipMemcpyDeviceToHost) )
+    HIP_CHECK( hipMemcpy(host_compare_offsetC, csr_row_ptr_C, (A_num_rows+1) * sizeof(csrIdxType), hipMemcpyDeviceToHost) )
 
-    host_valueC = new dtype[nonzero];
-    HIP_CHECK( hipMemcpy(host_valueC, csr_val_C, nonzero * sizeof(dtype), hipMemcpyDeviceToHost) )
+    for(int i=0;i<A_num_rows+1;i++){
+        if(host_offsetC[i]-host_compare_offsetC[i]!=0){
+            std::cout<<"row["<<i<<"] is wrong!"<<std::endl;
+        }
+    }
  
     HIP_CHECK( hipFree(buffer) )
     HIP_CHECK( hipFree(csr_row_ptr_C) )
@@ -654,7 +662,7 @@ size_t rocsparse_spgemm()
     HIP_CHECK( hipFree(buffer) )
     HIP_CHECK( hipFree(csr_row_ptr_C) )
     HIP_CHECK( hipFree(csr_col_ind_C) )
-    HIP_CHECK( hipFree(csr_val_C) )
+    HIP_CHECK( hipFree(csr_val_C))
 
     #endif
 
