@@ -3,23 +3,23 @@
 #include "include/dense2csr_rocsparse.hpp"
 
 void  call_device_spgemm(const int transA,
-		const int          transB,
-		const dtype        alpha,
-		const size_t       m,
-		const size_t       n,
-		const size_t       k,
+	const int          transB,
+	const dtype        alpha,
+	const size_t       m,
+	const size_t       n,
+	const size_t       k,
         const size_t       nnz_A,
-		const csrIdxType*  dptr_offset_A,
-		const csrIdxType*  dptr_colindex_A,
-		const dtype*       dptr_value_A,
+	const csrIdxType*  dptr_offset_A,
+	const csrIdxType*  dptr_colindex_A,
+	const dtype*       dptr_value_A,
         const size_t       nnz_B,
-		const csrIdxType*  dptr_offset_B,
-		const csrIdxType*  dptr_colindex_B,
-		const dtype*       dptr_value_B,
+	const csrIdxType*  dptr_offset_B,
+	const csrIdxType*  dptr_colindex_B,
+	const dtype*       dptr_value_B,
         size_t*            ptr_nnz_C,
         csrIdxType*        dptr_offset_C,
         csrIdxType**       pdptr_colindex_C,
-		dtype**            pdptr_value_C )
+        dtype**            pdptr_value_C )
 {
     //设置BLOCKS、THREADS
     constexpr int BLOCKS=64;
