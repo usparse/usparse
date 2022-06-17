@@ -609,8 +609,8 @@ size_t rocsparse_spgemm()
                                &beta, descr_D, D_nnz, device_valueD, device_offsetD, device_colindexD,
                                descr_C, csr_val_C, csr_row_ptr_C, csr_col_ind_C, info_C, buffer) )
 
-    host_valueC = new dtype[nonzero];
-    HIP_CHECK( hipMemcpy(host_valueC, csr_val_C, nonzero * sizeof(dtype), hipMemcpyDeviceToHost) )
+    host_compare_valueC = new dtype[nonzero];
+    HIP_CHECK( hipMemcpy(host_compare_valueC, csr_val_C, nonzero * sizeof(dtype), hipMemcpyDeviceToHost) )
  
     HIP_CHECK( hipFree(buffer) )
     HIP_CHECK( hipFree(csr_row_ptr_C) )

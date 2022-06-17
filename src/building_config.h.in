@@ -15,4 +15,8 @@ constexpr int __WRAP_SIZE__ = __WF_SIZE__;
 #cmakedefine DEVICE_SIDE_VERIFY
 #cmakedefine gpu
 
+#cmakedefine KERNEL_STRATEGY @KERNEL_STRATEGY@
+#cmakedefine KERNEL_STRATEGY_DEFAULT
+#cmakedefine KERNEL_STRATEGY_KOKKOS
+
 #endif // SPGEMM_BUILDING_CONFIG_H
