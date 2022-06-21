@@ -153,7 +153,7 @@ int main(int argc,char** argv)
         timer_rocsparse.start();
 
         //RocSparse Calculation
-        C_nnz_compare = rocsparse_spgemm(host_offsetC);
+        C_nnz_compare = rocsparse_spgemm();
 
         hipDeviceSynchronize();	      
 
@@ -187,20 +187,19 @@ int main(int argc,char** argv)
 
     //Verify Result
     cout << "Runing verify ... " << endl;
-    cout<<"host_valueC[C_nnz]="<<host_valueC[C_nnz-1]<<endl;  
-    cout<<"host_compare_valueC[C_nnz_compare]="<<host_compare_valueC[C_nnz_compare-1]<<endl;
-    cout<<"host_compare_valueC[C_nnz_compare-1]="<<host_compare_valueC[C_nnz_compare-2]<<endl; 
+    // cout<<"host_valueC[C_nnz]="<<host_valueC[C_nnz-1]<<endl;  
+    // cout<<"host_compare_valueC[C_nnz_compare]="<<host_compare_valueC[C_nnz_compare-1]<<endl;
+    // cout<<"host_compare_valueC[C_nnz_compare-1]="<<host_compare_valueC[C_nnz_compare-2]<<endl; 
 
-    // if(C_nnz != C_nnz_compare)
-    // {
-    //     cout << "Non zero num not the same, you kernel may not be correct!" << endl;
-    //     return 0;
-    // }
+    if(C_nnz != C_nnz_compare)
+    {
+        cout << "Non zero num not the same, you kernel may not be correct!" << endl;
+        return 0;
+    }
 
-
-    verify(host_valueC, host_compare_valueC, C_nnz);
-
+    verify(host_offsetC,host_compare_offsetC,A_num_rows,host_valueC, host_compare_valueC, C_nnz);
 
     cout << "=================================================================="<<endl;
     return 0;
 }
+

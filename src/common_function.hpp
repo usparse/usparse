@@ -73,6 +73,8 @@ dtype*  host_valueC = NULL;             //csr value host ptr of C
 dtype*  host_compare_valueC = NULL;     //csr value host compare ptr of C
 dtype*  host_compare_dnmatC = NULL;     //Value host ptr of  Result Dense Matrix C Calculated by rocsparse or cpu function
 
+csrIdxType* host_compare_offsetC=NULL;
+
 //-----------------------------------------------------------------------------
 
 vector<dtype>  csr_data;
@@ -417,8 +419,19 @@ void verify(dtype* mat_kernel, dtype* mat_compare, size_t rows, size_t cols)
 
 //-----------------------------------------------------------------------------
 
-void verify(dtype* mat_kernel, dtype* mat_compare, size_t nnz)
+void verify(csrIdxType* device_offsetC,csrIdxType* host_compare_offsetC,csrIdxType rowA,dtype* mat_kernel, dtype* mat_compare, size_t nnz)
 {
+    for(size_t i=0;i<rowA+1;i++){
+        if(device_offsetC[i]-host_compare_offsetC[i]==0){
+            continue;
+        }else{
+            std::cout<<"row["<<i<<"] is wrong! device_offsetC["<<i<<"]="<<device_offsetC[i]<<",host_compare_offsetC["<<i<<"]="<<host_compare_offsetC[i]<<std::endl;
+            if(i<rowA){
+                return;
+            }
+        }
+    }
+
     size_t total_validation=0;
 
     for(size_t i=0; i<nnz; i++)
@@ -435,7 +448,7 @@ void verify(dtype* mat_kernel, dtype* mat_compare, size_t nnz)
                 cout<<"["<<i<<"] : "<<"fab_diff "<<fab_diff<<" device_value "<<mat_kernel[i]<<" host_value "<<mat_compare[i]<<endl;
             #endif
 
-            cout<<"Failed verification,please check your code!"<<endl;
+            // cout<<"Failed verification,please check your code!"<<endl;
             // return ;
         }
         total_validation = i;
@@ -529,13 +542,18 @@ size_t host_spgemm()
 
     size_t nonzero = matrix_to_csr( "C", 0, A_num_rows, A_num_cols, host_compare_dnmatC, host_offsetC, host_colindexC, host_compare_valueC );
 
+    host_compare_offsetC = new csrIdxType[A_num_rows+1];
+    for(size_t i=0;i<A_num_rows+1;i++){
+        host_compare_offsetC[i]=host_offsetC[i];
+    }
+
     return nonzero;
 }
 
 //=============================================================================
 
 #ifdef gpu
-size_t rocsparse_spgemm(csrIdxType *host_offsetC)
+size_t rocsparse_spgemm()
 {
     rocsparse_handle handle = NULL;
     ROCSPARSE_CHECK( rocsparse_create_handle(&handle) );
@@ -609,16 +627,11 @@ size_t rocsparse_spgemm(csrIdxType *host_offsetC)
                                &beta, descr_D, D_nnz, device_valueD, device_offsetD, device_colindexD,
                                descr_C, csr_val_C, csr_row_ptr_C, csr_col_ind_C, info_C, buffer) )
     
-    csrIdxType *host_compare_offsetC = new csrIdxType[A_num_rows+1];
+    host_compare_offsetC = new csrIdxType[A_num_rows+1];
     host_compare_valueC = new dtype[nonzero];
     HIP_CHECK( hipMemcpy(host_compare_valueC, csr_val_C, nonzero * sizeof(dtype), hipMemcpyDeviceToHost) )
     HIP_CHECK( hipMemcpy(host_compare_offsetC, csr_row_ptr_C, (A_num_rows+1) * sizeof(csrIdxType), hipMemcpyDeviceToHost) )
 
-    for(int i=0;i<A_num_rows+1;i++){
-        if(host_offsetC[i]-host_compare_offsetC[i]!=0){
-            std::cout<<"row["<<i<<"] is wrong!"<<std::endl;
-        }
-    }
  
     HIP_CHECK( hipFree(buffer) )
     HIP_CHECK( hipFree(csr_row_ptr_C) )

@@ -10,11 +10,11 @@ set(KERNEL_STRATEGY "DEFAULT" CACHE STRING "SpGEMM strategy")
 
 #每个策略编译为一个动态库
 #设置各个动态库的名字
-set(SPGEMM_BIN_NAME spgemm-hip)
+set(SPGEMM_BIN_NAME spgemm-hip-threadpernnz-64-256)
 set(SPGEMM_KERNEL_LIB_NAME spgemm-kernels)
 set(SPGEMM_DENSE_KERNEL_LIB_NAME spgemm-dense-kernels)
-set(ACC_LIBS ${ACC_LIBS} ${SPGEMM_KERNEL_LIB_NAME} ${SPGEMM_DENSE_KERNEL_LIB_NAME})
+set(ACC_LIBS ${ACC_LIBS} ${SPGEMM_KERNEL_LIB_NAME} ${SPGEMM_DENSE_KERNEL_LIB_NAME} rocsparse)
 
-if (DEVICE_SIDE_VERIFY_FLAG)
-    set(ACC_LIBS ${ACC_LIBS} rocsparse)
-endif()
+# if (DEVICE_SIDE_VERIFY_FLAG)
+    # set(ACC_LIBS ${ACC_LIBS} rocsparse)
+# endif()
