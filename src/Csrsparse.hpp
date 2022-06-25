@@ -1,6 +1,6 @@
 #include <hip/hip_runtime.h>
-#include "spgemm/hip/api/spgemm_hip_api.h"
-#include "spgemm/hip/api/spgemm_hip_types.h"
+#include <api/spgemm_hip_api.h>
+#include <api/spgemm_hip_types.h>
 
 void  call_device_spgemm(const int transA,
 		const int          transB,

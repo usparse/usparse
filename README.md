@@ -17,13 +17,13 @@
 - Build and verify on GPU side.
 (Note: make sure lib `rocsparse` is loaded):
 ```
-CC=clang CXX=hipcc cmake -DCMAKE_BUILD_TYPE=Release -DDEVICE_SIDE_VERIFY_FLAG=ON -DKERNEL_STRATEGY=${strategy_name} -B./${build_dir} -hip -S./
+CC=clang CXX=hipcc cmake -DCMAKE_BUILD_TYPE=Release -DDEVICE_SIDE_VERIFY_FLAG=ON -DSPGEMM_KERNEL_STRATEGY=${spgemm_strategy_name} -DSORT_KERNEL_STRATEGY=${sort_strategy_name} -B./${build_dir} -hip -S./
 cmake --build ./${build_dir} -j8
 ```
 
 - Build and verify on CPU side.
 ```
-CC=clang CXX=hipcc cmake -DCMAKE_BUILD_TYPE=Release -DDEVICE_SIDE_VERIFY_FLAG=OFF -DKERNEL_STRATEGY=${strategy_name} -B./${build_dir} -hip -S./
+CC=clang CXX=hipcc cmake -DCMAKE_BUILD_TYPE=Release -DDEVICE_SIDE_VERIFY_FLAG=OFF -DSPGEMM_KERNEL_STRATEGY=${spgemm_strategy_name} -DSORT_KERNEL_STRATEGY=${sort_strategy_name} -B./${build_dir} -hip -S./
 cmake --build ./${build_dir} -j8
 ```
 

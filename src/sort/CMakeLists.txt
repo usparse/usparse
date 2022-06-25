@@ -1,6 +1,6 @@
 # all enabled strategies
 set(ENABLED_STRATEGIES
-    kokkos
+    block-radix
     )
 
 # find HIP
@@ -30,21 +30,21 @@ foreach (X_STRATEGY IN LISTS ENABLED_STRATEGIES)
 endforeach ()
 
 set(ACC_HIP_HEADER_FILES ${ACC_HEADER_FILES}
-        api/spgemm_hip_api.h
-        api/spgemm_hip_types.h
+        api/sort_hip_api.h
+        api/sort_hip_types.h
         )
 
 set(ACC_HIP_SOURCE_FILES ${ACC_SOURCE_FILES}
-        api/spgemm_hip_api.cc
+        api/sort_hip_api.cc
         )
 
 # set_source_files_properties(${ACC_HIP_SOURCE_FILES} PROPERTIES HIP_SOURCE_PROPERTY_FORMAT 1)
 # hip_add_library(${SPGEMM_KERNEL_LIB_NAME} STATIC ${ACC_HIP_SOURCE_FILES} ${ACC_HIP_HEADER_FILES} HIPCC_OPTIONS ${SPGEMM_HIPCC_OPTIONS})
 
 # build static library
-add_library(${SPGEMM_KERNEL_LIB_NAME} STATIC ${ACC_HIP_SOURCE_FILES} ${ACC_HIP_HEADER_FILES})
+add_library(${SORT_KERNEL_LIB_NAME} STATIC ${ACC_HIP_SOURCE_FILES} ${ACC_HIP_HEADER_FILES})
 target_include_directories(
-        ${SPGEMM_KERNEL_LIB_NAME}
+        ${SORT_KERNEL_LIB_NAME}
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}$<SEMICOLON>${PROJECT_BINARY_DIR}/generated>
         $<INSTALL_INTERFACE:include>

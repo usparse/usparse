@@ -4,6 +4,7 @@
 #include <iostream>
 #include <bitset>
 #include <hip/hip_runtime.h>
+#include <api/sort_hip_api.h>
 #include "spgemm_core.h"
 #include "error_macro.hpp"
 #include "spgemm_kernel.hpp"
@@ -127,16 +128,7 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I>& matrix_a, const CsrMat
 
 template <typename T, typename I>
 void csr_matrix_sort(CsrMatrix<T, I>& matrix) {
-  I *col_src_data, *col_temp_data, *row_src_data;
-  T *value_src_data, *value_temp_data;
-  const int thread_num = matrix.rows;
-  const int block_dim = 256;
-  const int block_num = thread_num / block_dim + (thread_num % block_dim == 0 ? 0 : 1);
-  KOKKOS_HIP_CHECK( hipMalloc((void **)&col_temp_data, sizeof(I) * matrix.nnz) )
-  KOKKOS_HIP_CHECK( hipMalloc((void **)&value_temp_data, sizeof(T) * matrix.nnz) )
-  (radix_sort_kernel<T, I, sizeof(I) * 8>)<<<block_num, block_dim>>>(thread_num, matrix.row_ptr, matrix.col_idx_ptr, col_temp_data, matrix.values_ptr, value_temp_data);
-  KOKKOS_HIP_CHECK( hipFree(col_temp_data) )
-  KOKKOS_HIP_CHECK( hipFree(value_temp_data) )
+  csr_sort_hip<T, I>(matrix.rows, matrix.nnz, matrix.row_ptr, matrix.col_idx_ptr, matrix.values_ptr); 
 }
 
 #endif //SPGEMM_KOKKOS_SPGEMM_CORE_HPP
