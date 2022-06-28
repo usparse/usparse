@@ -1,5 +1,4 @@
 #include <vector>
-#include "building_config.h"
 
 using namespace std;
 
@@ -128,7 +127,7 @@ void init_csr_dense_vector(char *buf, vector<T> &vec)
 void read_file(char *path)
 {
     FILE *fp = fopen(path, "r");
-    char buf[1024L*1024L*1024L*5L];
+    char buf[1024*1024*1024*5];
     int line_num=0;
 
     while( fgets(buf, sizeof(buf), fp) != NULL )
@@ -151,6 +150,20 @@ void read_file(char *path)
         }
         line_num++; 
     }
+    fclose(fp);
+}
+
+//-----------------------------------------------------------------------------
+
+void write_file(char *path, dtype* mat, csrIdxType len)
+{
+    FILE *fp = fopen(path, "w");
+
+    for(int i=0; i<len; i++)
+    {
+        fprintf(fp,"%lf\n", mat[i]);
+    }
+
     fclose(fp);
 }
 
@@ -393,12 +406,23 @@ void create_deivce_data()
 void verify(dtype* mat_kernel, dtype* mat_compare, size_t rows, size_t cols)
 {
     size_t total_validation=0;
+    bool bEqual = true;
 
     for(size_t i=0; i<rows*cols; i++)
     {
         double fab_diff = fabs( mat_kernel[i] - mat_compare[i] );
+        double fab_mat = fabs(mat_compare[i]);  
 
-        if(fab_diff/fabs(mat_compare[i])>=1e-9)
+        if((fab_mat>1.0)&&(fab_diff>=fab_mat*1e-9))
+        {
+            bEqual = false;
+        }
+        else if((fab_mat<=1.0)&&(fab_diff>=1e-9))
+        {
+            bEqual = false;
+        }
+
+        if(!bEqual)
         {
             #ifdef gpu
                 cout<<"["<<i/cols<<","<<i%cols<<"] : "<<"fab_diff "<<fab_diff<<" device_value "<<mat_kernel[i]<<" rocsparse_value "<<mat_compare[i]<<endl;
@@ -420,14 +444,23 @@ void verify(dtype* mat_kernel, dtype* mat_compare, size_t rows, size_t cols)
 void verify(dtype* mat_kernel, dtype* mat_compare, size_t nnz)
 {
     size_t total_validation=0;
+    bool bEqual = true;
 
     for(size_t i=0; i<nnz; i++)
     {
-        //cout<<"["<<i<<"] : "<<" device_value "<<mat_kernel[i]<<" rocsparse_value "<<mat_compare[i]<<endl;
-       
         double fab_diff = fabs( mat_kernel[i] - mat_compare[i] );
+        double fab_mat = fabs(mat_compare[i]);
 
-        if(fab_diff/fabs(mat_compare[i])>=1e-9)
+        if((fab_mat>1.0)&&(fab_diff>=fab_mat*1e-9))
+        {
+            bEqual = false;
+        }
+        else if((fab_mat<=1.0)&&(fab_diff>=1e-9))
+        {
+            bEqual = false;
+        }
+
+        if(!bEqual)
         {
             #ifdef gpu
                 cout<<"["<<i<<"] : "<<"fab_diff "<<fab_diff<<" device_value "<<mat_kernel[i]<<" rocsparse_value "<<mat_compare[i]<<endl;
@@ -557,6 +590,8 @@ size_t rocsparse_spgemm()
     rocsparse_mat_info info_C;
     rocsparse_create_mat_info(&info_C);
 
+    rocsparse_set_pointer_mode(handle, rocsparse_pointer_mode_host);
+
     csrIdxType D_nnz = 1;
 
     csrIdxType* host_offsetD = new csrIdxType[A_num_rows+1];
@@ -564,7 +599,7 @@ size_t rocsparse_spgemm()
     host_offsetD[A_num_rows] = 1;
  
     csrIdxType host_colindexD = A_num_rows-1;
-    dtype host_valueD = 2.0;
+    dtype host_valueD = 0.0;
 
     csrIdxType* device_offsetD;
     csrIdxType* device_colindexD;
@@ -577,6 +612,8 @@ size_t rocsparse_spgemm()
     HIP_CHECK( hipMemcpy(device_offsetD, host_offsetD, (A_num_rows+1) * sizeof(csrIdxType), hipMemcpyHostToDevice) )
     HIP_CHECK( hipMemcpy(device_colindexD, &host_colindexD, D_nnz * sizeof(csrIdxType), hipMemcpyHostToDevice) )
     HIP_CHECK( hipMemcpy(device_valueD, &host_valueD, D_nnz * sizeof(dtype), hipMemcpyHostToDevice) )
+
+    delete [] host_offsetD;
 
     #if dtype==double
     size_t buffer_size;
@@ -610,8 +647,24 @@ size_t rocsparse_spgemm()
                                descr_C, csr_val_C, csr_row_ptr_C, csr_col_ind_C, info_C, buffer) )
 
     host_compare_valueC = new dtype[nonzero];
-    HIP_CHECK( hipMemcpy(host_compare_valueC, csr_val_C, nonzero * sizeof(dtype), hipMemcpyDeviceToHost) )
+    memset(host_compare_valueC, 0, nonzero*sizeof(dtype));
  
+    dtype* temp_value = new dtype[nonzero];
+    HIP_CHECK( hipMemcpy(temp_value, csr_val_C, nonzero * sizeof(dtype), hipMemcpyDeviceToHost) )
+
+    int num = 0;
+    for(int i=0; i<nonzero; i++)
+    {
+        if(temp_value[i]!=0.0)
+        {
+            host_compare_valueC[num] = temp_value[i];
+            num++;
+        }
+    }
+
+    delete [] temp_value;
+    nonzero = num;
+
     HIP_CHECK( hipFree(buffer) )
     HIP_CHECK( hipFree(csr_row_ptr_C) )
     HIP_CHECK( hipFree(csr_col_ind_C) )
@@ -649,7 +702,23 @@ size_t rocsparse_spgemm()
                                descr_C, csr_val_C, csr_row_ptr_C, csr_col_ind_C, info_C, buffer) )
 
     host_compare_valueC = new dtype[nonzero];
-    HIP_CHECK( hipMemcpy(host_compare_valueC, csr_val_C, nonzero * sizeof(dtype), hipMemcpyDeviceToHost) )
+    memset(host_compare_valueC, 0, nonzero*sizeof(dtype));
+
+    dtype* temp_value = new dtype[nonzero];
+    HIP_CHECK( hipMemcpy(temp_value, csr_val_C, nonzero * sizeof(dtype), hipMemcpyDeviceToHost) )
+    
+    int num = 0;
+    for(int i=0; i<nonzero; i++)
+    {
+        if(temp_value[i]!=0.0)
+        {
+            host_compare_valueC[num] = temp_value[i];
+            num++;
+        }
+    }
+
+    delete [] temp_value;
+    nonzero = num;
 
     HIP_CHECK( hipFree(buffer) )
     HIP_CHECK( hipFree(csr_row_ptr_C) )
