@@ -9,10 +9,11 @@ template<typename T, typename I>
 struct HashMap {
   using dtype = T;
   using csrIdxType = I;
-  static constexpr int M = 14;
+  static constexpr int M = 10;
   static constexpr size_t Capacity = 0x1 << M;
   static constexpr size_t HashMask = Capacity - 1;
   static constexpr int NullValue = -1;
+  static constexpr int PlaceHolderValue = -2;
 
   csrIdxType* ids;
   dtype* values;
