@@ -126,7 +126,7 @@ __global__ void spgemm_numeric_kernel(const T alpha, const size_t m, const size_
           for (int i = lds_begins_start + wf_thread_id; i < lds_begins_start + HashMap<T, I>::Capacity; i += wf_thread_num) {
             shared_begins[i] = HashMap<T, I>::NullValue;
           }
-          for (int i = lds_begins_start + wf_thread_id; i < lds_nexts_start + end_offset; i += wf_thread_num) {
+          for (int i = lds_nexts_start + wf_thread_id; i < lds_nexts_start + end_offset; i += wf_thread_num) {
             shared_nexts[i] = HashMap<T, I>::NullValue;
           }
           if (wf_thread_id == 0) {
@@ -152,7 +152,7 @@ __global__ void spgemm_numeric_kernel(const T alpha, const size_t m, const size_
       for (int i = lds_begins_start + wf_thread_id; i < lds_begins_start + HashMap<T, I>::Capacity; i += wf_thread_num) {
         shared_begins[i] = HashMap<T, I>::NullValue;
       }
-      for (int i = lds_begins_start + wf_thread_id; i < lds_nexts_start + end_offset; i += wf_thread_num) {
+      for (int i = lds_nexts_start + wf_thread_id; i < lds_nexts_start + end_offset; i += wf_thread_num) {
         shared_nexts[i] = HashMap<T, I>::NullValue;
       }
       if (wf_thread_id == 0) {
