@@ -39,7 +39,7 @@ __device__ __forceinline__ void hashmap_thread_insert(int *begins, int *nexts, I
     begins[begins_start + key] = nexts_start + nexts_offset;
     ids[nexts_start + nexts_offset] = insert_id;
     values[nexts_start + nexts_offset] = insert_value;
-      ++nexts_offset;
+    ++nexts_offset;
   } else {
     int next_idx = begin_val;
     while(nexts[next_idx] != HashMap<T,I>::NullValue) {
@@ -81,7 +81,7 @@ __device__ __forceinline__ void hashmap_wavefront_insert(int *begins, int *nexts
       if (old == HashMap<T, I>::NullValue) {
         // ++nexts_offset;
         nexts_offset = atomicAdd(nexts_offsets + offsets_index, 1);
-        begins[begins_start + hash_val] = nexts_start + nexts_offset;
+        atomicExch(begins + begins_start + hash_val, nexts_start + nexts_offset);
         begin_val = nexts_start + nexts_offset;
         ids[nexts_start + nexts_offset] = insert_id;
         values[nexts_start + nexts_offset] = insert_value;
