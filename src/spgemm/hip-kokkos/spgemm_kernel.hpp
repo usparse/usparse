@@ -51,7 +51,7 @@ __global__ void spgemm_symbolic_kernel(const size_t m, const size_t n, const I *
   }
 }
 
-template <typename T, typename I, int N, size_t BLOCKS, size_t WF_SIZE>
+template <typename T, typename I, size_t N, size_t LDS_MAP_CAP, size_t LDS_HASH_MASK,size_t BLOCKS, size_t WF_SIZE>
 __global__ void spgemm_numeric_kernel(const T alpha, const size_t m, const size_t n, const I *row_ptr_a,
                                       const I *col_idx_ptr_a, const T *values_ptr_a, const I *row_ptr_b,
                                       const I *col_idx_ptr_b, const T *values_ptr_b, const I *row_ptr_c, int *begins,
@@ -69,15 +69,17 @@ __global__ void spgemm_numeric_kernel(const T alpha, const size_t m, const size_
   // thread id in block
   const int block_thread_id = threadIdx.x;
   // thread num in block
-  const int block_thread_num = blockDim.x;
+  constexpr int block_thread_num = BLOCKS;
   // wf id in block
   const int block_wf_id = threadIdx.x / WF_SIZE;
+  // wf num in block
+  constexpr int block_wf_num = BLOCKS / WF_SIZE;
   // thread id in wf
   const int wf_thread_id = global_thread_id % WF_SIZE;
   // thread num in wf
-  const int wf_thread_num = WF_SIZE;
+  constexpr int wf_thread_num = WF_SIZE;
   // hashmap in LDS
-  constexpr int LDS_BEGINS_SIZE = HashMap<T, I>::Capacity * BLOCKS / WF_SIZE;
+  constexpr int LDS_BEGINS_SIZE = LDS_MAP_CAP * block_wf_num;
   constexpr int LDS_NEXTS_SIZE = BLOCKS * N;
   __shared__ int shared_begins[LDS_BEGINS_SIZE];
   __shared__ int shared_nexts[LDS_NEXTS_SIZE];
@@ -97,7 +99,7 @@ __global__ void spgemm_numeric_kernel(const T alpha, const size_t m, const size_
   for (int row_a = global_wf_id; row_a < m; row_a += global_wf_num) {
     const I row_idx_begin = row_ptr_a[row_a];
     const I row_idx_end = row_ptr_a[row_a + 1];
-    const size_t lds_begins_start = HashMap<T, I>::Capacity * block_wf_id;
+    const size_t lds_begins_start = LDS_MAP_CAP * block_wf_id;
     const size_t lds_nexts_start = N * WF_SIZE * block_wf_id;
     const size_t lds_nexts_end = lds_nexts_start + N * WF_SIZE;
  
@@ -119,11 +121,11 @@ __global__ void spgemm_numeric_kernel(const T alpha, const size_t m, const size_
           // if lds hashmap is full, write to device memory hashmap
           const int end_offset = lds_nexts_offset[block_wf_id];
           for (int i = lds_nexts_start + wf_thread_id; i < lds_nexts_start + end_offset; i += wf_thread_num) {
-            hashmap_wavefront_insert(begins, nexts, ids, values, mem_nexts_offset, block_wf_id, mem_begins_start,
+            hashmap_wavefront_insert<T, I, HashMap<T, I>::HashMask>(begins, nexts, ids, values, mem_nexts_offset, block_wf_id, mem_begins_start,
                                      mem_nexts_start, shared_ids[i], shared_values[i]);
           }
           // reset lds hashmap
-          for (int i = lds_begins_start + wf_thread_id; i < lds_begins_start + HashMap<T, I>::Capacity; i += wf_thread_num) {
+          for (int i = lds_begins_start + wf_thread_id; i < lds_begins_start + LDS_MAP_CAP; i += wf_thread_num) {
             shared_begins[i] = HashMap<T, I>::NullValue;
           }
           for (int i = lds_nexts_start + wf_thread_id; i < lds_nexts_start + end_offset; i += wf_thread_num) {
@@ -138,18 +140,18 @@ __global__ void spgemm_numeric_kernel(const T alpha, const size_t m, const size_
           const T tmp_val = values_ptr_a[idx_a] * values_ptr_b[idx_b];
           const I col_b = col_idx_ptr_b[idx_b];
           // insert to lds hashmap
-          hashmap_wavefront_insert(shared_begins, shared_nexts, shared_ids, shared_values, lds_nexts_offset, block_wf_id,
+          hashmap_wavefront_insert<T, I, LDS_HASH_MASK>(shared_begins, shared_nexts, shared_ids, shared_values, lds_nexts_offset, block_wf_id,
                                    lds_begins_start, lds_nexts_start, col_b, tmp_val);
         }
       }
       // write to device memory hashmap
       const int end_offset = lds_nexts_offset[block_wf_id];
       for (int i = lds_nexts_start + wf_thread_id; i < lds_nexts_start + end_offset; i += wf_thread_num) {
-        hashmap_wavefront_insert(begins, nexts, ids, values, mem_nexts_offset, block_wf_id, mem_begins_start,
+        hashmap_wavefront_insert<T, I, HashMap<T, I>::HashMask>(begins, nexts, ids, values, mem_nexts_offset, block_wf_id, mem_begins_start,
                                  mem_nexts_start, shared_ids[i], shared_values[i]);
       }
       // reset lds hashmap
-      for (int i = lds_begins_start + wf_thread_id; i < lds_begins_start + HashMap<T, I>::Capacity; i += wf_thread_num) {
+      for (int i = lds_begins_start + wf_thread_id; i < lds_begins_start + LDS_MAP_CAP; i += wf_thread_num) {
         shared_begins[i] = HashMap<T, I>::NullValue;
       }
       for (int i = lds_nexts_start + wf_thread_id; i < lds_nexts_start + end_offset; i += wf_thread_num) {

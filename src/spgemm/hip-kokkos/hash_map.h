@@ -27,13 +27,13 @@ template <typename T, typename I> struct HashMap {
   }
 };
 
-#define HASH(T, I, n) (n & HashMap<T, I>::HashMask)
+#define HASH(T, I, n, mask) (n & mask)
 
 // one thread simultaneously insert to hashmap
-template <typename T, typename I>
+template <typename T, typename I, size_t HashMask>
 __device__ __forceinline__ void hashmap_thread_insert(int *begins, int *nexts, I *ids, T *values, const size_t begins_start,
                                                       const size_t nexts_start, size_t& nexts_offset, const I insert_id, const T insert_value) {
-  const size_t key = HASH(T, I, insert_id);
+  const size_t key = HASH(T, I, insert_id, HashMask);
   const int begin_val = begins[begins_start + key];
   if (begin_val == HashMap<T,I>::NullValue) {
     begins[begins_start + key] = nexts_start + nexts_offset;
@@ -66,11 +66,11 @@ __device__ __forceinline__ void hashmap_thread_insert(int *begins, int *nexts, I
 
 
 // threads in wavefront simultaneously insert to hashmap
-template <typename T, typename I>
+template <typename T, typename I, size_t HashMask>
 __device__ __forceinline__ void hashmap_wavefront_insert(int *begins, int *nexts, I *ids, T *values, int *nexts_offsets,
                                                          int offsets_index, const size_t begins_start,
                                                          const size_t nexts_start, const I insert_id, const T insert_value) {
-  const size_t hash_val = HASH(T, I, insert_id);
+  const size_t hash_val = HASH(T, I, insert_id, HashMask);
   volatile int begin_val = begins[begins_start + hash_val];
   int nexts_offset = nexts_offsets[offsets_index];
   // 1. if key not in hashmap, insert (id, val) to map
