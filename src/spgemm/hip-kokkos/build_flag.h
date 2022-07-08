@@ -9,4 +9,4 @@
 #define GLOBAL_LOAD_X2
 #endif
 
-#endif //SPGEMM_KOKKOS_BUILD_FLAG_H
+#endif // SPGEMM_KOKKOS_BUILD_FLAG_H

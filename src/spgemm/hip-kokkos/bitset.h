@@ -7,8 +7,8 @@ struct BitSet {
   static constexpr size_t BitsLen = sizeof(BitSetEleType) * BitsPerByte;
   const size_t rows;
   const size_t cols;
-  BitSetEleType* arr;
-  BitSet(size_t r, size_t c, BitSetEleType* arr): rows(r), cols(c), arr(arr){} 
+  BitSetEleType *arr;
+  BitSet(size_t r, size_t c, BitSetEleType *arr) : rows(r), cols(c), arr(arr) {}
 };
 
-#endif //SPGEMM_HIP_KOKKOS_BITSET_H
+#endif // SPGEMM_HIP_KOKKOS_BITSET_H

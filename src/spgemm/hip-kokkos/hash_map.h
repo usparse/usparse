@@ -31,45 +31,45 @@ template <typename T, typename I> struct HashMap {
 
 // one thread simultaneously insert to hashmap
 template <typename T, typename I, size_t HashMask>
-__device__ __forceinline__ void hashmap_thread_insert(int *begins, int *nexts, I *ids, T *values, const size_t begins_start,
-                                                      const size_t nexts_start, size_t& nexts_offset, const I insert_id, const T insert_value) {
+__device__ __forceinline__ void hashmap_thread_insert(int *begins, int *nexts, I *ids, T *values,
+                                                      const size_t begins_start, const size_t nexts_start,
+                                                      size_t &nexts_offset, const I insert_id, const T insert_value) {
   const size_t key = HASH(T, I, insert_id, HashMask);
   const int begin_val = begins[begins_start + key];
-  if (begin_val == HashMap<T,I>::NullValue) {
+  if (begin_val == HashMap<T, I>::NullValue) {
     begins[begins_start + key] = nexts_start + nexts_offset;
     ids[nexts_start + nexts_offset] = insert_id;
     values[nexts_start + nexts_offset] = insert_value;
     ++nexts_offset;
   } else {
     int next_idx = begin_val;
-    while(nexts[next_idx] != HashMap<T,I>::NullValue) {
+    while (nexts[next_idx] != HashMap<T, I>::NullValue) {
       if (ids[next_idx] == insert_id) {
         values[next_idx] += insert_value;
         break;
       }
       next_idx = nexts[next_idx];
     }
-    if (nexts[next_idx] == HashMap<T,I>::NullValue) {
+    if (nexts[next_idx] == HashMap<T, I>::NullValue) {
       if (ids[next_idx] == insert_id) {
         values[next_idx] += insert_value;
       } else {
         nexts[next_idx] = nexts_start + nexts_offset;
         next_idx = nexts_start + nexts_offset;
-        nexts[next_idx] = HashMap<T,I>::NullValue;
+        nexts[next_idx] = HashMap<T, I>::NullValue;
         ids[next_idx] = insert_id;
         values[next_idx] = insert_value;
         ++nexts_offset;
       }
-    }	
+    }
   }
 }
 
-
 // threads in wavefront simultaneously insert to hashmap
 template <typename T, typename I, size_t HashMask>
-__device__ __forceinline__ void hashmap_wavefront_insert(int *begins, int *nexts, I *ids, T *values, int *nexts_offsets,
-                                                         int offsets_index, const size_t begins_start,
-                                                         const size_t nexts_start, const I insert_id, const T insert_value) {
+__device__ __forceinline__ void
+hashmap_wavefront_insert(int *begins, int *nexts, I *ids, T *values, int *nexts_offsets, int offsets_index,
+                         const size_t begins_start, const size_t nexts_start, const I insert_id, const T insert_value) {
   const size_t hash_val = HASH(T, I, insert_id, HashMask);
   volatile int begin_val = begins[begins_start + hash_val];
   int nexts_offset = nexts_offsets[offsets_index];
@@ -125,4 +125,4 @@ __device__ __forceinline__ void hashmap_wavefront_insert(int *begins, int *nexts
     }
   }
 }
-#endif // SPGEMM_HASH_MAP_
+#endif // SPGEMM_KOKKOS_HASH_MAP_H
