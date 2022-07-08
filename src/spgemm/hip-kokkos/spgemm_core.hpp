@@ -97,7 +97,7 @@ void spgemm_symbolic(const CsrMatrix<T, I>& matrix_a, const BitSet& bitset_b, I*
 template <typename T, typename I>
 void spgemm_numeric(const T alpha, const CsrMatrix<T, I>& matrix_a, const CsrMatrix<T, I>& matrix_b, CsrMatrix<T, I>& matrix_c) {
   HashMap<T,I> hash_map(matrix_c.col_idx_ptr, matrix_c.values_ptr, matrix_c.rows, matrix_c.nnz);
-  constexpr size_t N = 8;
+  constexpr size_t N = 4;
   constexpr size_t LDS_MAP_CAP = 1 << 5;
   constexpr size_t LDS_HASH_MASK = LDS_MAP_CAP - 1;
   constexpr size_t GLOBAL_BLOCK_NUM = 512;
