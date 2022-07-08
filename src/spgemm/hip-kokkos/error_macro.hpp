@@ -1,6 +1,8 @@
 #ifndef SPGEMM_KOKKOS_ERROR_MACRO_HPP
 #define SPGEMM_KOKKOS_ERROR_MACRO_HPP
 
+#include <iostream>
+
 #define KOKKOS_HIP_CHECK(stat)                                                                                         \
   {                                                                                                                    \
     if (stat != hipSuccess) {                                                                                          \
