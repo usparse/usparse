@@ -145,8 +145,8 @@ __global__ void spgemm_numeric_kernel(const T alpha, const size_t m, const size_
             lds_nexts_offset[block_wf_id] = 0;
           }
         }
-        const int idx_b = idx_begin_b + WF_PROCESS_ONCE * round + wf_thread_id;
 #ifndef GLOBAL_LOAD_X2
+        const int idx_b = idx_begin_b + WF_PROCESS_ONCE * round + wf_thread_id;
         if (idx_b < idx_end_b) {
           const T tmp_val = values_ptr_a[idx_a] * values_ptr_b[idx_b];
           const I col_b = col_idx_ptr_b[idx_b];
@@ -157,6 +157,7 @@ __global__ void spgemm_numeric_kernel(const T alpha, const size_t m, const size_
         }
 #endif
 #ifdef GLOBAL_LOAD_X2
+        const int idx_b = idx_begin_b + WF_PROCESS_ONCE * round + wf_thread_id * 2;
         if (idx_b < idx_end_b) {
           if (idx_b + 1 < idx_end_b) {
             const T tmp_val_0 = values_ptr_a[idx_a] * values_ptr_b[idx_b];
