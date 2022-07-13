@@ -66,11 +66,13 @@ csrIdxType* device_offsetB;             //csr offset device ptr of B
 csrIdxType* device_colindexB;           //csr column index device ptr of B
 dtype*  device_valueB;                  //csr value device ptr of B
 
-csrIdxType* host_offsetC = NULL;        //csr offset host ptr of C
-csrIdxType* host_colindexC = NULL;      //csr column index host ptr of C
-dtype*  host_valueC = NULL;             //csr value host ptr of C
-dtype*  host_compare_valueC = NULL;     //csr value host compare ptr of C
-dtype*  host_compare_dnmatC = NULL;     //Value host ptr of  Result Dense Matrix C Calculated by rocsparse or cpu function
+csrIdxType* host_offsetC = NULL;           //csr offset host ptr of C
+csrIdxType* host_colindexC = NULL;         //csr column index host ptr of C
+dtype*  host_valueC = NULL;                //csr value host ptr of C
+csrIdxType* host_compare_offsetC = NULL;   //csr offset host ptr of C
+csrIdxType* host_compare_colindexC = NULL; //csr column index host ptr of C
+dtype*  host_compare_valueC = NULL;        //csr value host compare ptr of C
+dtype*  host_compare_dnmatC = NULL;        //Value host ptr of  Result Dense Matrix C Calculated by rocsparse or cpu function
 
 //-----------------------------------------------------------------------------
 
@@ -221,7 +223,7 @@ void generate_sparse_matrix(dtype*& spmat, size_t rows, size_t cols, double spar
             size_t x = rand() % 1000000;
             if( x < 1000000.0 * sparsity )
             {
-                spmat[i*cols+j] = x/10000.0 + 1.0;
+                spmat[i*cols+j] = x/1000000.0 + 1.0;
             }
         }
     }
@@ -441,40 +443,114 @@ void verify(dtype* mat_kernel, dtype* mat_compare, size_t rows, size_t cols)
 
 //-----------------------------------------------------------------------------
 
-void verify(dtype* mat_kernel, dtype* mat_compare, size_t nnz)
+void verify(size_t nnz_kernel, size_t nnz_compare)
 {
-    size_t total_validation=0;
     bool bEqual = true;
-
-    for(size_t i=0; i<nnz; i++)
+    
+    for(size_t row=0; row<A_num_rows; row++)
     {
-        double fab_diff = fabs( mat_kernel[i] - mat_compare[i] );
-        double fab_mat = fabs(mat_compare[i]);
+        size_t off1_l = host_offsetC[row];
+        size_t off1_r = host_offsetC[row+1];
+        size_t off2_l = host_compare_offsetC[row];
+        size_t off2_r = host_compare_offsetC[row+1];
 
-        if((fab_mat>1.0)&&(fab_diff>=fab_mat*1e-9))
-        {
-            bEqual = false;
-        }
-        else if((fab_mat<=1.0)&&(fab_diff>=1e-9))
-        {
-            bEqual = false;
-        }
+        size_t num1 = 0;
+        size_t num2 = 0;
+        size_t num_max = max((off1_r-off1_l),(off2_r-off2_l));
 
-        if(!bEqual)
+        while( (num1<=num_max) && (num2<=num_max) )
         {
-            #ifdef gpu
-                cout<<"["<<i<<"] : "<<"fab_diff "<<fab_diff<<" device_value "<<mat_kernel[i]<<" rocsparse_value "<<mat_compare[i]<<endl;
-            #else
-                cout<<"["<<i<<"] : "<<"fab_diff "<<fab_diff<<" device_value "<<mat_kernel[i]<<" host_value "<<mat_compare[i]<<endl;
-            #endif
+            size_t col1 = host_colindexC[off1_l+num1];
+            size_t col2 = host_compare_colindexC[off2_l+num2];
 
-            cout<<"Failed verification,please check your code!"<<endl;
-            return ;
+            if(col1==col2)
+            {
+                double fab_diff = fabs( host_valueC[off1_l+num1] - host_compare_valueC[off2_l+num2] );
+                double fab_mat  = fabs( host_compare_valueC[off2_l+num2] );
+
+                if((fab_mat>1.0)&&(fab_diff>=fab_mat*1e-9))
+                {
+                    bEqual = false;
+                }
+                else if((fab_mat<=1.0)&&(fab_diff>=1e-9))
+                {
+                    bEqual = false;
+                }
+
+                if(!bEqual)
+                {
+                    #ifdef gpu
+                        cout<<"["<< row <<","<< col1 <<"] : "<<"fab_diff "<<fab_diff<<" device_value "<<host_valueC[off1_l+num1]<<" rocsparse_value "<<host_compare_valueC[off2_l+num2]<<endl;
+                    #else
+                        cout<<"["<< row <<","<< col1 <<"] : "<<"fab_diff "<<fab_diff<<" device_value "<<host_valueC[off1_l+num1]<<" host_value "<<host_compare_valueC[off2_l+num2]<<endl;
+                    #endif
+
+                    cout<<"off "<<off1_l<<" "<<off1_r<<" "<<off2_l<<" "<<off2_r<<endl;
+                    cout<<"col "<<col1<<" "<<col2<<" index "<<num1<<" "<<num2<<endl;
+
+                    cout<<"Failed verification, please check your code!"<<endl;
+                    return;
+                }
+
+                num1++;
+                num2++;
+            }
+            else if (col1<col2)
+            {
+                double fab_diff = fabs( host_valueC[off1_l+num1] );
+
+                if(fab_diff>=1e-9)
+                {
+                    bEqual = false;
+                }
+
+                if(!bEqual)
+                {
+                    #ifdef gpu
+                        cout<<"["<< row <<","<< col1 <<"] : "<<"fab_diff "<<fab_diff<<" device_value "<<host_valueC[off1_l+num1]<<" rocsparse_value "<<host_compare_valueC[off2_l+num2]<<endl;
+                    #else
+                        cout<<"["<< row <<","<< col1 <<"] : "<<"fab_diff "<<fab_diff<<" device_value "<<host_valueC[off1_l+num1]<<" host_value "<<host_compare_valueC[off2_l+num2]<<endl;
+                    #endif
+
+                    cout<<"off "<<off1_l<<" "<<off1_r<<" "<<off2_l<<" "<<off2_r<<endl;
+                    cout<<"col "<<col1<<" "<<col2<<" index "<<num1<<" "<<num2<<endl;
+
+                    cout<<"Failed verification, please check your code!"<<endl;
+                    return;
+                }
+
+                num1++;
+            }
+            else if (col1>col2)
+            {
+                double fab_diff = fabs( host_compare_valueC[off2_l+num2] );
+
+                if(fab_diff>=1e-9)
+                {
+                    bEqual = false;
+                }
+
+                if(!bEqual)
+                {
+                    #ifdef gpu
+                        cout<<"["<< row <<","<< col1 <<"] : "<<"fab_diff "<<fab_diff<<" device_value "<<host_valueC[off1_l+num1]<<" rocsparse_value "<<host_compare_valueC[off2_l+num2]<<endl;
+                    #else
+                        cout<<"["<< row <<","<< col1 <<"] : "<<"fab_diff "<<fab_diff<<" device_value "<<host_valueC[off1_l+num1]<<" host_value "<<host_compare_valueC[off2_l+num2]<<endl;
+                    #endif
+
+                    cout<<"off "<<off1_l<<" "<<off1_r<<" "<<off2_l<<" "<<off2_r<<endl;
+                    cout<<"col "<<col1<<" "<<col2<<" index "<<num1<<" "<<num2<<endl;
+
+                    cout<<"Failed verification, please check your code!"<<endl;
+                    return;
+                }
+
+                num2++;
+            }
         }
-        total_validation = i;
     }
 
-    cout<<"Congratulation, pass "<<total_validation+1<< " validation!"<<endl;
+    cout<<"Congratulations, verification pass! "<<endl;
 }
 
 
@@ -560,7 +636,7 @@ size_t host_spgemm()
         }
     }
 
-    size_t nonzero = matrix_to_csr( "C", 0, A_num_rows, A_num_cols, host_compare_dnmatC, host_offsetC, host_colindexC, host_compare_valueC );
+    size_t nonzero = matrix_to_csr( "C", 0, A_num_rows, A_num_cols, host_compare_dnmatC, host_compare_offsetC, host_compare_colindexC, host_compare_valueC );
 
     return nonzero;
 }
@@ -646,24 +722,20 @@ size_t rocsparse_spgemm()
                                &beta, descr_D, D_nnz, device_valueD, device_offsetD, device_colindexD,
                                descr_C, csr_val_C, csr_row_ptr_C, csr_col_ind_C, info_C, buffer) )
 
+
+    host_compare_offsetC = new csrIdxType[A_num_rows+1];
+    memset(host_compare_offsetC, 0, (A_num_rows+1)*sizeof(csrIdxType));
+
+    host_compare_colindexC = new csrIdxType[nonzero];
+    memset(host_compare_colindexC, 0, nonzero*sizeof(csrIdxType));
+
     host_compare_valueC = new dtype[nonzero];
     memset(host_compare_valueC, 0, nonzero*sizeof(dtype));
- 
-    dtype* temp_value = new dtype[nonzero];
-    HIP_CHECK( hipMemcpy(temp_value, csr_val_C, nonzero * sizeof(dtype), hipMemcpyDeviceToHost) )
+    
+    HIP_CHECK( hipMemcpy(host_compare_offsetC, csr_row_ptr_C, (A_num_rows+1) * sizeof(csrIdxType), hipMemcpyDeviceToHost) )
+    HIP_CHECK( hipMemcpy(host_compare_colindexC, csr_col_ind_C, nonzero * sizeof(csrIdxType), hipMemcpyDeviceToHost) )
+    HIP_CHECK( hipMemcpy(host_compare_valueC, csr_val_C, nonzero * sizeof(dtype), hipMemcpyDeviceToHost) )
 
-    int num = 0;
-    for(int i=0; i<nonzero; i++)
-    {
-        if(temp_value[i]!=0.0)
-        {
-            host_compare_valueC[num] = temp_value[i];
-            num++;
-        }
-    }
-
-    delete [] temp_value;
-    nonzero = num;
 
     HIP_CHECK( hipFree(buffer) )
     HIP_CHECK( hipFree(csr_row_ptr_C) )
@@ -701,24 +773,20 @@ size_t rocsparse_spgemm()
                                &beta, descr_D, D_nnz, device_valueD, device_offsetD, device_colindexD,
                                descr_C, csr_val_C, csr_row_ptr_C, csr_col_ind_C, info_C, buffer) )
 
+
+    host_compare_offsetC = new csrIdxType[A_num_rows+1];
+    memset(host_compare_offsetC, 0, (A_num_rows+1)*sizeof(csrIdxType));
+
+    host_compare_colindexC = new csrIdxType[nonzero];
+    memset(host_compare_colindexC, 0, nonzero*sizeof(csrIdxType));
+
     host_compare_valueC = new dtype[nonzero];
     memset(host_compare_valueC, 0, nonzero*sizeof(dtype));
 
-    dtype* temp_value = new dtype[nonzero];
-    HIP_CHECK( hipMemcpy(temp_value, csr_val_C, nonzero * sizeof(dtype), hipMemcpyDeviceToHost) )
-    
-    int num = 0;
-    for(int i=0; i<nonzero; i++)
-    {
-        if(temp_value[i]!=0.0)
-        {
-            host_compare_valueC[num] = temp_value[i];
-            num++;
-        }
-    }
+    HIP_CHECK( hipMemcpy(host_compare_offsetC, csr_row_ptr_C, (A_num_rows+1) * sizeof(csrIdxType), hipMemcpyDeviceToHost) )
+    HIP_CHECK( hipMemcpy(host_compare_colindexC, csr_col_ind_C, nonzero * sizeof(csrIdxType), hipMemcpyDeviceToHost) )
+    HIP_CHECK( hipMemcpy(host_compare_valueC, csr_val_C, nonzero * sizeof(dtype), hipMemcpyDeviceToHost) )
 
-    delete [] temp_value;
-    nonzero = num;
 
     HIP_CHECK( hipFree(buffer) )
     HIP_CHECK( hipFree(csr_row_ptr_C) )

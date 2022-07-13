@@ -22,7 +22,7 @@ int main(int argc,char** argv)
 
     //Set random alpha
     srand((unsigned)time(NULL));
-    alpha = (dtype)(rand()%10000);
+    alpha = rand()/10000000.0;
 
     //Get args to Init matrix
     int FromFile = 0;
@@ -88,9 +88,8 @@ int main(int argc,char** argv)
     create_deivce_data();
     cout << "=================================================================="<<endl;
 
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     size_t C_nnz = 0;                              //None zero num of C calculated by kernel
-    size_t C_nnz_compare = 0;                      //None zero num of C calculated by compare function
-
     csrIdxType* device_offsetC;                    //csr offset device ptr of C
     csrIdxType* device_colindexC;                  //csr column index device ptr of C
     dtype*  device_valueC;                         //csr value device ptr of C
@@ -103,49 +102,51 @@ int main(int argc,char** argv)
     //Create timer_kernel
     my_timer timer_kernel;
     
-    double time_use_kernel = 0.0;
-    
-    for(int i=0; i<ROUND_GPU; i++)
-    {
-        //Start timer_kernel
-        timer_kernel.start();
+    //Start timer_kernel
+    timer_kernel.start();
 
-        // Execute Device spgemm 
-        call_device_spgemm(opA, opB, alpha, A_num_rows, B_num_cols, A_num_cols, 
-                                A_nnz, device_offsetA, device_colindexA, device_valueA,
-                                B_nnz, device_offsetB, device_colindexB, device_valueB,
-                                &C_nnz, device_offsetC, &device_colindexC, &device_valueC);
+    // Execute Device spgemm 
+    call_device_spgemm(opA, opB, alpha, A_num_rows, B_num_cols, A_num_cols, 
+                            A_nnz, device_offsetA, device_colindexA, device_valueA,
+                            B_nnz, device_offsetB, device_colindexB, device_valueB,
+                            &C_nnz, device_offsetC, &device_colindexC, &device_valueC);
 
-        hipDeviceSynchronize();
+    hipDeviceSynchronize();
 
-        //Stop timer kernel 
-        timer_kernel.stop();   
-        
-        time_use_kernel += timer_kernel.time_use;
-        
-        if( i==(ROUND_GPU-1) )
-        {
-            host_valueC = new dtype[C_nnz];
-            HIP_CHECK( hipMemcpy(host_valueC, device_valueC, C_nnz * sizeof(dtype), hipMemcpyDeviceToHost) )
-        }
+    //Stop timer kernel 
+    timer_kernel.stop();   
+     
+   
+    host_offsetC = new csrIdxType[A_num_rows+1];
+    memset(host_offsetC, 0, (A_num_rows+1)*sizeof(csrIdxType));
 
-        HIP_CHECK( hipFree(device_colindexC) )
-        HIP_CHECK( hipFree(device_valueC) )
-    }
+    host_colindexC = new csrIdxType[C_nnz];
+    memset(host_colindexC, 0, C_nnz*sizeof(csrIdxType));
+
+    host_valueC = new dtype[C_nnz];
+    memset(host_valueC, 0, C_nnz*sizeof(dtype));
+
+    HIP_CHECK( hipMemcpy(host_offsetC, device_offsetC, (A_num_rows+1) * sizeof(csrIdxType), hipMemcpyDeviceToHost) )
+    HIP_CHECK( hipMemcpy(host_colindexC, device_colindexC, C_nnz * sizeof(csrIdxType), hipMemcpyDeviceToHost) )
+    HIP_CHECK( hipMemcpy(host_valueC, device_valueC, C_nnz * sizeof(dtype), hipMemcpyDeviceToHost) )
+
+
     HIP_CHECK( hipFree(device_offsetC) )
+    HIP_CHECK( hipFree(device_colindexC) )
+    HIP_CHECK( hipFree(device_valueC) )
 
     cout << "non zero num of matrix C : " << C_nnz << endl;
-    cout << "Device calculation finished!  elapsed time:" << time_use_kernel << "(us)" << endl;
+    cout << "Device calculation finished!  elapsed time:" << timer_kernel.time_use << "(us)" << endl;
     cout << "=================================================================="<<endl;
 
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    size_t C_nnz_compare = 0;                      //None zero num of C calculated by compare function
     
     #ifdef gpu
         cout << "Runing rocsparse spgemm ... " << endl;
         //Create timer_rocsparse
         my_timer timer_rocsparse;
     
-        double time_use_rocsparse = 0.0;
-
         //Start timer_rocsparse
         timer_rocsparse.start();
 
@@ -157,15 +158,11 @@ int main(int argc,char** argv)
         //Stop timer_rocsparse
         timer_rocsparse.stop();
 
-        time_use_rocsparse += timer_rocsparse.time_use;
-
-        cout<<"Rocsparse calculation finished!  elapsed time:"<<time_use_rocsparse<<"(us)" << endl;
+        cout<<"Rocsparse calculation finished!  elapsed time:"<<timer_rocsparse.time_use<<"(us)" << endl;
     #else
         cout << "Runing host spgemm ... " << endl;
         //Create timer_hostcpu
         my_timer timer_hostcpu;
-
-        double time_use_hostcpu = 0.0;
 
         //Start timer_hostcpu
         timer_hostcpu.start();
@@ -176,22 +173,14 @@ int main(int argc,char** argv)
         //Stop timer_hostcpu
         timer_hostcpu.stop();
 
-        time_use_hostcpu += timer_hostcpu.time_use;
-
-        cout<<"Host calculation finished!  elspsed time:"<<time_use_hostcpu<<"(us)"  << endl;    
+        cout<<"Host calculation finished!  elspsed time:"<<timer_hostcpu.time_use<<"(us)"  << endl;
     #endif
     cout << "=================================================================="<<endl;
 
+
     //Verify Result
     cout << "Runing verify ... " << endl;
-
-    if(C_nnz != C_nnz_compare)
-    {
-        cout << "Non zero num not the same, you kernel may not be correct!" << endl;
-        return 0;
-    }
-
-    verify(host_valueC, host_compare_valueC, C_nnz);   
+    verify( C_nnz, C_nnz_compare);   
 
     cout << "=================================================================="<<endl;
     return 0;
