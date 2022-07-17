@@ -38,7 +38,7 @@ template <typename T, typename I> BitSet compress_matrix(const CsrMatrix<T, I> &
   const size_t arr_len = bitset.rows * bitset.cols * sizeof(BitSet::BitSetEleType);
   KOKKOS_HIP_CHECK(hipMalloc((void **)&bitset.arr, arr_len))
   KOKKOS_HIP_CHECK(hipMemset(bitset.arr, 0, arr_len))
-  (compress_matrix_kernel<BitSet::BitSetEleType, I, BitSet::BitsLen, 64>)<<<512, 256>>>(
+  (compress_matrix_kernel<BitSet::BitSetEleType, I, BitSet::BitsLen, 32, 64>)<<<512, 256>>>(
       csr_matrix.rows, csr_matrix.cols, csr_matrix.row_ptr, csr_matrix.col_idx_ptr, bitset.arr, bitset.cols);
 
 #ifdef DEV_MODE

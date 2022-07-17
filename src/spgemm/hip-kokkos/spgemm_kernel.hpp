@@ -4,21 +4,32 @@
 #include "build_flag.h"
 #include "hash_map.h"
 
-template <typename T, typename I, size_t BitsLen, size_t WF_SIZE>
+template <typename T, typename I, size_t BitsLen, size_t VEC_SIZE, size_t WF_SIZE>
 __global__ void compress_matrix_kernel(const size_t m, const size_t n, const I *row_ptr, const I *col_idx_ptr, T *arr,
                                        const size_t nums_per_row) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
   const int global_thread_num = gridDim.x * blockDim.x;
-  // each thread process a row
-  for (int row = global_thread_id; row < m; row += global_thread_num) {
+  // vector id in global
+  const int global_vector_id = global_thread_id / VEC_SIZE;
+  // vector num in global
+  const int global_vector_num = global_thread_num / VEC_SIZE;
+  // thread id in vector
+  const int vector_thread_id = global_thread_id % VEC_SIZE;
+  // thread num in vector
+  const int vector_thread_num = VEC_SIZE;
+
+  // each vector process a row
+  for (int row = global_vector_id; row < m; row += global_vector_num) {
     const I row_idx_begin = row_ptr[row];
     const I row_idx_end = row_ptr[row + 1];
-    for (int idx = row_idx_begin; idx < row_idx_end; idx++) {
+    for (int idx = row_idx_begin + vector_thread_id; idx < row_idx_end; idx += vector_thread_num) {
       const I col = col_idx_ptr[idx];
       const int bitset_idx = row * nums_per_row + col / BitsLen;
-      arr[bitset_idx] |= 0x1 << (BitsLen - 1 - (col % BitsLen));
+      const T val = 0x1 << (BitsLen - 1 - (col % BitsLen));
+      // arr[bitset_idx] |= 0x1 << (BitsLen - 1 - (col % BitsLen));
+      atomicOr(arr + bitset_idx, val);
     }
   }
 }
