@@ -34,32 +34,49 @@ __global__ void compress_matrix_kernel(const size_t m, const size_t n, const I *
   }
 }
 
-template <typename T, typename I, size_t BitsLen, size_t WF_SIZE>
+template <typename T, typename I, size_t BitsLen, size_t VEC_SIZE, size_t WF_SIZE>
 __global__ void spgemm_symbolic_kernel(const size_t m, const size_t n, const I *row_ptr, const I *col_idx_ptr,
                                        const T *bitset_b, const size_t nums_per_row, I *row_ptr_c) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
   const int global_thread_num = gridDim.x * blockDim.x;
-  // each thread process a row
-  for (int row = global_thread_id; row < m; row += global_thread_num) {
+  // vector id in global
+  const int global_vector_id = global_thread_id / VEC_SIZE;
+  // vector num in global
+  const int global_vector_num = global_thread_num / VEC_SIZE;
+  // thread id in vector
+  const int vector_thread_id = global_thread_id % VEC_SIZE;
+  // thread num in vector
+  const int vector_thread_num = VEC_SIZE;
+
+  // each vector process a row
+  for (int row = global_vector_id; row < m; row += global_vector_num) {
     const I row_idx_begin = row_ptr[row];
     const I row_idx_end = row_ptr[row + 1];
-    I row_count = 0;
+    I row_count = static_cast<I>(0);
     for (int offset = 0; offset < nums_per_row; ++offset) {
-      T bits = 0;
-      for (int idx = row_idx_begin; idx < row_idx_end; ++idx) {
+      T bits = static_cast<T>(0);
+      for (int idx = row_idx_begin + vector_thread_id; idx < row_idx_end; idx += vector_thread_num) {
         const I col = col_idx_ptr[idx];
         bits |= bitset_b[col * nums_per_row + offset];
       }
-      while (bits != 0) {
-        if (bits & 0x1) {
-          row_count++;
+      // reduce
+      for (int i = VEC_SIZE >> 1; i > 0; i >>= 1) {
+        bits |= __shfl_down(bits, i, VEC_SIZE);
+      }
+      if (vector_thread_id == 0) {
+        while (bits != 0) {
+          if (bits & 0x1) {
+            row_count++;
+          }
+          bits = bits >> 1;
         }
-        bits = bits >> 1;
       }
     }
-    row_ptr_c[row + 1] = row_count;
+    if (vector_thread_id == 0) {
+      row_ptr_c[row + 1] = row_count;
+    }
   }
 }
 

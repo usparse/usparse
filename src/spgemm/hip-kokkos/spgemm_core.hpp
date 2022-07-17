@@ -80,7 +80,7 @@ template <typename T, typename I> BitSet compress_matrix(const CsrMatrix<T, I> &
 
 template <typename T, typename I>
 void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const BitSet &bitset_b, I *row_ptr_c, size_t *nnz_c) {
-  (spgemm_symbolic_kernel<BitSet::BitSetEleType, I, BitSet::BitsLen, 64>)<<<512, 256>>>(
+  (spgemm_symbolic_kernel<BitSet::BitSetEleType, I, BitSet::BitsLen, 64, 64>)<<<512, 256>>>(
       matrix_a.rows, matrix_a.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, bitset_b.arr, bitset_b.cols, row_ptr_c);
   (continuous_acc_kernel<I, 512, 64>)<<<1, 256>>>(matrix_a.rows + 1, row_ptr_c);
   // set nnz of matrix c
