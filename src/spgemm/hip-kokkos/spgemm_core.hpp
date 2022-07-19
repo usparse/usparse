@@ -82,7 +82,23 @@ template <typename T, typename I>
 void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const BitSet &bitset_b, I *row_ptr_c, size_t *nnz_c) {
   (spgemm_symbolic_kernel<BitSet::BitSetEleType, I, BitSet::BitsLen, 64, 64>)<<<512, 256>>>(
       matrix_a.rows, matrix_a.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, bitset_b.arr, bitset_b.cols, row_ptr_c);
-  (continuous_acc_kernel<I, 512, 64>)<<<1, 256>>>(matrix_a.rows + 1, row_ptr_c);
+
+  const size_t LEN = matrix_a.rows + 1;
+  constexpr size_t THREADS = 256;
+  constexpr size_t VEC_SIZE = 32;
+  constexpr size_t WF_SIZE = 64;
+  constexpr size_t R = 4;
+
+  const size_t BLOCKS = LEN / (THREADS * R) + (LEN % (THREADS * R) == 0 ? 0 : 1);
+  I *temp_buffer = nullptr;
+  const size_t BUFFER_SIZE = (BLOCKS) * sizeof(I);
+  KOKKOS_HIP_CHECK(hipMalloc((void **)&temp_buffer, BUFFER_SIZE))
+  KOKKOS_HIP_CHECK(hipMemset(temp_buffer, 0, BUFFER_SIZE))
+  // reduce than fan
+  (prefix_sum_kernel<I, VEC_SIZE, R, THREADS, WF_SIZE>)<<<BLOCKS, THREADS>>>(LEN, row_ptr_c, temp_buffer);
+  (buffer_reduce_kernel<I, VEC_SIZE, THREADS, WF_SIZE>)<<<1, THREADS>>>(BLOCKS, temp_buffer);
+  (reduction_addend_kernel<I, R, THREADS, WF_SIZE>)<<<BLOCKS, THREADS>>>(matrix_a.rows + 1, row_ptr_c, temp_buffer);
+  KOKKOS_HIP_CHECK(hipFree(temp_buffer))
   // set nnz of matrix c
   KOKKOS_HIP_CHECK(hipMemcpy(nnz_c, &row_ptr_c[matrix_a.rows], sizeof(I), hipMemcpyDeviceToHost))
 
