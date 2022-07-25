@@ -210,23 +210,23 @@ __global__ void spgemm_numeric_kernel(const T alpha, const size_t m, const size_
         }
 #endif
       }
-      // write to device memory hashmap
-      const int end_offset = lds_nexts_offset[block_wf_id];
-      for (int i = lds_nexts_start + wf_thread_id; i < lds_nexts_start + end_offset; i += wf_thread_num) {
-        hashmap_wavefront_insert<T, I, HashMap<T, I>::HashMask>(begins, nexts, ids, values, mem_nexts_offset,
-                                                                block_wf_id, mem_begins_start, mem_nexts_start,
-                                                                shared_ids[i], shared_values[i]);
-      }
-      // reset lds hashmap
-      for (int i = lds_begins_start + wf_thread_id; i < lds_begins_start + LDS_MAP_CAP; i += wf_thread_num) {
-        shared_begins[i] = HashMap<T, I>::NullValue;
-      }
-      for (int i = lds_nexts_start + wf_thread_id; i < lds_nexts_start + end_offset; i += wf_thread_num) {
-        shared_nexts[i] = HashMap<T, I>::NullValue;
-      }
-      if (wf_thread_id == 0) {
-        lds_nexts_offset[block_wf_id] = 0;
-      }
+    }
+    // write to device memory hashmap
+    const int end_offset = lds_nexts_offset[block_wf_id];
+    for (int i = lds_nexts_start + wf_thread_id; i < lds_nexts_start + end_offset; i += wf_thread_num) {
+      hashmap_wavefront_insert<T, I, HashMap<T, I>::HashMask>(begins, nexts, ids, values, mem_nexts_offset, block_wf_id,
+                                                              mem_begins_start, mem_nexts_start, shared_ids[i],
+                                                              shared_values[i]);
+    }
+    // reset lds hashmap
+    for (int i = lds_begins_start + wf_thread_id; i < lds_begins_start + LDS_MAP_CAP; i += wf_thread_num) {
+      shared_begins[i] = HashMap<T, I>::NullValue;
+    }
+    for (int i = lds_nexts_start + wf_thread_id; i < lds_nexts_start + end_offset; i += wf_thread_num) {
+      shared_nexts[i] = HashMap<T, I>::NullValue;
+    }
+    if (wf_thread_id == 0) {
+      lds_nexts_offset[block_wf_id] = 0;
     }
     for (int values_idx = mem_nexts_start + wf_thread_id; values_idx < mem_nexts_end; values_idx += wf_thread_num) {
       values[values_idx] *= alpha;
