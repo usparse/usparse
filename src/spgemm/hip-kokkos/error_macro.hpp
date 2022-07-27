@@ -16,13 +16,12 @@
     }                                                                                                                  \
   }
 
-#define ROCSPARSE_CHECK(stat)                                                                  \
-{                                                                                              \
-    if(stat != rocsparse_status_success)                                                       \
-    {                                                                                          \
-        std::cerr << "Error: rocsparse error " << stat <<" in line " << __LINE__ << std::endl; \
-        exit(-1);                                                                              \
-    }                                                                                          \
-}
+#define ROCSPARSE_CHECK(stat)                                                                                          \
+  {                                                                                                                    \
+    if (stat != rocsparse_status_success) {                                                                            \
+      std::cerr << "Error: rocsparse error " << stat << " in line " << __LINE__ << std::endl;                          \
+      exit(-1);                                                                                                        \
+    }                                                                                                                  \
+  }
 
 #endif // SPGEMM_KOKKOS_ERROR_MACRO_HPP

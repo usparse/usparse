@@ -81,7 +81,7 @@ template <typename T, typename I> BitSet compress_matrix(const CsrMatrix<T, I> &
 
 template <typename T, typename I>
 void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const BitSet &bitset_b, I *row_ptr_c, size_t *nnz_c) {
-  (spgemm_symbolic_kernel<BitSet::BitSetEleType, I, BitSet::BitsLen, 64, 64>)<<<512, 256>>>(
+  (spgemm_symbolic_kernel<BitSet::BitSetEleType, I, BitSet::BitsLen, 1, 64>)<<<512, 256>>>(
       matrix_a.rows, matrix_a.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, bitset_b.arr, bitset_b.cols, row_ptr_c);
 
   const size_t LEN = matrix_a.rows + 1;
@@ -156,64 +156,66 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
 #endif
 }
 
-template<typename T>
-void rocsparse_gthr_wrapper(rocsparse_handle handle, rocsparse_int nnz, const T *y, T *x_val, const rocsparse_int *x_ind, rocsparse_index_base idx_base);
+template <typename T>
+void rocsparse_gthr_wrapper(rocsparse_handle handle, rocsparse_int nnz, const T *y, T *x_val,
+                            const rocsparse_int *x_ind, rocsparse_index_base idx_base);
 
-template<>
-void rocsparse_gthr_wrapper<float>(rocsparse_handle handle, rocsparse_int nnz, const float *y, float *x_val, const rocsparse_int *x_ind, rocsparse_index_base idx_base) {
-  ROCSPARSE_CHECK( rocsparse_sgthr(handle, nnz, y, x_val, x_ind, idx_base) )
+template <>
+void rocsparse_gthr_wrapper<float>(rocsparse_handle handle, rocsparse_int nnz, const float *y, float *x_val,
+                                   const rocsparse_int *x_ind, rocsparse_index_base idx_base) {
+  ROCSPARSE_CHECK(rocsparse_sgthr(handle, nnz, y, x_val, x_ind, idx_base))
 }
 
-template<>
-void rocsparse_gthr_wrapper<double>(rocsparse_handle handle, rocsparse_int nnz, const double *y, double *x_val, const rocsparse_int *x_ind, rocsparse_index_base idx_base) {
-  ROCSPARSE_CHECK( rocsparse_dgthr(handle, nnz, y, x_val, x_ind, idx_base) )
+template <>
+void rocsparse_gthr_wrapper<double>(rocsparse_handle handle, rocsparse_int nnz, const double *y, double *x_val,
+                                    const rocsparse_int *x_ind, rocsparse_index_base idx_base) {
+  ROCSPARSE_CHECK(rocsparse_dgthr(handle, nnz, y, x_val, x_ind, idx_base))
 }
-template <typename T, typename I>
-void rocsparse_sort_wrapper(CsrMatrix<T,I> & matrix) {
+template <typename T, typename I> void rocsparse_sort_wrapper(CsrMatrix<T, I> &matrix) {
   using dtype = T;
   using csrIdxType = I;
   // Create rocsparse handle
   rocsparse_handle handle;
-  ROCSPARSE_CHECK( rocsparse_create_handle(&handle) );
+  ROCSPARSE_CHECK(rocsparse_create_handle(&handle));
   // Create rocsparse matrix descr
   rocsparse_mat_descr descr;
-  ROCSPARSE_CHECK( rocsparse_create_mat_descr(&descr) )
+  ROCSPARSE_CHECK(rocsparse_create_mat_descr(&descr))
 
   // Create permutation vector perm as the identity map
-  rocsparse_int* perm;
-  KOKKOS_HIP_CHECK( hipMalloc((void**)&perm, sizeof(rocsparse_int) * matrix.nnz) )
-  ROCSPARSE_CHECK( rocsparse_create_identity_permutation(handle, matrix.nnz, perm) )
+  rocsparse_int *perm;
+  KOKKOS_HIP_CHECK(hipMalloc((void **)&perm, sizeof(rocsparse_int) * matrix.nnz))
+  ROCSPARSE_CHECK(rocsparse_create_identity_permutation(handle, matrix.nnz, perm))
 
   // Allocate temporary buffer
   size_t buffer_size;
-  void* temp_buffer;
-  ROCSPARSE_CHECK( rocsparse_csrsort_buffer_size(handle, matrix.rows, matrix.cols, matrix.nnz,
-                                                  matrix.row_ptr, matrix.col_idx_ptr, &buffer_size) )
-  KOKKOS_HIP_CHECK( hipMalloc(&temp_buffer, buffer_size) )
+  void *temp_buffer;
+  ROCSPARSE_CHECK(rocsparse_csrsort_buffer_size(handle, matrix.rows, matrix.cols, matrix.nnz, matrix.row_ptr,
+                                                matrix.col_idx_ptr, &buffer_size))
+  KOKKOS_HIP_CHECK(hipMalloc(&temp_buffer, buffer_size))
 
   // Sort the CSR matrix
-  ROCSPARSE_CHECK( rocsparse_csrsort(handle, matrix.rows, matrix.cols, matrix.nnz, descr,
-                                    matrix.row_ptr, matrix.col_idx_ptr, perm, temp_buffer) )
+  ROCSPARSE_CHECK(rocsparse_csrsort(handle, matrix.rows, matrix.cols, matrix.nnz, descr, matrix.row_ptr,
+                                    matrix.col_idx_ptr, perm, temp_buffer))
 
   // Free buffer
-  KOKKOS_HIP_CHECK( hipFree(temp_buffer) )
+  KOKKOS_HIP_CHECK(hipFree(temp_buffer))
   // Gather sorted csr_val array
-  dtype* csr_val_sorted;
-  KOKKOS_HIP_CHECK( hipMalloc((void**)&csr_val_sorted, sizeof(dtype) * matrix.nnz) );
+  dtype *csr_val_sorted;
+  KOKKOS_HIP_CHECK(hipMalloc((void **)&csr_val_sorted, sizeof(dtype) * matrix.nnz));
   rocsparse_gthr_wrapper<dtype>(handle, matrix.nnz, matrix.values_ptr, csr_val_sorted, perm, rocsparse_index_base_zero);
 
   // Clean up
-  ROCSPARSE_CHECK( rocsparse_destroy_mat_descr(descr) )
-  ROCSPARSE_CHECK( rocsparse_destroy_handle(handle) )
-  KOKKOS_HIP_CHECK( hipFree(perm) )
-  KOKKOS_HIP_CHECK( hipFree(matrix.values_ptr) )
- 
+  ROCSPARSE_CHECK(rocsparse_destroy_mat_descr(descr))
+  ROCSPARSE_CHECK(rocsparse_destroy_handle(handle))
+  KOKKOS_HIP_CHECK(hipFree(perm))
+  KOKKOS_HIP_CHECK(hipFree(matrix.values_ptr))
+
   // Reset values ptr
   matrix.values_ptr = csr_val_sorted;
 }
 
 template <typename T, typename I> void csr_matrix_sort(CsrMatrix<T, I> &matrix) {
-  rocsparse_sort_wrapper<T,I>(matrix);
+  rocsparse_sort_wrapper<T, I>(matrix);
 }
 
 #endif // SPGEMM_KOKKOS_SPGEMM_CORE_HPP
