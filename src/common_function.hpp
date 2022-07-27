@@ -84,6 +84,47 @@ vector<dtype>  dense_vector;
 dtype* matA = NULL;
 dtype* matB = NULL;
 //=============================================================================
+//Release Host and Device Memory
+void ReleaseHostDeviceMemory()
+{
+    HIP_CHECK( hipFree(device_offsetA) )
+    HIP_CHECK( hipFree(device_colindexA) )
+    HIP_CHECK( hipFree(device_valueA) )
+
+    HIP_CHECK( hipFree(device_offsetB) )
+    HIP_CHECK( hipFree(device_colindexB) )
+    HIP_CHECK( hipFree(device_valueB) )
+
+    delete [] host_offsetA;
+    delete [] host_colindexA;
+    delete [] host_valueA;
+    
+    delete [] host_offsetB;
+    delete [] host_colindexB;    
+    delete [] host_valueB;
+
+    if(host_compare_offsetC!=NULL)
+    {
+        delete [] host_compare_offsetC;
+    }
+
+    if(host_compare_colindexC!=NULL)
+    {
+        delete [] host_compare_colindexC;
+    }
+
+    if(host_compare_valueC!=NULL)
+    {
+        delete [] host_compare_valueC;
+    }
+
+    if(host_compare_dnmatC!=NULL)
+    {
+        delete [] host_compare_dnmatC;
+    }
+}
+
+//=============================================================================
 
 struct my_timer
 {
