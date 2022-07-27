@@ -12,4 +12,5 @@ set(ACC_HEADER_FILES ${ACC_HEADER_FILES}
         ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm_kernel.hpp
         ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm.h
         ${CURRENT_ACC_HIP_SOURCE_DIR}/utils_kernel.hpp
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/dense_to_sparse.hpp
         )

@@ -2,6 +2,7 @@
 #define SPGEMM_KOKKOS_SPGEMM_KERNEL_HPP
 
 #include "hash_map.h"
+#include <hip/hip_runtime.h>
 
 template <typename T, typename I, size_t BitsLen, size_t VEC_SIZE, size_t WF_SIZE>
 __global__ void compress_matrix_kernel(const size_t m, const size_t n, const I *row_ptr, const I *col_idx_ptr, T *arr,
