@@ -5,8 +5,4 @@
 // #define DEV_MODE
 // #endif
 
-#ifndef GLOBAL_LOAD_X2
-#define GLOBAL_LOAD_X2
-#endif
-
 #endif // SPGEMM_KOKKOS_BUILD_FLAG_H
