@@ -66,12 +66,8 @@ __global__ void spgemm_symbolic_kernel(const size_t m, const size_t n, const I *
         bits |= __shfl_down(bits, i, VEC_SIZE);
       }
       if (vector_thread_id == 0) {
-        while (bits != 0) {
-          if (bits & 0x1) {
-            row_count++;
-          }
-          bits = bits >> 1;
-        }
+        // get the count of 1
+        row_count += __builtin_popcount(bits);
       }
     }
     if (vector_thread_id == 0) {
