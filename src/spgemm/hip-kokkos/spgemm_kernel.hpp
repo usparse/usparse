@@ -113,6 +113,10 @@ __global__ void spgemm_numeric_kernel(const T alpha, const size_t m, const size_
   __shared__ int shared_nexts[LDS_NEXTS_SIZE];
   __shared__ I shared_ids[LDS_NEXTS_SIZE];
   __shared__ T shared_values[LDS_NEXTS_SIZE];
+  int *wf_lds_begins = shared_begins + LDS_MAP_CAP * block_wf_id;
+  int *wf_lds_nexts = shared_nexts + NEXTS_SIZE_PER_WF * block_wf_id;
+  I *wf_lds_ids = shared_ids + NEXTS_SIZE_PER_WF * block_wf_id;
+  T *wf_lds_values = shared_values + NEXTS_SIZE_PER_WF * block_wf_id;
   // init lds hashmap
   for (int i = block_thread_id; i < LDS_BEGINS_SIZE; i += block_thread_num) {
     shared_begins[i] = HashMap<T, I>::NullValue;
@@ -122,108 +126,25 @@ __global__ void spgemm_numeric_kernel(const T alpha, const size_t m, const size_
   }
   __syncthreads();
   // each wf process one row
-  __shared__ int lds_nexts_offset[block_wf_num];
-  __shared__ int mem_nexts_offset[block_wf_num];
-
-  // each wf process idx
-  constexpr int WF_B_ROWS = 4;
-  __shared__ int shared_wf_row_start[block_wf_num * WF_B_ROWS];
-  __shared__ int shared_wf_row_end[block_wf_num * WF_B_ROWS];
-  __shared__ int shared_wf_row_offset[block_wf_num * WF_B_ROWS];
+  __shared__ int lds_use_size[block_wf_num];
+  __shared__ int mem_use_size[block_wf_num];
+  int *wf_lds_use_size = lds_use_size + block_wf_id;
+  int *wf_mem_use_size = mem_use_size + block_wf_id;
 
   for (int row_a = global_wf_id; row_a < m; row_a += global_wf_num) {
     const I row_idx_begin = row_ptr_a[row_a];
     const I row_idx_end = row_ptr_a[row_a + 1];
-    const size_t lds_begins_start = LDS_MAP_CAP * block_wf_id;
-    const size_t lds_nexts_start = NEXTS_SIZE_PER_WF * block_wf_id;
-    const size_t lds_nexts_end = lds_nexts_start + NEXTS_SIZE_PER_WF;
 
-    const size_t mem_begins_start = HashMap<T, I>::Capacity * row_a;
-    const size_t mem_nexts_start = row_ptr_c[row_a];
-    const size_t mem_nexts_end = row_ptr_c[row_a + 1];
+    int *wf_mem_begins = begins + HashMap<T, I>::Capacity * row_a;
+    int *wf_mem_nexts = nexts + row_ptr_c[row_a];
+    I *wf_mem_ids = ids + row_ptr_c[row_a];
+    T *wf_mem_values = values + row_ptr_c[row_a];
+
     if (wf_thread_id == 0) {
-      lds_nexts_offset[block_wf_id] = 0;
-      mem_nexts_offset[block_wf_id] = 0;
+      *wf_lds_use_size = 0;
+      *wf_mem_use_size = 0;
     }
     int idx_a = row_idx_begin;
-    /**
-        for (; idx_a < row_idx_end - WF_B_ROWS; idx_a += WF_B_ROWS) {
-          int wf_rounds = 0;
-    #pragma unroll
-          for (int r = 0; r < WF_B_ROWS; ++r) {
-            const I col_a = col_idx_ptr_a[idx_a + r];
-            const I row_b = col_a;
-            const I idx_begin_b = row_ptr_b[row_b];
-            const I idx_end_b = row_ptr_b[row_b + 1];
-            wf_rounds +=
-                (idx_end_b - idx_begin_b) / WF_PROCESS_ONCE + ((idx_end_b - idx_begin_b) % WF_PROCESS_ONCE == 0 ? 0 :
-    1); if (wf_thread_id == 0) { shared_wf_row_start[block_wf_id * WF_B_ROWS + r] = idx_begin_b;
-              shared_wf_row_end[block_wf_id * WF_B_ROWS + r] = idx_end_b;
-              shared_wf_row_offset[block_wf_id * WF_B_ROWS + r] = 0;
-            }
-          }
-          int wf_r = 0;
-          I idx_begin_b = 0;
-          I idx_end_b = 0;
-          I idx_offset_b = 0;
-          for (int round = 0; round < wf_rounds; ++round) {
-            // find min offset id
-    #pragma unroll
-            for (int i = 0; i < WF_B_ROWS; ++i) {
-              if (shared_wf_row_start[block_wf_id * WF_B_ROWS + i] + shared_wf_row_offset[block_wf_id * WF_B_ROWS + i] <
-                  shared_wf_row_end[block_wf_id * WF_B_ROWS + i]) {
-                bool flag = true;
-    #pragma unroll
-                for (int j = i + 1; j < WF_B_ROWS; ++j) {
-                  if (shared_wf_row_offset[block_wf_id * WF_B_ROWS + i] >
-                      shared_wf_row_offset[block_wf_id * WF_B_ROWS + j]) {
-                    flag = false;
-                    break;
-                  }
-                }
-                if (flag) {
-                  wf_r = i;
-                }
-              }
-            }
-            idx_begin_b = shared_wf_row_start[block_wf_id * WF_B_ROWS + wf_r];
-            idx_end_b = shared_wf_row_end[block_wf_id * WF_B_ROWS + wf_r];
-            idx_offset_b = shared_wf_row_offset[block_wf_id * WF_B_ROWS + wf_r];
-
-            if (lds_nexts_offset[block_wf_id] + WF_PROCESS_ONCE > NEXTS_SIZE_PER_WF) {
-              // if lds hashmap is full, write to device memory hashmap
-              const int end_offset = lds_nexts_offset[block_wf_id];
-              for (int i = lds_nexts_start + wf_thread_id; i < lds_nexts_start + end_offset; i += wf_thread_num) {
-                hashmap_wavefront_insert<T, I, HashMap<T, I>::HashMask>(begins, nexts, ids, values, mem_nexts_offset,
-                                                                        block_wf_id, mem_begins_start, mem_nexts_start,
-                                                                        shared_ids[i], shared_values[i] * alpha);
-              }
-              // reset lds hashmap
-              for (int i = lds_begins_start + wf_thread_id; i < lds_begins_start + LDS_MAP_CAP; i += wf_thread_num) {
-                shared_begins[i] = HashMap<T, I>::NullValue;
-              }
-              for (int i = lds_nexts_start + wf_thread_id; i < lds_nexts_start + end_offset; i += wf_thread_num) {
-                shared_nexts[i] = HashMap<T, I>::NullValue;
-              }
-              if (wf_thread_id == 0) {
-                lds_nexts_offset[block_wf_id] = 0;
-              }
-            }
-            const int idx_b = idx_begin_b + idx_offset_b + wf_thread_id;
-            if (idx_b < idx_end_b) {
-              const T tmp_val = values_ptr_a[idx_a + wf_r] * values_ptr_b[idx_b];
-              const I col_b = col_idx_ptr_b[idx_b];
-              // insert to lds hashmap
-              hashmap_wavefront_insert<T, I, LDS_HASH_MASK>(shared_begins, shared_nexts, shared_ids, shared_values,
-                                                            lds_nexts_offset, block_wf_id, lds_begins_start,
-                                                            lds_nexts_start, col_b, tmp_val);
-            }
-            if (wf_thread_id == 0) {
-              shared_wf_row_offset[block_wf_id * WF_B_ROWS + wf_r] = idx_offset_b + WF_PROCESS_ONCE;
-            }
-          }
-        }
-    **/
     for (; idx_a < row_idx_end; ++idx_a) {
       const I col_a = col_idx_ptr_a[idx_a];
       const I row_b = col_a;
@@ -232,23 +153,23 @@ __global__ void spgemm_numeric_kernel(const T alpha, const size_t m, const size_
       const int wf_rounds =
           (idx_end_b - idx_begin_b) / WF_PROCESS_ONCE + ((idx_end_b - idx_begin_b) % WF_PROCESS_ONCE == 0 ? 0 : 1);
       for (int round = 0; round < wf_rounds; ++round) {
-        if (lds_nexts_offset[block_wf_id] + WF_PROCESS_ONCE > NEXTS_SIZE_PER_WF) {
+        if (*wf_lds_use_size + WF_PROCESS_ONCE > NEXTS_SIZE_PER_WF) {
           // if lds hashmap is full, write to device memory hashmap
-          const int end_offset = lds_nexts_offset[block_wf_id];
-          for (int i = lds_nexts_start + wf_thread_id; i < lds_nexts_start + end_offset; i += wf_thread_num) {
-            hashmap_wavefront_insert<T, I, HashMap<T, I>::HashMask>(begins, nexts, ids, values, mem_nexts_offset,
-                                                                    block_wf_id, mem_begins_start, mem_nexts_start,
-                                                                    shared_ids[i], shared_values[i] * alpha);
+          const int end_offset = *wf_lds_use_size;
+          for (int i = wf_thread_id; i < end_offset; i += wf_thread_num) {
+            hashmap_wavefront_insert_add<T, I, HashMap<T, I>::HashMask>(wf_mem_begins, wf_mem_nexts, wf_mem_ids,
+                                                                        wf_mem_values, wf_lds_ids[i],
+                                                                        wf_lds_values[i] * alpha, wf_mem_use_size);
           }
           // reset lds hashmap
-          for (int i = lds_begins_start + wf_thread_id; i < lds_begins_start + LDS_MAP_CAP; i += wf_thread_num) {
-            shared_begins[i] = HashMap<T, I>::NullValue;
+          for (int i = wf_thread_id; i < LDS_MAP_CAP; i += wf_thread_num) {
+            wf_lds_begins[i] = HashMap<T, I>::NullValue;
           }
-          for (int i = lds_nexts_start + wf_thread_id; i < lds_nexts_start + end_offset; i += wf_thread_num) {
-            shared_nexts[i] = HashMap<T, I>::NullValue;
+          for (int i = wf_thread_id; i < end_offset; i += wf_thread_num) {
+            wf_lds_nexts[i] = HashMap<T, I>::NullValue;
           }
           if (wf_thread_id == 0) {
-            lds_nexts_offset[block_wf_id] = 0;
+            *wf_lds_use_size = 0;
           }
         }
         const int idx_b = idx_begin_b + WF_PROCESS_ONCE * round + wf_thread_id;
@@ -256,28 +177,27 @@ __global__ void spgemm_numeric_kernel(const T alpha, const size_t m, const size_
           const T tmp_val = values_ptr_a[idx_a] * values_ptr_b[idx_b];
           const I col_b = col_idx_ptr_b[idx_b];
           // insert to lds hashmap
-          hashmap_wavefront_insert<T, I, LDS_HASH_MASK>(shared_begins, shared_nexts, shared_ids, shared_values,
-                                                        lds_nexts_offset, block_wf_id, lds_begins_start,
-                                                        lds_nexts_start, col_b, tmp_val);
+          hashmap_wavefront_insert_add<T, I, LDS_HASH_MASK>(wf_lds_begins, wf_lds_nexts, wf_lds_ids, wf_lds_values,
+                                                            col_b, tmp_val, wf_lds_use_size);
         }
       }
     }
     // write to device memory hashmap
-    const int end_offset = lds_nexts_offset[block_wf_id];
-    for (int i = lds_nexts_start + wf_thread_id; i < lds_nexts_start + end_offset; i += wf_thread_num) {
-      hashmap_wavefront_insert<T, I, HashMap<T, I>::HashMask>(begins, nexts, ids, values, mem_nexts_offset, block_wf_id,
-                                                              mem_begins_start, mem_nexts_start, shared_ids[i],
-                                                              shared_values[i] * alpha);
+    const int end_offset = *wf_lds_use_size;
+    for (int i = wf_thread_id; i < end_offset; i += wf_thread_num) {
+      hashmap_wavefront_insert_add<T, I, HashMap<T, I>::HashMask>(wf_mem_begins, wf_mem_nexts, wf_mem_ids,
+                                                                  wf_mem_values, wf_lds_ids[i],
+                                                                  wf_lds_values[i] * alpha, wf_mem_use_size);
     }
     // reset lds hashmap
-    for (int i = lds_begins_start + wf_thread_id; i < lds_begins_start + LDS_MAP_CAP; i += wf_thread_num) {
-      shared_begins[i] = HashMap<T, I>::NullValue;
+    for (int i = wf_thread_id; i < LDS_MAP_CAP; i += wf_thread_num) {
+      wf_lds_begins[i] = HashMap<T, I>::NullValue;
     }
-    for (int i = lds_nexts_start + wf_thread_id; i < lds_nexts_start + end_offset; i += wf_thread_num) {
-      shared_nexts[i] = HashMap<T, I>::NullValue;
+    for (int i = wf_thread_id; i < end_offset; i += wf_thread_num) {
+      wf_lds_nexts[i] = HashMap<T, I>::NullValue;
     }
     if (wf_thread_id == 0) {
-      lds_nexts_offset[block_wf_id] = 0;
+      *wf_lds_use_size = 0;
     }
   }
 }

@@ -254,8 +254,8 @@ template <typename T, typename I> void rocprim_sort_wrapper(CsrMatrix<T, I> &mat
 }
 
 template <typename T, typename I> void csr_matrix_sort(CsrMatrix<T, I> &matrix) {
-  rocprim_sort_wrapper<T, I>(matrix);
-  // rocsparse_sort_wrapper<T, I>(matrix);
+  // rocprim_sort_wrapper<T, I>(matrix);
+  rocsparse_sort_wrapper<T, I>(matrix);
 }
 
 #endif // SPGEMM_KOKKOS_SPGEMM_CORE_HPP
