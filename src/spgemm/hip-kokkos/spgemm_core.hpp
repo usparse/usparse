@@ -12,8 +12,8 @@
 #include <bitset>
 #include <hip/hip_runtime.h>
 #include <iostream>
-#include <rocsparse.h>
 #include <rocprim/rocprim.hpp>
+#include <rocsparse.h>
 
 template <typename T, typename I>
 CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b,
@@ -202,32 +202,23 @@ template <typename T, typename I> void rocsparse_sort_wrapper(CsrMatrix<T, I> &m
 }
 
 template <typename T, typename I> void rocprim_sort_wrapper(CsrMatrix<T, I> &matrix) {
-  T* values_tmp = nullptr;
-  I* col_idx_tmp = nullptr;
-  KOKKOS_HIP_CHECK(hipMalloc((void **)&values_tmp, matrix.nnz * sizeof(T)))
-  KOKKOS_HIP_CHECK(hipMalloc((void **)&col_idx_tmp, matrix.nnz * sizeof(I)))
-
   size_t buffer_size;
-  void* buffer = nullptr;
+  void *buffer = nullptr;
   unsigned int startbit = 0;
-  unsigned int endbit   = 64 - __builtin_clzll(matrix.cols); 
+  unsigned int endbit = 64 - __builtin_clzll(matrix.cols);
 
-  rocprim::segmented_radix_sort_pairs(buffer, buffer_size, matrix.col_idx_ptr, col_idx_tmp, matrix.values_ptr, values_tmp, matrix.nnz, matrix.rows, matrix.row_ptr, matrix.row_ptr + 1, startbit, endbit);
- 
-  KOKKOS_HIP_CHECK(hipMalloc((void**)&buffer, buffer_size))
+  rocprim::segmented_radix_sort_pairs(buffer, buffer_size, matrix.col_idx_ptr, matrix.col_idx_ptr, matrix.values_ptr,
+                                      matrix.values_ptr, matrix.nnz, matrix.rows, matrix.row_ptr, matrix.row_ptr + 1,
+                                      startbit, endbit);
 
-  rocprim::segmented_radix_sort_pairs(buffer, buffer_size, matrix.col_idx_ptr, col_idx_tmp, matrix.values_ptr, values_tmp, matrix.nnz, matrix.rows, matrix.row_ptr, matrix.row_ptr + 1, startbit, endbit);
+  KOKKOS_HIP_CHECK(hipMalloc((void **)&buffer, buffer_size))
 
-  KOKKOS_HIP_CHECK(hipFree(matrix.col_idx_ptr))
-  KOKKOS_HIP_CHECK(hipFree(matrix.values_ptr))
-
-  matrix.col_idx_ptr = col_idx_tmp;
-  matrix.values_ptr = values_tmp;
+  rocprim::segmented_radix_sort_pairs(buffer, buffer_size, matrix.col_idx_ptr, matrix.col_idx_ptr, matrix.values_ptr,
+                                      matrix.values_ptr, matrix.nnz, matrix.rows, matrix.row_ptr, matrix.row_ptr + 1,
+                                      startbit, endbit);
+  KOKKOS_HIP_CHECK(hipFree(buffer))
 }
 
-template <typename T, typename I> void csr_matrix_sort(CsrMatrix<T, I> &matrix) {
-  //rocsparse_sort_wrapper<T, I>(matrix);
-  rocprim_sort_wrapper<T, I>(matrix);
-}
+template <typename T, typename I> void csr_matrix_sort(CsrMatrix<T, I> &matrix) { rocprim_sort_wrapper<T, I>(matrix); }
 
 #endif // SPGEMM_KOKKOS_SPGEMM_CORE_HPP

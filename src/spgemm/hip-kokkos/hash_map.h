@@ -25,6 +25,15 @@ template <typename T, typename I> struct HashMap {
     KOKKOS_HIP_CHECK(hipMalloc((void **)&nexts, sizeof(int) * nnz))
     KOKKOS_HIP_CHECK(hipMemset(nexts, HashMap::NullValue, sizeof(int) * nnz))
   }
+
+  ~HashMap() {
+    if (begins != nullptr) {
+      KOKKOS_HIP_CHECK(hipFree(begins))
+    }
+    if (nexts != nullptr) {
+      KOKKOS_HIP_CHECK(hipFree(nexts))
+    }
+  }
 };
 
 #define HASH(T, I, n, mask) (n & mask)
