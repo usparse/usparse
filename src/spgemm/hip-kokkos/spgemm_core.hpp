@@ -5,9 +5,9 @@
 #include "dense_to_sparse.hpp"
 #include "error_macro.hpp"
 #include "hash_map.h"
+#include "scan.h"
 #include "spgemm_core.h"
 #include "spgemm_kernel.hpp"
-#include "utils_kernel.hpp"
 #include <api/sort_hip_api.h>
 #include <bitset>
 #include <hip/hip_runtime.h>
@@ -98,10 +98,8 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const BitSet &bitset_b, I 
   KOKKOS_HIP_CHECK(hipMalloc((void **)&temp_buffer, BUFFER_SIZE))
   KOKKOS_HIP_CHECK(hipMemset(temp_buffer, 0, BUFFER_SIZE))
   // reduce than fan
-  (prefix_sum_kernel<I, VEC_SIZE, R, THREADS, WF_SIZE>)<<<BLOCKS, THREADS>>>(LEN, row_ptr_c, temp_buffer);
-  (buffer_reduce_kernel<I, VEC_SIZE, THREADS, WF_SIZE>)<<<1, THREADS>>>(BLOCKS, temp_buffer);
-  (reduction_addend_kernel<I, R, THREADS, WF_SIZE>)<<<BLOCKS, THREADS>>>(matrix_a.rows + 1, row_ptr_c, temp_buffer);
-  KOKKOS_HIP_CHECK(hipFree(temp_buffer))
+  scan_in_place<I>(matrix_a.rows + 1, row_ptr_c);
+  // scan_single<I>(matrix_a.rows + 1, row_ptr_c);
   // set nnz of matrix c
   KOKKOS_HIP_CHECK(hipMemcpy(nnz_c, &row_ptr_c[matrix_a.rows], sizeof(I), hipMemcpyDeviceToHost))
 

@@ -1,6 +1,9 @@
 #ifndef SPGEMM_KOKKOS_UTILS_KERNEL_HPP
 #define SPGEMM_KOKKOS_UTILS_KERNEL_HPP
 
+#include "error_macro.hpp"
+#include <hip/hip_runtime.h>
+
 // impl of scan than fan
 template <typename T, size_t VEC_SIZE, size_t R, size_t THREADS, size_t WF_SIZE>
 __global__ void prefix_sum_kernel(const size_t len, T *array, T *buffer) {
@@ -179,5 +182,17 @@ __global__ void reduction_addend_kernel(const size_t len, T *array, T *buffer) {
     }
   }
 }
+
+template <typename T>
+__global__ void scan_single_kernel(const size_t len, T *array) {
+  // thread id in global
+  const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
+  if (global_thread_id == 0) {
+    for (int I = 1; I < len; ++I) {
+      array[I] += array[I - 1];
+    }
+  }
+}
+
 
 #endif // SPGEMM_KOKKOS_UTILS_KERNEL_HPP
