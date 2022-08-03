@@ -4,12 +4,15 @@
 #include "compress_matrix.h"
 #include "csr_matrix.h"
 #include "error_macro.hpp"
+#include "max_num.h"
 #include "scan.h"
 #include "spgemm_symbolic_kernel.hpp"
+#include <cstddef>
 #include <hip/hip_runtime.h>
 
 template <typename T, typename I>
-void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b, I *row_ptr_c, size_t *nnz_c) {
+void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b, I *row_ptr_c, size_t *nnz_c,
+                     I *max_row_num) {
   using idType = typename CompressMatrix<I>::IdType;
   using bitType = typename CompressMatrix<I>::BitSetEleType;
 
@@ -47,6 +50,13 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
   // calc row_ptr
   (row_nnz_kernel<I, bitType, 32, 64>
    <<<512, 256>>>(matrix_a.rows, row_trunk_ptr, hash_map.values, map_use_count, row_ptr_c));
+
+  // max num in row_ptr
+  I *device_max_row_num = nullptr;
+  KOKKOS_HIP_CHECK(hipMalloc((void **)(&device_max_row_num), sizeof(I)));
+  max_num_in_array<I>(matrix_a.rows + 1, row_ptr_c, device_max_row_num);
+  KOKKOS_HIP_CHECK(hipMemcpy(max_row_num, device_max_row_num, sizeof(I), hipMemcpyDeviceToHost))
+  KOKKOS_HIP_CHECK(hipFree(device_max_row_num))
 
   // reduce than fan
   scan_in_place<I>(matrix_a.rows + 1, row_ptr_c);
