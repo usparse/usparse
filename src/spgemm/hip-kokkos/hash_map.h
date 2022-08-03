@@ -13,7 +13,6 @@ template <typename T, typename I> struct HashMap {
   static constexpr size_t Capacity = 0x1 << M;
   static constexpr size_t HashMask = Capacity - 1;
   static constexpr int NullValue = -1;
-  static constexpr int PlaceHolderValue = -2;
 
   csrIdxType *ids;
   dtype *values;

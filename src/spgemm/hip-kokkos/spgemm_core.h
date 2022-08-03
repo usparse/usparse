@@ -1,7 +1,7 @@
 #ifndef SPGEMM_KOKKOS_SPGEMM_CORE_H
 #define SPGEMM_KOKKOS_SPGEMM_CORE_H
 
-#include "bitset.h"
+#include "compress_matrix.h"
 #include "csr_matrix.h"
 #include "spgemm_core.hpp"
 
@@ -21,20 +21,20 @@ CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, cons
 /**
  * compress csr format matrix to bitmap format
  * input: csr format matrix
- * return: bitmap format matrix
+ * return: compress format matrix
  **/
-template <typename T, typename I> BitSet compress_matrix(const CsrMatrix<T, I> &csr_matrix);
+template <typename T, typename I> CompressMatrix<I> compress_matrix(const CsrMatrix<T, I> &csr_matrix);
 
 /**
  * symbolic phase
  * compute row ptr & nnz of matrix C = A * B
  * matrix_a: input, csr format matrix of A
- * bitset: input, bitset format colindex of B
+ * bitset: input, compress format colindex of B
  * row_ptr_c: output, row ptr of csr format matrix C
  * nnz_c: output, nonzero number count of csr format matrix C
  **/
 template <typename T, typename I>
-void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const BitSet &bitset_b, I *row_ptr_c, size_t *nnz_c);
+void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CompressMatrix<I> &bitset_b, I *row_ptr_c, size_t *nnz_c);
 
 /**
  * numeric phase

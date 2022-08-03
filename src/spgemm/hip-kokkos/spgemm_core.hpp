@@ -2,6 +2,7 @@
 #define SPGEMM_KOKKOS_SPGEMM_CORE_HPP
 
 #include "build_flag.h"
+#include "compress_matrix.h"
 #include "dense_to_sparse.hpp"
 #include "error_macro.hpp"
 #include "hash_map.h"
@@ -11,6 +12,7 @@
 #include "timer.h"
 #include <api/sort_hip_api.h>
 #include <bitset>
+#include <cstddef>
 #include <hip/hip_runtime.h>
 #include <iostream>
 #include <rocprim/rocprim.hpp>
@@ -21,11 +23,11 @@ CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, cons
                             I *row_ptr_c) {
 #ifndef TIME_MODE
   // Compress matrix B
-  BitSet bitset_matrix_b = compress_matrix(matrix_b);
+  CompressMatrix<I> compress_matrix_b = compress_matrix(matrix_b);
   // Symbolic Phase
   size_t nnz_c = 0;
-  spgemm_symbolic<T, I>(matrix_a, bitset_matrix_b, row_ptr_c, &nnz_c);
-  KOKKOS_HIP_CHECK(hipFree(bitset_matrix_b.arr))
+  spgemm_symbolic<T, I>(matrix_a, compress_matrix_b, row_ptr_c, &nnz_c);
+  compress_matrix_b.free();
   // Numeric Phase
   CsrMatrix<T, I> matrix_c(matrix_a.rows, matrix_b.cols, nnz_c, row_ptr_c, nullptr, nullptr);
   KOKKOS_HIP_CHECK(hipMalloc((void **)&matrix_c.col_idx_ptr, nnz_c * sizeof(I)))
@@ -39,15 +41,15 @@ CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, cons
   hipDeviceSynchronize();
   // Compress matrix B
   timer.start();
-  BitSet bitset_matrix_b = compress_matrix(matrix_b);
+  CompressMatrix<I> compress_matrix_b = compress_matrix(matrix_b);
   hipDeviceSynchronize();
   timer.stop();
   std::cout << "Compress phase: " << timer.time_use.count() << "(us)" << std::endl;
   // Symbolic Phase
   timer.start();
   size_t nnz_c = 0;
-  spgemm_symbolic<T, I>(matrix_a, bitset_matrix_b, row_ptr_c, &nnz_c);
-  KOKKOS_HIP_CHECK(hipFree(bitset_matrix_b.arr))
+  spgemm_symbolic<T, I>(matrix_a, compress_matrix_b, row_ptr_c, &nnz_c);
+  compress_matrix_b.free();
   hipDeviceSynchronize();
   timer.stop();
   std::cout << "Synbolic phase: " << timer.time_use.count() << "(us)" << std::endl;
@@ -71,15 +73,11 @@ CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, cons
   return matrix_c;
 }
 
-template <typename T, typename I> BitSet compress_matrix(const CsrMatrix<T, I> &csr_matrix) {
-  const size_t nums_per_row = csr_matrix.cols / BitSet::BitsLen + (csr_matrix.cols % BitSet::BitsLen == 0 ? 0 : 1);
-  BitSet bitset(csr_matrix.rows, nums_per_row, nullptr);
-  const size_t arr_len = bitset.rows * bitset.cols * sizeof(BitSet::BitSetEleType);
-  KOKKOS_HIP_CHECK(hipMalloc((void **)&bitset.arr, arr_len))
-  KOKKOS_HIP_CHECK(hipMemset(bitset.arr, 0, arr_len))
-  (compress_matrix_kernel<BitSet::BitSetEleType, I, BitSet::BitsLen, 32, 64>)<<<512, 256>>>(
-      csr_matrix.rows, csr_matrix.cols, csr_matrix.row_ptr, csr_matrix.col_idx_ptr, bitset.arr, bitset.cols);
-
+template <typename T, typename I> CompressMatrix<I> compress_matrix(const CsrMatrix<T, I> &csr_matrix) {
+  CompressMatrix<I> c_matrix(csr_matrix.rows, csr_matrix.cols, csr_matrix.nnz, csr_matrix.row_ptr);
+  (compress_matrix_kernel<I, CompressMatrix<I>::BitsLen, 32, 64>)<<<512, 256>>>(
+      csr_matrix.rows, csr_matrix.row_ptr, csr_matrix.col_idx_ptr, c_matrix.ids_ptr, c_matrix.col_idx_ptr,
+      c_matrix.use_count);
 #ifdef DEV_MODE
   // print col index
   I *host_col_idx = new I[csr_matrix.nnz];
@@ -91,6 +89,7 @@ template <typename T, typename I> BitSet compress_matrix(const CsrMatrix<T, I> &
   for (int i = 0; i < csr_matrix.rows; ++i) {
     const I begin = host_row_ptr[i];
     const I end = host_row_ptr[i + 1];
+    std::cout << "<" << i << ">:";
     for (int j = begin; j < end; ++j) {
       std::cout << host_col_idx[j];
       if (j != end - 1) {
@@ -100,44 +99,74 @@ template <typename T, typename I> BitSet compress_matrix(const CsrMatrix<T, I> &
     std::cout << std::endl;
   }
   std::cout << std::endl;
-  delete[] host_row_ptr;
   delete[] host_col_idx;
   // print bitset
-  BitSet::BitSetEleType *host_arr = new BitSet::BitSetEleType[bitset.rows * bitset.cols];
-  KOKKOS_HIP_CHECK(hipMemcpy(host_arr, bitset.arr, arr_len, hipMemcpyDeviceToHost))
+  typename CompressMatrix<I>::IdType *host_ids = new typename CompressMatrix<I>::IdType[c_matrix.nnz];
+  typename CompressMatrix<I>::BitSetEleType *host_values = new typename CompressMatrix<I>::BitSetEleType[c_matrix.nnz];
+  int *host_use_count = new int[c_matrix.rows];
+  KOKKOS_HIP_CHECK(hipMemcpy(host_ids, c_matrix.ids_ptr, c_matrix.nnz * sizeof(typename CompressMatrix<I>::IdType),
+                             hipMemcpyDeviceToHost))
+  KOKKOS_HIP_CHECK(hipMemcpy(host_values, c_matrix.col_idx_ptr,
+                             c_matrix.nnz * sizeof(typename CompressMatrix<I>::BitSetEleType), hipMemcpyDeviceToHost))
+  KOKKOS_HIP_CHECK(hipMemcpy(host_use_count, c_matrix.use_count, c_matrix.rows * sizeof(int), hipMemcpyDeviceToHost))
   std::cout << "bitset result: " << std::endl;
-  for (int i = 0; i < bitset.rows; ++i) {
-    for (int j = 0; j < bitset.cols; ++j) {
-      std::cout << std::bitset<BitSet::BitsLen>(host_arr[i * bitset.cols + j]);
+  for (int i = 0; i < csr_matrix.rows; ++i) {
+    const I begin = host_row_ptr[i];
+    const I end = host_row_ptr[i + 1];
+    std::cout << "<" << i << ">,";
+    std::cout << "<" << host_use_count[i] << ">:";
+    for (int j = begin; j < end; ++j) {
+      std::cout << "[" << host_ids[j] << ", " << std::bitset<CompressMatrix<I>::BitsLen>(host_values[j]) << "]->";
     }
     std::cout << std::endl;
   }
-  delete[] host_arr;
+  delete[] host_use_count;
+  delete[] host_row_ptr;
+  delete[] host_values;
+  delete[] host_ids;
 #endif
-  return bitset;
+  return c_matrix;
 }
 
 template <typename T, typename I>
-void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const BitSet &bitset_b, I *row_ptr_c, size_t *nnz_c) {
-  (spgemm_symbolic_kernel<BitSet::BitSetEleType, I, BitSet::BitsLen, 1, 64>)<<<512, 256>>>(
-      matrix_a.rows, matrix_a.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, bitset_b.arr, bitset_b.cols, row_ptr_c);
+void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CompressMatrix<I> &bitset_b, I *row_ptr_c, size_t *nnz_c) {
+  using idType = typename CompressMatrix<I>::IdType;
+  using bitType = typename CompressMatrix<I>::BitSetEleType;
+  // calc size of trunk
+  I *row_trunk_ptr = nullptr;
+  KOKKOS_HIP_CHECK(hipMalloc((void **)(&row_trunk_ptr), (matrix_a.rows + 1) * sizeof(I)))
+  KOKKOS_HIP_CHECK(hipMemset(row_trunk_ptr, 0, sizeof(I)))
+  (trunk_nums_kernel<I, 32, 64>)<<<512, 256>>>(matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr,
+                                               bitset_b.use_count, row_trunk_ptr);
+  scan_in_place<I>(matrix_a.rows + 1, row_trunk_ptr);
+  I trunk_num_c = 0;
+  KOKKOS_HIP_CHECK(hipMemcpy(&trunk_num_c, row_trunk_ptr + matrix_a.rows, sizeof(I), hipMemcpyDeviceToHost))
+  // alloc hashmap
+  idType *map_ids = nullptr;
+  bitType *map_values = nullptr;
+  int *map_use_count = nullptr;
+  KOKKOS_HIP_CHECK(hipMalloc((void **)(&map_ids), trunk_num_c * sizeof(idType)));
+  KOKKOS_HIP_CHECK(hipMalloc((void **)(&map_values), trunk_num_c * sizeof(bitType)));
+  KOKKOS_HIP_CHECK(hipMalloc((void **)(&map_use_count), matrix_a.rows * sizeof(int)));
+  HashMap<bitType, idType> hash_map(map_ids, map_values, matrix_a.rows, trunk_num_c);
+  // symbolic
+  (spgemm_symbolic_kernel<T, I, 256, 32, 64>)<<<512, 256>>>(
+      matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, bitset_b.row_ptr, bitset_b.ids_ptr, bitset_b.col_idx_ptr,
+      bitset_b.use_count, row_trunk_ptr, hash_map.begins, hash_map.nexts, hash_map.ids, hash_map.values, map_use_count);
 
-  const size_t LEN = matrix_a.rows + 1;
-  constexpr size_t THREADS = 256;
-  constexpr size_t VEC_SIZE = 32;
-  constexpr size_t WF_SIZE = 64;
-  constexpr size_t R = 4;
+  // calc row_ptr
+  (row_nnz_kernel<I, bitType, 32, 64>
+   <<<512, 256>>>(matrix_a.rows, row_trunk_ptr, hash_map.values, map_use_count, row_ptr_c));
 
-  const size_t BLOCKS = LEN / (THREADS * R) + (LEN % (THREADS * R) == 0 ? 0 : 1);
-  I *temp_buffer = nullptr;
-  const size_t BUFFER_SIZE = (BLOCKS) * sizeof(I);
-  KOKKOS_HIP_CHECK(hipMalloc((void **)&temp_buffer, BUFFER_SIZE))
-  KOKKOS_HIP_CHECK(hipMemset(temp_buffer, 0, BUFFER_SIZE))
   // reduce than fan
   scan_in_place<I>(matrix_a.rows + 1, row_ptr_c);
-  // scan_single<I>(matrix_a.rows + 1, row_ptr_c);
   // set nnz of matrix c
-  KOKKOS_HIP_CHECK(hipMemcpy(nnz_c, &row_ptr_c[matrix_a.rows], sizeof(I), hipMemcpyDeviceToHost))
+  KOKKOS_HIP_CHECK(hipMemcpy(nnz_c, row_ptr_c + matrix_a.rows, sizeof(I), hipMemcpyDeviceToHost))
+  // free
+  KOKKOS_HIP_CHECK(hipFree(map_use_count))
+  KOKKOS_HIP_CHECK(hipFree(map_values))
+  KOKKOS_HIP_CHECK(hipFree(map_ids))
+  KOKKOS_HIP_CHECK(hipFree(row_trunk_ptr))
 
 #ifdef DEV_MODE
   I *host_row_ptr_c = new I[matrix_a.rows + 1];

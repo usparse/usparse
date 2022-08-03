@@ -2,7 +2,7 @@
 set(CURRENT_ACC_HIP_SOURCE_DIR ${ACC_SRC_PATH})
 
 set(ACC_HEADER_FILES ${ACC_HEADER_FILES}
-        ${CURRENT_ACC_HIP_SOURCE_DIR}/bitset.h
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/compress_matrix.h
         ${CURRENT_ACC_HIP_SOURCE_DIR}/build_flag.h
         ${CURRENT_ACC_HIP_SOURCE_DIR}/csr_matrix.h
         ${CURRENT_ACC_HIP_SOURCE_DIR}/error_macro.hpp
