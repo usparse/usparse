@@ -1,7 +1,6 @@
 #ifndef SPGEMM_KOKKOS_UTILS_KERNEL_HPP
 #define SPGEMM_KOKKOS_UTILS_KERNEL_HPP
 
-#include "error_macro.hpp"
 #include <hip/hip_runtime.h>
 
 // impl of scan than fan
@@ -183,8 +182,7 @@ __global__ void reduction_addend_kernel(const size_t len, T *array, T *buffer) {
   }
 }
 
-template <typename T>
-__global__ void scan_single_kernel(const size_t len, T *array) {
+template <typename T> __global__ void scan_single_kernel(const size_t len, T *array) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   if (global_thread_id == 0) {
@@ -193,6 +191,5 @@ __global__ void scan_single_kernel(const size_t len, T *array) {
     }
   }
 }
-
 
 #endif // SPGEMM_KOKKOS_UTILS_KERNEL_HPP

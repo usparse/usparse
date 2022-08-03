@@ -1,10 +1,10 @@
-#ifndef SPGEMM_KOKKOS_SPGEMM_KERNEL_HPP
-#define SPGEMM_KOKKOS_SPGEMM_KERNEL_HPP
+#ifndef SPGEMM_KOKKOS_SPGEMM_SYMBOLIC_KERNEL_HPP
+#define SPGEMM_KOKKOS_SPGEMM_SYMBOLIC_KERNEL_HPP
 
 #include "compress_matrix.h"
 #include "hash_map.h"
+#include "hash_map_insert.hpp"
 #include <hip/hip_runtime.h>
-#include <sys/wait.h>
 
 template <typename I, typename BitType, size_t VEC_SIZE, size_t WF_SIZE>
 __global__ void row_nnz_kernel(const I m, const I *map_row_ptr, const BitType *map_values, const int *use_count,
@@ -172,7 +172,7 @@ __global__ void spgemm_symbolic_kernel(const size_t m, const I *row_ptr_a, const
       const bittype_t *wf_mem_col_b = col_idx_ptr_b + idx_begin_b;
       const int b_count = use_count[row_b];
       for (int j = wf_thread_id; j < b_count; j += wf_thread_num) {
-        hashmap_wavefront_insert_or<bittype_t, idtype_t, HashMap<bittype_t, idtype_t>::HashMask>(
+        Ihashmap_vector_insert_or<bittype_t, idtype_t, HashMap<bittype_t, idtype_t>::HashMask>(
             wf_mem_begins, wf_mem_nexts, wf_mem_ids, wf_mem_values, wf_mem_id_b[j], wf_mem_col_b[j], wf_mem_use_size);
       }
     }
@@ -182,130 +182,4 @@ __global__ void spgemm_symbolic_kernel(const size_t m, const I *row_ptr_a, const
   }
 }
 
-template <typename T, typename I, size_t N, size_t LDS_MAP_CAP, size_t LDS_HASH_MASK, size_t THREADS, size_t WF_SIZE>
-__global__ void spgemm_numeric_kernel(const T alpha, const size_t m, const size_t n, const I *row_ptr_a,
-                                      const I *col_idx_ptr_a, const T *values_ptr_a, const I *row_ptr_b,
-                                      const I *col_idx_ptr_b, const T *values_ptr_b, const I *row_ptr_c, int *begins,
-                                      int *nexts, I *ids, T *values) {
-  // thread id in global
-  const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
-  // thread num in global
-  const int global_thread_num = gridDim.x * blockDim.x;
-  // wf id in global
-  const int global_wf_id = global_thread_id / WF_SIZE;
-  // wf num in global
-  const int global_wf_num = global_thread_num / WF_SIZE;
-  // block id in global
-  const int global_block_id = blockIdx.x;
-  // thread id in block
-  const int block_thread_id = threadIdx.x;
-  // thread num in block
-  constexpr int block_thread_num = THREADS;
-  // wf id in block
-  const int block_wf_id = threadIdx.x / WF_SIZE;
-  // wf num in block
-  constexpr int block_wf_num = THREADS / WF_SIZE;
-  // thread id in wf
-  const int wf_thread_id = global_thread_id % WF_SIZE;
-  // thread num in wf
-  constexpr int wf_thread_num = WF_SIZE;
-  // hashmap in LDS
-  constexpr int LDS_BEGINS_SIZE = LDS_MAP_CAP * block_wf_num;
-  constexpr int WF_PROCESS_ONCE = WF_SIZE;
-
-  constexpr int NEXTS_SIZE_PER_WF = WF_PROCESS_ONCE * N;
-  constexpr int LDS_NEXTS_SIZE = NEXTS_SIZE_PER_WF * block_wf_num;
-  __shared__ int shared_begins[LDS_BEGINS_SIZE];
-  __shared__ int shared_nexts[LDS_NEXTS_SIZE];
-  __shared__ I shared_ids[LDS_NEXTS_SIZE];
-  __shared__ T shared_values[LDS_NEXTS_SIZE];
-  int *wf_lds_begins = shared_begins + LDS_MAP_CAP * block_wf_id;
-  int *wf_lds_nexts = shared_nexts + NEXTS_SIZE_PER_WF * block_wf_id;
-  I *wf_lds_ids = shared_ids + NEXTS_SIZE_PER_WF * block_wf_id;
-  T *wf_lds_values = shared_values + NEXTS_SIZE_PER_WF * block_wf_id;
-  // init lds hashmap
-  for (int i = block_thread_id; i < LDS_BEGINS_SIZE; i += block_thread_num) {
-    shared_begins[i] = HashMap<T, I>::NullValue;
-  }
-  for (int i = block_thread_id; i < LDS_NEXTS_SIZE; i += block_thread_num) {
-    shared_nexts[i] = HashMap<T, I>::NullValue;
-  }
-  __syncthreads();
-  // each wf process one row
-  __shared__ int lds_use_size[block_wf_num];
-  __shared__ int mem_use_size[block_wf_num];
-  int *wf_lds_use_size = lds_use_size + block_wf_id;
-  int *wf_mem_use_size = mem_use_size + block_wf_id;
-
-  for (int row_a = global_wf_id; row_a < m; row_a += global_wf_num) {
-    const I row_idx_begin = row_ptr_a[row_a];
-    const I row_idx_end = row_ptr_a[row_a + 1];
-
-    int *wf_mem_begins = begins + HashMap<T, I>::Capacity * row_a;
-    int *wf_mem_nexts = nexts + row_ptr_c[row_a];
-    I *wf_mem_ids = ids + row_ptr_c[row_a];
-    T *wf_mem_values = values + row_ptr_c[row_a];
-
-    if (wf_thread_id == 0) {
-      *wf_lds_use_size = 0;
-      *wf_mem_use_size = 0;
-    }
-    int idx_a = row_idx_begin;
-    for (; idx_a < row_idx_end; ++idx_a) {
-      const I col_a = col_idx_ptr_a[idx_a];
-      const I row_b = col_a;
-      const I idx_begin_b = row_ptr_b[row_b];
-      const I idx_end_b = row_ptr_b[row_b + 1];
-      const int wf_rounds =
-          (idx_end_b - idx_begin_b) / WF_PROCESS_ONCE + ((idx_end_b - idx_begin_b) % WF_PROCESS_ONCE == 0 ? 0 : 1);
-      for (int round = 0; round < wf_rounds; ++round) {
-        if (*wf_lds_use_size + WF_PROCESS_ONCE > NEXTS_SIZE_PER_WF) {
-          // if lds hashmap is full, write to device memory hashmap
-          const int end_offset = *wf_lds_use_size;
-          for (int i = wf_thread_id; i < end_offset; i += wf_thread_num) {
-            hashmap_wavefront_insert_add<T, I, HashMap<T, I>::HashMask>(wf_mem_begins, wf_mem_nexts, wf_mem_ids,
-                                                                        wf_mem_values, wf_lds_ids[i],
-                                                                        wf_lds_values[i] * alpha, wf_mem_use_size);
-          }
-          // reset lds hashmap
-          for (int i = wf_thread_id; i < LDS_MAP_CAP; i += wf_thread_num) {
-            wf_lds_begins[i] = HashMap<T, I>::NullValue;
-          }
-          for (int i = wf_thread_id; i < end_offset; i += wf_thread_num) {
-            wf_lds_nexts[i] = HashMap<T, I>::NullValue;
-          }
-          if (wf_thread_id == 0) {
-            *wf_lds_use_size = 0;
-          }
-        }
-        const int idx_b = idx_begin_b + WF_PROCESS_ONCE * round + wf_thread_id;
-        if (idx_b < idx_end_b) {
-          const T tmp_val = values_ptr_a[idx_a] * values_ptr_b[idx_b];
-          const I col_b = col_idx_ptr_b[idx_b];
-          // insert to lds hashmap
-          hashmap_wavefront_insert_add<T, I, LDS_HASH_MASK>(wf_lds_begins, wf_lds_nexts, wf_lds_ids, wf_lds_values,
-                                                            col_b, tmp_val, wf_lds_use_size);
-        }
-      }
-    }
-    // write to device memory hashmap
-    const int end_offset = *wf_lds_use_size;
-    for (int i = wf_thread_id; i < end_offset; i += wf_thread_num) {
-      hashmap_wavefront_insert_add<T, I, HashMap<T, I>::HashMask>(wf_mem_begins, wf_mem_nexts, wf_mem_ids,
-                                                                  wf_mem_values, wf_lds_ids[i],
-                                                                  wf_lds_values[i] * alpha, wf_mem_use_size);
-    }
-    // reset lds hashmap
-    for (int i = wf_thread_id; i < LDS_MAP_CAP; i += wf_thread_num) {
-      wf_lds_begins[i] = HashMap<T, I>::NullValue;
-    }
-    for (int i = wf_thread_id; i < end_offset; i += wf_thread_num) {
-      wf_lds_nexts[i] = HashMap<T, I>::NullValue;
-    }
-    if (wf_thread_id == 0) {
-      *wf_lds_use_size = 0;
-    }
-  }
-}
-
-#endif // SPGEMM_KOKKOS_SPGEMM_KERNEL_HPP
+#endif // SPGEMM_KOKKOS_SPGEMM_SYMBOLIC_KERNEL_HPP

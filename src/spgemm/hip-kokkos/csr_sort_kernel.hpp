@@ -1,5 +1,5 @@
-#ifndef DENSETOSPARSE_HPP
-#define DENSETOSPARSE_HPP
+#ifndef SPGEMM_KOKKOS_CSR_SORT_KERNEL_HPP
+#define SPGEMM_KOKKOS_CSR_SORT_KERNEL_HPP
 
 #include <hip/hip_runtime.h>
 
@@ -48,4 +48,5 @@ void densetosparse_gthr_wrapper<double>(const int nnz, const double *y, double *
   // ROCSPARSE_CHECK( rocsparse_dgthr(handle, nnz, y, x_val, x_ind, idx_base) )
   densetosparse_dgthr(nnz, y, x_val, x_ind, idx_base);
 }
-#endif
+
+#endif // SPGEMM_KOKKOS_CSR_SORT_KERNEL_HPP

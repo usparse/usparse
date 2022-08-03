@@ -6,13 +6,22 @@ set(ACC_HEADER_FILES ${ACC_HEADER_FILES}
         ${CURRENT_ACC_HIP_SOURCE_DIR}/build_flag.h
         ${CURRENT_ACC_HIP_SOURCE_DIR}/csr_matrix.h
         ${CURRENT_ACC_HIP_SOURCE_DIR}/error_macro.hpp
-        ${CURRENT_ACC_HIP_SOURCE_DIR}/hash_map.h
-        ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm_core.h
-        ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm_core.hpp
-        ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm_kernel.hpp
-        ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm.h
-        ${CURRENT_ACC_HIP_SOURCE_DIR}/scan_kernel.hpp
-        ${CURRENT_ACC_HIP_SOURCE_DIR}/scan.h
         ${CURRENT_ACC_HIP_SOURCE_DIR}/timer.h
-        ${CURRENT_ACC_HIP_SOURCE_DIR}/dense_to_sparse.hpp
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/hash_map.h
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/hash_map_insert.hpp
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm.h
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm_core.h
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm_core_impl.hpp
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm_numeric.h
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm_numeric_impl.hpp
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm_numeric_kernel.hpp
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm_symbolic.h
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm_symbolic_impl.hpp
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm_symbolic_kernel.hpp
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/scan.h
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/scan_impl.hpp
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/scan_kernel.hpp
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/csr_sort.h
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/csr_sort_impl.hpp
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/csr_sort_kernel.hpp
         )
