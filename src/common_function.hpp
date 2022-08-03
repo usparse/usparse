@@ -495,50 +495,36 @@ void verify(size_t nnz_kernel, size_t nnz_compare)
         size_t off2_l = host_compare_offsetC[row];
         size_t off2_r = host_compare_offsetC[row+1];
 
+        size_t len1 = off1_r-off1_l;
+        size_t len2 = off2_r-off2_l;
+        size_t num_max = max(len1,len2);
+
+        size_t num  = 0;
         size_t num1 = 0;
         size_t num2 = 0;
-        size_t num_max = max((off1_r-off1_l),(off2_r-off2_l));
 
-        while( (num1<=num_max) && (num2<=num_max) )
+        size_t col  = 0;
+        size_t col1 = 0;
+        size_t col2 = 0;
+
+        double value1 = 0.0;
+        double value2 = 0.0;
+
+        double fab_diff = 0.0;
+        double fab_mat = 0.0;
+    
+        if((off1_r==off1_l) && (off2_r==off2_l))
         {
-            size_t col1 = host_colindexC[off1_l+num1];
-            size_t col2 = host_compare_colindexC[off2_l+num2];
-
-            if(col1==col2)
+            continue;
+        }
+        else if((off1_r==off1_l) && (off2_r>off2_l))
+        {
+            while( num2<len2 )
             {
-                double fab_diff = fabs( host_valueC[off1_l+num1] - host_compare_valueC[off2_l+num2] );
-                double fab_mat  = fabs( host_compare_valueC[off2_l+num2] );
+                col2 = host_compare_colindexC[off2_l+num2];
+                value2 = host_compare_valueC[off2_l+num2];
 
-                if((fab_mat>1.0)&&(fab_diff>=fab_mat*1e-9))
-                {
-                    bEqual = false;
-                }
-                else if((fab_mat<=1.0)&&(fab_diff>=1e-9))
-                {
-                    bEqual = false;
-                }
-
-                if(!bEqual)
-                {
-                    #ifdef gpu
-                        cout<<"["<< row <<","<< col1 <<"] : "<<"fab_diff "<<fab_diff<<" device_value "<<host_valueC[off1_l+num1]<<" rocsparse_value "<<host_compare_valueC[off2_l+num2]<<endl;
-                    #else
-                        cout<<"["<< row <<","<< col1 <<"] : "<<"fab_diff "<<fab_diff<<" device_value "<<host_valueC[off1_l+num1]<<" host_value "<<host_compare_valueC[off2_l+num2]<<endl;
-                    #endif
-
-                    cout<<"off "<<off1_l<<" "<<off1_r<<" "<<off2_l<<" "<<off2_r<<endl;
-                    cout<<"col "<<col1<<" "<<col2<<" index "<<num1<<" "<<num2<<endl;
-
-                    cout<<"Failed verification, please check your code!"<<endl;
-                    return;
-                }
-
-                num1++;
-                num2++;
-            }
-            else if (col1<col2)
-            {
-                double fab_diff = fabs( host_valueC[off1_l+num1] );
+                fab_diff = fabs( value2 );
 
                 if(fab_diff>=1e-9)
                 {
@@ -547,24 +533,31 @@ void verify(size_t nnz_kernel, size_t nnz_compare)
 
                 if(!bEqual)
                 {
+                    col = col2;
                     #ifdef gpu
-                        cout<<"["<< row <<","<< col1 <<"] : "<<"fab_diff "<<fab_diff<<" device_value "<<host_valueC[off1_l+num1]<<" rocsparse_value "<<host_compare_valueC[off2_l+num2]<<endl;
+                        cout<<"["<< row <<","<< col <<"] : "<<"fab_diff "<<fab_diff<<" device_value "<<0.0<<" rocsparse_value "<<value2<<endl;
                     #else
-                        cout<<"["<< row <<","<< col1 <<"] : "<<"fab_diff "<<fab_diff<<" device_value "<<host_valueC[off1_l+num1]<<" host_value "<<host_compare_valueC[off2_l+num2]<<endl;
+                        cout<<"["<< row <<","<< col <<"] : "<<"fab_diff "<<fab_diff<<" device_value "<<0.0<<" host_value "<<value2<<endl;
                     #endif
 
                     cout<<"off "<<off1_l<<" "<<off1_r<<" "<<off2_l<<" "<<off2_r<<endl;
-                    cout<<"col "<<col1<<" "<<col2<<" index "<<num1<<" "<<num2<<endl;
+                    cout<<"col "<<"empty"<<" "<<col2<<" index "<<"empty"<<" "<<num2<<endl;
 
                     cout<<"Failed verification, please check your code!"<<endl;
                     return;
                 }
-
-                num1++;
-            }
-            else if (col1>col2)
+ 
+                num2++;
+            }           
+        }
+        else if((off1_r>off1_l) && (off2_r==off2_l))
+        {
+            while( num1<len1 )
             {
-                double fab_diff = fabs( host_compare_valueC[off2_l+num2] );
+                col1 = host_colindexC[off1_l+num1];
+                value1 = host_valueC[off1_l+num1];
+
+                fab_diff = fabs( value1 );
 
                 if(fab_diff>=1e-9)
                 {
@@ -573,20 +566,135 @@ void verify(size_t nnz_kernel, size_t nnz_compare)
 
                 if(!bEqual)
                 {
+                    col = col1;
                     #ifdef gpu
-                        cout<<"["<< row <<","<< col1 <<"] : "<<"fab_diff "<<fab_diff<<" device_value "<<host_valueC[off1_l+num1]<<" rocsparse_value "<<host_compare_valueC[off2_l+num2]<<endl;
+                        cout<<"["<< row <<","<< col <<"] : "<<"fab_diff "<<fab_diff<<" device_value "<<value1<<" rocsparse_value "<<0.0<<endl;
                     #else
-                        cout<<"["<< row <<","<< col1 <<"] : "<<"fab_diff "<<fab_diff<<" device_value "<<host_valueC[off1_l+num1]<<" host_value "<<host_compare_valueC[off2_l+num2]<<endl;
+                        cout<<"["<< row <<","<< col <<"] : "<<"fab_diff "<<fab_diff<<" device_value "<<value1<<" host_value "<<0.0<<endl;
                     #endif
 
                     cout<<"off "<<off1_l<<" "<<off1_r<<" "<<off2_l<<" "<<off2_r<<endl;
-                    cout<<"col "<<col1<<" "<<col2<<" index "<<num1<<" "<<num2<<endl;
+                    cout<<"col "<<col1<<" "<<"empty"<<" index "<<num1<<" "<<"empty"<<endl;
 
                     cout<<"Failed verification, please check your code!"<<endl;
                     return;
                 }
+  
+                num1++;
+            }
+        }
+        else
+        {
+            while( num<=num_max )
+            {
+                col1 = num1<len1 ? host_colindexC[off1_l+num1] : host_colindexC[off1_r-1];
+                value1 = num1<len1 ? host_valueC[off1_l+num1] : 0.0;
+                    
+                col2 = num2<len2 ? host_compare_colindexC[off2_l+num2] : host_compare_colindexC[off2_r-1];
+                value2 = num2<len2 ? host_compare_valueC[off2_l+num2] : 0.0;
 
-                num2++;
+                if(col1==col2)
+                {
+                    fab_diff = fabs( value1 - value2);
+                    fab_mat  = fabs( value2 );
+
+                    if((fab_mat>1.0)&&(fab_diff>=fab_mat*1e-9))
+                    {
+                        bEqual = false;
+                    }
+                    else if((fab_mat<=1.0)&&(fab_diff>=1e-9))
+                    {
+                        bEqual = false;
+                    }
+
+                    if(!bEqual)
+                    {
+                        col = col1;
+                        #ifdef gpu
+                            cout<<"["<< row <<","<< col <<"] : "<<"fab_diff "<<fab_diff<<" device_value "<<value1<<" rocsparse_value "<<value2<<endl;
+                        #else
+                            cout<<"["<< row <<","<< col <<"] : "<<"fab_diff "<<fab_diff<<" device_value "<<value1<<" host_value "<<value2<<endl;
+                        #endif
+
+                        cout<<"off "<<off1_l<<" "<<off1_r<<" "<<off2_l<<" "<<off2_r<<endl;
+                        cout<<"col "<<col1<<" "<<col2<<" index "<<num1<<" "<<num2<<endl;
+ 
+                        cout<<"Failed verification, please check your code!"<<endl;
+                        return;
+                    }
+
+                    num1++;
+                    num2++;
+                }
+                else if (col1<col2)
+                {
+                    fab_diff = num1<len1 ? fabs( value1 ) : fabs( value2 );
+
+                    if(fab_diff>=1e-9)
+                    {
+                        bEqual = false;
+                    }
+
+                    if(!bEqual)
+                    {
+                        col = num1<len1 ? col1 : col2;
+                        #ifdef gpu
+                            cout<<"["<< row <<","<< col <<"] : "<<"fab_diff "<<fab_diff<<" device_value "<<value1<<" rocsparse_value "<<value2<<endl;
+                        #else
+                            cout<<"["<< row <<","<< col <<"] : "<<"fab_diff "<<fab_diff<<" device_value "<<value1<<" host_value "<<value2<<endl;
+                        #endif
+   
+                        cout<<"off "<<off1_l<<" "<<off1_r<<" "<<off2_l<<" "<<off2_r<<endl;
+                        cout<<"col "<<col1<<" "<<col2<<" index "<<num1<<" "<<num2<<endl;
+  
+                        cout<<"Failed verification, please check your code!"<<endl;
+                        return;
+                    }
+
+                    if(num1<len1)
+                    {
+                        num1++;
+                    }
+                    else
+                    {
+                        num2++;
+                    }
+                }
+                else if (col1>col2)
+                {
+                    fab_diff = num2<len2 ? fabs( value2 ) : fabs( value1 );
+   
+                    if(fab_diff>=1e-9)
+                    {
+                        bEqual = false;
+                    }
+
+                    if(!bEqual)
+                    {
+                        col = num2<len2 ? col2 : col1;
+                        #ifdef gpu
+                            cout<<"["<< row <<","<< col <<"] : "<<"fab_diff "<<fab_diff<<" device_value "<<value1<<" rocsparse_value "<<value2<<endl;
+                        #else
+                            cout<<"["<< row <<","<< col <<"] : "<<"fab_diff "<<fab_diff<<" device_value "<<value1<<" host_value "<<value2<<endl;
+                        #endif
+
+                        cout<<"off "<<off1_l<<" "<<off1_r<<" "<<off2_l<<" "<<off2_r<<endl;
+                        cout<<"col "<<col1<<" "<<col2<<" index "<<num1<<" "<<num2<<endl;
+
+                        cout<<"Failed verification, please check your code!"<<endl;
+                        return;
+                    }
+
+                    if(num2<len2)
+                    {
+                        num2++;
+                    }
+                    else
+                    {
+                        num1++;
+                    }
+                }
+                num++;
             }
         }
     }
@@ -776,7 +884,6 @@ size_t rocsparse_spgemm()
     HIP_CHECK( hipMemcpy(host_compare_offsetC, csr_row_ptr_C, (A_num_rows+1) * sizeof(csrIdxType), hipMemcpyDeviceToHost) )
     HIP_CHECK( hipMemcpy(host_compare_colindexC, csr_col_ind_C, nonzero * sizeof(csrIdxType), hipMemcpyDeviceToHost) )
     HIP_CHECK( hipMemcpy(host_compare_valueC, csr_val_C, nonzero * sizeof(dtype), hipMemcpyDeviceToHost) )
-
 
     HIP_CHECK( hipFree(buffer) )
     HIP_CHECK( hipFree(csr_row_ptr_C) )
