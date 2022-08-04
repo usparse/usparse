@@ -114,7 +114,8 @@ __global__ void compress_matrix_kernel(const size_t m, const I *row_ptr, const I
   }
 }
 
-template <typename T, typename I, size_t THREADS, size_t VEC_SIZE, size_t WF_SIZE>
+template <typename T, typename I, size_t N, size_t LDS_MAP_CAP, size_t LDS_HASH_MASK, size_t THREADS, size_t VEC_SIZE,
+          size_t WF_SIZE>
 __global__ void spgemm_symbolic_vector_per_row_kernel(
     const size_t m, const I *row_ptr_a, const I *col_idx_ptr_a, const I *row_ptr_b,
     const typename CompressMatrix<I>::IdType *ids_ptr_b, const typename CompressMatrix<I>::BitSetEleType *col_idx_ptr_b,
@@ -144,9 +145,32 @@ __global__ void spgemm_symbolic_vector_per_row_kernel(
   const int vec_thread_id = global_thread_id % VEC_SIZE;
   // thread num in vec
   constexpr int vec_thread_num = VEC_SIZE;
+  // hashmap in LDS
+  constexpr int LDS_BEGINS_SIZE = LDS_MAP_CAP * block_vec_num;
+  constexpr int VEC_PROCESS_ONCE = VEC_SIZE;
 
+  constexpr int NEXTS_SIZE_PER_VEC = VEC_PROCESS_ONCE * N;
+  constexpr int LDS_NEXTS_SIZE = NEXTS_SIZE_PER_VEC * block_vec_num;
+  __shared__ int shared_begins[LDS_BEGINS_SIZE];
+  __shared__ int shared_nexts[LDS_NEXTS_SIZE];
+  __shared__ idtype_t shared_ids[LDS_NEXTS_SIZE];
+  __shared__ bittype_t shared_values[LDS_NEXTS_SIZE];
+  int *vec_lds_begins = shared_begins + LDS_MAP_CAP * block_vec_id;
+  int *vec_lds_nexts = shared_nexts + NEXTS_SIZE_PER_VEC * block_vec_id;
+  idtype_t *vec_lds_ids = shared_ids + NEXTS_SIZE_PER_VEC * block_vec_id;
+  bittype_t *vec_lds_values = shared_values + NEXTS_SIZE_PER_VEC * block_vec_id;
+  // init lds hashmap
+  for (int i = block_thread_id; i < LDS_BEGINS_SIZE; i += block_thread_num) {
+    shared_begins[i] = HashMap<T, I>::NullValue;
+  }
+  for (int i = block_thread_id; i < LDS_NEXTS_SIZE; i += block_thread_num) {
+    shared_nexts[i] = HashMap<T, I>::NullValue;
+  }
+  __syncthreads();
   // each vec process one row
+  __shared__ int lds_use_size[block_vec_num];
   __shared__ int mem_use_size[block_vec_num];
+  int *vec_lds_use_size = lds_use_size + block_vec_id;
   int *vec_mem_use_size = mem_use_size + block_vec_id;
 
   for (int row_a = global_vec_id; row_a < m; row_a += global_vec_num) {
@@ -159,6 +183,7 @@ __global__ void spgemm_symbolic_vector_per_row_kernel(
     bittype_t *vec_mem_values = values + row_ptr_c[row_a];
 
     if (vec_thread_id == 0) {
+      *vec_lds_use_size = 0;
       *vec_mem_use_size = 0;
     }
     int idx_a = row_idx_begin;
@@ -166,15 +191,55 @@ __global__ void spgemm_symbolic_vector_per_row_kernel(
       const I col_a = col_idx_ptr_a[idx_a];
       const I row_b = col_a;
       const I idx_begin_b = row_ptr_b[row_b];
-      const I idx_end_b = row_ptr_b[row_b + 1];
       const idtype_t *vec_mem_id_b = ids_ptr_b + idx_begin_b;
       const bittype_t *vec_mem_col_b = col_idx_ptr_b + idx_begin_b;
       const int b_count = use_count[row_b];
-      for (int j = vec_thread_id; j < b_count; j += vec_thread_num) {
-        hashmap_vector_insert_or<bittype_t, idtype_t, HashMap<bittype_t, idtype_t>::HashMask>(
-            vec_mem_begins, vec_mem_nexts, vec_mem_ids, vec_mem_values, vec_mem_id_b[j], vec_mem_col_b[j],
-            vec_mem_use_size);
+      const int vec_rounds = (b_count) / VEC_PROCESS_ONCE + (b_count % VEC_PROCESS_ONCE == 0 ? 0 : 1);
+      for (int round = 0; round < vec_rounds; ++round) {
+        if (*vec_lds_use_size + VEC_PROCESS_ONCE > NEXTS_SIZE_PER_VEC) {
+          // if lds hashmap is full, write to device memory hashmap
+          const int end_offset = *vec_lds_use_size;
+          for (int i = vec_thread_id; i < end_offset; i += vec_thread_num) {
+            hashmap_vector_insert_or<bittype_t, idtype_t, HashMap<bittype_t, idtype_t>::HashMask>(
+                vec_mem_begins, vec_mem_nexts, vec_mem_ids, vec_mem_values, vec_lds_ids[i], vec_lds_values[i],
+                vec_mem_use_size);
+          }
+          // reset lds hashmap
+          for (int i = vec_thread_id; i < LDS_MAP_CAP; i += vec_thread_num) {
+            vec_lds_begins[i] = HashMap<T, I>::NullValue;
+          }
+          for (int i = vec_thread_id; i < end_offset; i += vec_thread_num) {
+            vec_lds_nexts[i] = HashMap<T, I>::NullValue;
+          }
+          if (vec_thread_id == 0) {
+            *vec_lds_use_size = 0;
+          }
+        }
+        const int idx_b = VEC_PROCESS_ONCE * round + vec_thread_id;
+        if (idx_b < b_count) {
+          // insert to lds hashmap
+          hashmap_vector_insert_or<bittype_t, idtype_t, HashMap<bittype_t, idtype_t>::HashMask>(
+              vec_mem_begins, vec_mem_nexts, vec_mem_ids, vec_mem_values, vec_mem_id_b[idx_b], vec_mem_col_b[idx_b],
+              vec_mem_use_size);
+        }
       }
+    }
+    // write to device memory hashmap
+    const int end_offset = *vec_lds_use_size;
+    for (int i = vec_thread_id; i < end_offset; i += vec_thread_num) {
+      hashmap_vector_insert_or<bittype_t, idtype_t, HashMap<bittype_t, idtype_t>::HashMask>(
+          vec_mem_begins, vec_mem_nexts, vec_mem_ids, vec_mem_values, vec_lds_ids[i], vec_lds_values[i],
+          vec_mem_use_size);
+    }
+    // reset lds hashmap
+    for (int i = vec_thread_id; i < LDS_MAP_CAP; i += vec_thread_num) {
+      vec_lds_begins[i] = HashMap<T, I>::NullValue;
+    }
+    for (int i = vec_thread_id; i < end_offset; i += vec_thread_num) {
+      vec_lds_nexts[i] = HashMap<T, I>::NullValue;
+    }
+    if (vec_thread_id == 0) {
+      *vec_lds_use_size = 0;
     }
     if (vec_thread_id == 0) {
       map_use_count[row_a] = *vec_mem_use_size;

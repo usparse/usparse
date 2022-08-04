@@ -42,11 +42,23 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
   HashMap<bitType, idType> hash_map(map_ids, map_values, matrix_a.rows, trunk_num_c);
 
   // symbolic
-  (spgemm_symbolic_vector_per_row_kernel<T, I, 64, 32, 64>)<<<1024, 64>>>(
-      matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
-      compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_trunk_ptr, hash_map.begins, hash_map.nexts,
-      hash_map.ids, hash_map.values, map_use_count);
+  {
+    constexpr size_t LDS_MAP_CAP = 1 << 5;
+    constexpr size_t LDS_HASH_MASK = LDS_MAP_CAP - 1;
+    constexpr size_t GLOBAL_BLOCK_NUM = 1024;
+    constexpr size_t BLOCK_THREAD_NUM = 64;
+    constexpr size_t VEC_SIZE = 32;
+    constexpr size_t WF_SIZE = 64;
+    constexpr size_t BLOCK_WF_NUM = BLOCK_THREAD_NUM / WF_SIZE;
+    constexpr size_t BLOCK_VEC_NUM = BLOCK_THREAD_NUM / VEC_SIZE;
+    constexpr size_t N = 4;
 
+    (spgemm_symbolic_vector_per_row_kernel<T, I, N, LDS_MAP_CAP, LDS_HASH_MASK, BLOCK_THREAD_NUM, VEC_SIZE,
+                                           WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+        matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
+        compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_trunk_ptr, hash_map.begins, hash_map.nexts,
+        hash_map.ids, hash_map.values, map_use_count);
+  }
   // calc row_ptr
   (row_nnz_kernel<I, bitType, 32, 64>
    <<<512, 256>>>(matrix_a.rows, row_trunk_ptr, hash_map.values, map_use_count, row_ptr_c));
