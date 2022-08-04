@@ -48,8 +48,8 @@ __device__ __forceinline__ void hashmap_thread_insert_or(int *begins, int *nexts
 
 // threads in wavefront simultaneously insert to hashmap
 template <typename T, typename I, size_t HashMask>
-__device__ __forceinline__ void Ihashmap_vector_insert_add(int *begins, int *nexts, I *ids, T *values,
-                                                           const I insert_id, const T insert_value, int *use_size) {
+__device__ __forceinline__ void hashmap_vector_insert_add(int *begins, int *nexts, I *ids, T *values, const I insert_id,
+                                                          const T insert_value, int *use_size) {
   const size_t hash_val = HASH(T, I, insert_id, HashMask);
   int i;
   i = begins[hash_val];
@@ -67,8 +67,8 @@ __device__ __forceinline__ void Ihashmap_vector_insert_add(int *begins, int *nex
 }
 
 template <typename T, typename I, size_t HashMask>
-__device__ __forceinline__ void Ihashmap_vector_insert_or(int *begins, int *nexts, I *ids, T *values, const I insert_id,
-                                                          const T insert_value, int *use_size) {
+__device__ __forceinline__ void hashmap_vector_insert_or(int *begins, int *nexts, I *ids, T *values, const I insert_id,
+                                                         const T insert_value, int *use_size) {
   const size_t hash_val = HASH(T, I, insert_id, HashMask);
   int i;
   i = begins[hash_val];

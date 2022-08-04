@@ -171,7 +171,7 @@ __global__ void spgemm_symbolic_vector_per_row_kernel(
       const bittype_t *vec_mem_col_b = col_idx_ptr_b + idx_begin_b;
       const int b_count = use_count[row_b];
       for (int j = vec_thread_id; j < b_count; j += vec_thread_num) {
-        Ihashmap_vector_insert_or<bittype_t, idtype_t, HashMap<bittype_t, idtype_t>::HashMask>(
+        hashmap_vector_insert_or<bittype_t, idtype_t, HashMap<bittype_t, idtype_t>::HashMask>(
             vec_mem_begins, vec_mem_nexts, vec_mem_ids, vec_mem_values, vec_mem_id_b[j], vec_mem_col_b[j],
             vec_mem_use_size);
       }
