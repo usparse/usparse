@@ -23,21 +23,26 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
   constexpr size_t BLOCK_VEC_NUM = BLOCK_THREAD_NUM / VEC_SIZE;
 
   constexpr size_t N = 4;
-  constexpr size_t LDS_HASH_MAP_SIZE = N * BLOCK_THREAD_NUM;
-  if (max_row_num > LDS_HASH_MAP_SIZE) {
+  constexpr size_t VEC_LDS_HASH_MAP_SIZE = N * BLOCK_THREAD_NUM;
+
+  constexpr size_t BLOCK_LDS_HASH_MAP_SIZE = 2048;
+
+  if (max_row_num > BLOCK_LDS_HASH_MAP_SIZE) {
     const size_t nnz_per_row = matrix_c.nnz / matrix_c.rows;
     HashMap<T, I> hash_map(matrix_c.col_idx_ptr, matrix_c.values_ptr, matrix_c.rows, matrix_c.nnz);
     if (nnz_per_row > 128) {
-      constexpr size_t LDS_MAP_CAP = 1 << 6;
-      constexpr size_t LDS_HASH_MASK = LDS_MAP_CAP - 1;
-      constexpr size_t GLOBAL_BLOCK_NUM = 512;
-      constexpr size_t BLOCK_THREAD_NUM = 256;
+      {
+        constexpr size_t LDS_MAP_CAP = 1 << 5;
+        constexpr size_t LDS_HASH_MASK = LDS_MAP_CAP - 1;
+        constexpr size_t GLOBAL_BLOCK_NUM = 512;
+        constexpr size_t BLOCK_THREAD_NUM = 256;
 
-      (spgemm_numeric_block_per_row_kernel<T, I, N, LDS_MAP_CAP, LDS_HASH_MASK, BLOCK_THREAD_NUM,
-                                           WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
-          alpha, matrix_a.rows, matrix_a.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
-          matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, hash_map.begins,
-          hash_map.nexts, hash_map.ids, hash_map.values);
+        (spgemm_numeric_block_per_row_kernel<T, I, N, LDS_MAP_CAP, LDS_HASH_MASK, BLOCK_THREAD_NUM,
+                                             WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+            alpha, matrix_a.rows, matrix_a.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
+            matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, hash_map.begins,
+            hash_map.nexts, hash_map.ids, hash_map.values);
+      }
     } else {
       (spgemm_numeric_vector_per_row_kernel<T, I, N, LDS_MAP_CAP, LDS_HASH_MASK, BLOCK_THREAD_NUM, VEC_SIZE,
                                             WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
@@ -47,11 +52,27 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
     }
     is_sorted = false;
   } else {
-    (spgemm_numeric_vector_per_row_sort_kernel<T, I, N, LDS_MAP_CAP, LDS_HASH_MASK, BLOCK_THREAD_NUM, VEC_SIZE,
-                                               WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
-        alpha, matrix_a.rows, matrix_a.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
-        matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
-        matrix_c.values_ptr);
+    if (max_row_num > VEC_LDS_HASH_MAP_SIZE) {
+      {
+        constexpr size_t LDS_MAP_CAP = 1 << 4;
+        constexpr size_t LDS_HASH_MASK = LDS_MAP_CAP - 1;
+        constexpr size_t GLOBAL_BLOCK_NUM = 128;
+        constexpr size_t BLOCK_THREAD_NUM = 512;
+        constexpr size_t N = BLOCK_LDS_HASH_MAP_SIZE / BLOCK_THREAD_NUM;
+
+        (spgemm_numeric_block_per_row_sort_kernel<T, I, N, LDS_MAP_CAP, LDS_HASH_MASK, BLOCK_THREAD_NUM,
+                                                  WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+            alpha, matrix_a.rows, matrix_a.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
+            matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
+            matrix_c.values_ptr);
+      }
+    } else {
+      (spgemm_numeric_vector_per_row_sort_kernel<T, I, N, LDS_MAP_CAP, LDS_HASH_MASK, BLOCK_THREAD_NUM, VEC_SIZE,
+                                                 WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+          alpha, matrix_a.rows, matrix_a.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
+          matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
+          matrix_c.values_ptr);
+    }
     is_sorted = true;
   }
 }
