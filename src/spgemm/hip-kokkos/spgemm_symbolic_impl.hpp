@@ -53,11 +53,22 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
     constexpr size_t BLOCK_VEC_NUM = BLOCK_THREAD_NUM / VEC_SIZE;
     constexpr size_t N = 4;
 
-    (spgemm_symbolic_vector_per_row_kernel<T, I, N, LDS_MAP_CAP, LDS_HASH_MASK, BLOCK_THREAD_NUM, VEC_SIZE,
-                                           WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
-        matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
-        compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_trunk_ptr, hash_map.begins, hash_map.nexts,
-        hash_map.ids, hash_map.values, map_use_count);
+    if (matrix_b.nnz / matrix_b.rows > 512) {
+      constexpr size_t GLOBAL_BLOCK_NUM = 128;
+      constexpr size_t BLOCK_THREAD_NUM = 128;
+      constexpr size_t N = 1;
+      (spgemm_symbolic_block_per_row_kernel<T, I, N, LDS_MAP_CAP, LDS_HASH_MASK, BLOCK_THREAD_NUM,
+                                            WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+          matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
+          compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_trunk_ptr, hash_map.begins, hash_map.nexts,
+          hash_map.ids, hash_map.values, map_use_count);
+    } else {
+      (spgemm_symbolic_vector_per_row_kernel<T, I, N, LDS_MAP_CAP, LDS_HASH_MASK, BLOCK_THREAD_NUM, VEC_SIZE,
+                                             WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+          matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
+          compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_trunk_ptr, hash_map.begins, hash_map.nexts,
+          hash_map.ids, hash_map.values, map_use_count);
+    }
   }
   // calc row_ptr
   (row_nnz_kernel<I, bitType, 32, 64>
