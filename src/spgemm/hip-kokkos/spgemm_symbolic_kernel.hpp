@@ -129,7 +129,7 @@ __global__ void spgemm_symbolic_block_per_row_kernel(
   // block id in global
   const int global_block_id = blockIdx.x;
   // block num in global
-  const int global_block_num = blockDim.x;
+  const int global_block_num = gridDim.x;
   // thread id in block
   const int block_thread_id = threadIdx.x;
   // thread num in block
@@ -140,14 +140,16 @@ __global__ void spgemm_symbolic_block_per_row_kernel(
 
   constexpr int NEXTS_SIZE_PER_BLOCK = BLOCK_PROCESS_ONCE * N;
   constexpr int LDS_NEXTS_SIZE = NEXTS_SIZE_PER_BLOCK;
+
   __shared__ int shared_begins[LDS_BEGINS_SIZE];
   __shared__ int shared_nexts[LDS_NEXTS_SIZE];
   __shared__ idtype_t shared_ids[LDS_NEXTS_SIZE];
   __shared__ bittype_t shared_values[LDS_NEXTS_SIZE];
-  int *block_lds_begins = shared_begins + LDS_MAP_CAP * block_thread_id;
-  int *block_lds_nexts = shared_nexts + NEXTS_SIZE_PER_BLOCK * block_thread_id;
-  idtype_t *block_lds_ids = shared_ids + NEXTS_SIZE_PER_BLOCK * block_thread_id;
-  bittype_t *block_lds_values = shared_values + NEXTS_SIZE_PER_BLOCK * block_thread_id;
+
+  int *block_lds_begins = shared_begins;
+  int *block_lds_nexts = shared_nexts;
+  idtype_t *block_lds_ids = shared_ids;
+  bittype_t *block_lds_values = shared_values;
   // init lds hashmap
   for (int i = block_thread_id; i < LDS_BEGINS_SIZE; i += block_thread_num) {
     shared_begins[i] = HashMap<T, I>::NullValue;
@@ -210,9 +212,9 @@ __global__ void spgemm_symbolic_block_per_row_kernel(
         const int idx_b = BLOCK_PROCESS_ONCE * round + block_thread_id;
         if (idx_b < b_count) {
           // insert to lds hashmap
-          hashmap_vector_insert_or<bittype_t, idtype_t, HashMap<bittype_t, idtype_t>::HashMask>(
-              block_mem_begins, block_mem_nexts, block_mem_ids, block_mem_values, block_mem_id_b[idx_b],
-              block_mem_col_b[idx_b], &block_mem_use_size);
+          hashmap_vector_insert_or<bittype_t, idtype_t, LDS_HASH_MASK>(block_lds_begins, block_lds_nexts, block_lds_ids,
+                                                                       block_lds_values, block_mem_id_b[idx_b],
+                                                                       block_mem_col_b[idx_b], &block_lds_use_size);
         }
         __syncthreads();
       }
@@ -348,24 +350,18 @@ __global__ void spgemm_symbolic_vector_per_row_kernel(
         const int idx_b = VEC_PROCESS_ONCE * round + vec_thread_id;
         if (idx_b < b_count) {
           // insert to lds hashmap
-          hashmap_vector_insert_or<bittype_t, idtype_t, HashMap<bittype_t, idtype_t>::HashMask>(
-              vec_mem_begins, vec_mem_nexts, vec_mem_ids, vec_mem_values, vec_mem_id_b[idx_b], vec_mem_col_b[idx_b],
-              vec_mem_use_size);
+          hashmap_vector_insert_or<bittype_t, idtype_t, LDS_HASH_MASK>(vec_lds_begins, vec_lds_nexts, vec_lds_ids,
+                                                                       vec_lds_values, vec_mem_id_b[idx_b],
+                                                                       vec_mem_col_b[idx_b], vec_lds_use_size);
         }
       }
     }
     // write to device memory hashmap
     const int end_offset = *vec_lds_use_size;
-    int write_back_count = 0;
-    if (*vec_mem_use_size != 0) {
-      for (int i = vec_thread_id; i < end_offset; i += vec_thread_num) {
-        hashmap_vector_insert_or<bittype_t, idtype_t, HashMap<bittype_t, idtype_t>::HashMask>(
-            vec_mem_begins, vec_mem_nexts, vec_mem_ids, vec_mem_values, vec_lds_ids[i], vec_lds_values[i],
-            vec_mem_use_size);
-      }
-      write_back_count = *vec_mem_use_size;
-    } else {
-      write_back_count = *vec_lds_use_size;
+    for (int i = vec_thread_id; i < end_offset; i += vec_thread_num) {
+      hashmap_vector_insert_or<bittype_t, idtype_t, HashMap<bittype_t, idtype_t>::HashMask>(
+          vec_mem_begins, vec_mem_nexts, vec_mem_ids, vec_mem_values, vec_lds_ids[i], vec_lds_values[i],
+          vec_mem_use_size);
     }
     // reset lds hashmap
     for (int i = vec_thread_id; i < LDS_MAP_CAP; i += vec_thread_num) {
@@ -378,7 +374,7 @@ __global__ void spgemm_symbolic_vector_per_row_kernel(
       *vec_lds_use_size = 0;
     }
     if (vec_thread_id == 0) {
-      map_use_count[row_a] = write_back_count;
+      map_use_count[row_a] = *vec_mem_use_size;
     }
   }
 }
