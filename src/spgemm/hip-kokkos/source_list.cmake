@@ -7,6 +7,7 @@ set(ACC_HEADER_FILES ${ACC_HEADER_FILES}
         ${CURRENT_ACC_HIP_SOURCE_DIR}/csr_matrix.h
         ${CURRENT_ACC_HIP_SOURCE_DIR}/error_macro.hpp
         ${CURRENT_ACC_HIP_SOURCE_DIR}/timer.h
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/hash.h
         ${CURRENT_ACC_HIP_SOURCE_DIR}/hash_map.h
         ${CURRENT_ACC_HIP_SOURCE_DIR}/hash_map_insert.hpp
         ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm.h

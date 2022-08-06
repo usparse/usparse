@@ -191,7 +191,7 @@ __global__ void spgemm_symbolic_block_per_row_kernel(
           const int end_offset = block_lds_use_size;
           __syncthreads();
           for (int i = block_thread_id; i < end_offset; i += block_thread_num) {
-            hashmap_vector_insert_or<bittype_t, idtype_t, HashMap<bittype_t, idtype_t>::HashMask>(
+            linear_chain_hashmap_vector_insert_or<bittype_t, idtype_t, HashMap<bittype_t, idtype_t>::HashMask>(
                 block_mem_begins, block_mem_nexts, block_mem_ids, block_mem_values, block_lds_ids[i],
                 block_lds_values[i], &block_mem_use_size);
           }
@@ -212,9 +212,9 @@ __global__ void spgemm_symbolic_block_per_row_kernel(
         const int idx_b = BLOCK_PROCESS_ONCE * round + block_thread_id;
         if (idx_b < b_count) {
           // insert to lds hashmap
-          hashmap_vector_insert_or<bittype_t, idtype_t, LDS_HASH_MASK>(block_lds_begins, block_lds_nexts, block_lds_ids,
-                                                                       block_lds_values, block_mem_id_b[idx_b],
-                                                                       block_mem_col_b[idx_b], &block_lds_use_size);
+          linear_chain_hashmap_vector_insert_or<bittype_t, idtype_t, LDS_HASH_MASK>(
+              block_lds_begins, block_lds_nexts, block_lds_ids, block_lds_values, block_mem_id_b[idx_b],
+              block_mem_col_b[idx_b], &block_lds_use_size);
         }
         __syncthreads();
       }
@@ -224,7 +224,7 @@ __global__ void spgemm_symbolic_block_per_row_kernel(
     const int end_offset = block_lds_use_size;
     __syncthreads();
     for (int i = block_thread_id; i < end_offset; i += block_thread_num) {
-      hashmap_vector_insert_or<bittype_t, idtype_t, HashMap<bittype_t, idtype_t>::HashMask>(
+      linear_chain_hashmap_vector_insert_or<bittype_t, idtype_t, HashMap<bittype_t, idtype_t>::HashMask>(
           block_mem_begins, block_mem_nexts, block_mem_ids, block_mem_values, block_lds_ids[i], block_lds_values[i],
           &block_mem_use_size);
     }
@@ -332,7 +332,7 @@ __global__ void spgemm_symbolic_vector_per_row_kernel(
           // if lds hashmap is full, write to device memory hashmap
           const int end_offset = *vec_lds_use_size;
           for (int i = vec_thread_id; i < end_offset; i += vec_thread_num) {
-            hashmap_vector_insert_or<bittype_t, idtype_t, HashMap<bittype_t, idtype_t>::HashMask>(
+            linear_chain_hashmap_vector_insert_or<bittype_t, idtype_t, HashMap<bittype_t, idtype_t>::HashMask>(
                 vec_mem_begins, vec_mem_nexts, vec_mem_ids, vec_mem_values, vec_lds_ids[i], vec_lds_values[i],
                 vec_mem_use_size);
           }
@@ -350,16 +350,16 @@ __global__ void spgemm_symbolic_vector_per_row_kernel(
         const int idx_b = VEC_PROCESS_ONCE * round + vec_thread_id;
         if (idx_b < b_count) {
           // insert to lds hashmap
-          hashmap_vector_insert_or<bittype_t, idtype_t, LDS_HASH_MASK>(vec_lds_begins, vec_lds_nexts, vec_lds_ids,
-                                                                       vec_lds_values, vec_mem_id_b[idx_b],
-                                                                       vec_mem_col_b[idx_b], vec_lds_use_size);
+          linear_chain_hashmap_vector_insert_or<bittype_t, idtype_t, LDS_HASH_MASK>(
+              vec_lds_begins, vec_lds_nexts, vec_lds_ids, vec_lds_values, vec_mem_id_b[idx_b], vec_mem_col_b[idx_b],
+              vec_lds_use_size);
         }
       }
     }
     // write to device memory hashmap
     const int end_offset = *vec_lds_use_size;
     for (int i = vec_thread_id; i < end_offset; i += vec_thread_num) {
-      hashmap_vector_insert_or<bittype_t, idtype_t, HashMap<bittype_t, idtype_t>::HashMask>(
+      linear_chain_hashmap_vector_insert_or<bittype_t, idtype_t, HashMap<bittype_t, idtype_t>::HashMask>(
           vec_mem_begins, vec_mem_nexts, vec_mem_ids, vec_mem_values, vec_lds_ids[i], vec_lds_values[i],
           vec_mem_use_size);
     }
