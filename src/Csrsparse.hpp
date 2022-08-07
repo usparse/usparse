@@ -29,8 +29,8 @@ size_t call_device_spgemm_imp(const int transA,
         return m*n*sizeof(dtype) + buff2;
     }
     //设置BLOCKS、THREADS
-    constexpr int BLOCKS=64;
-    constexpr int THREADS=512;
+    constexpr int BLOCKS=128;
+    constexpr int THREADS=1024;
 
     //将C设置为稠密格式
     // dtype *tmp_c;       //Host端结果矩阵（稠密）
@@ -38,7 +38,7 @@ size_t call_device_spgemm_imp(const int transA,
 
     // division_by_row_thread_per_row<<<BLOCKS,THREADS>>>(alpha,m,n,dptr_offset_A,dptr_colindex_A,dptr_value_A,dptr_offset_B,dptr_colindex_B,dptr_value_B,tmp_dev_C);
     // division_by_row_thread_per_nnz<<<BLOCKS,THREADS,(m/BLOCKS+1)*sizeof(int)>>>(alpha, m, n,dptr_offset_A,dptr_colindex_A,dptr_value_A,dptr_offset_B,dptr_colindex_B,dptr_value_B,tmp_dev_C);
-    division_by_row_wf_per_nnz<64><<<BLOCKS,THREADS,(m/BLOCKS+1)*sizeof(int)>>>(alpha, m, n,n,dptr_offset_A,dptr_colindex_A,dptr_value_A,dptr_offset_B,dptr_colindex_B,dptr_value_B,tmp_dev_C);
+    division_by_row_wf_per_nnz<THREADS,64,3><<<BLOCKS,THREADS,(m/BLOCKS+1)*sizeof(int)>>>(alpha, m, n,n,dptr_offset_A,dptr_colindex_A,dptr_value_A,dptr_offset_B,dptr_colindex_B,dptr_value_B,tmp_dev_C);
     HIP_CHECK(hipMemset(dptr_offset_C,0,(m+1)*sizeof(csrIdxType)));
     int *buff2 = (int *)(tmp_dev_C + m*n);
     dense2csr(m,n,tmp_dev_C,dptr_offset_C,pdptr_colindex_C,pdptr_value_C,ptr_nnz_C, buff2);
