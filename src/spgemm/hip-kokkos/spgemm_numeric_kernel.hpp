@@ -8,11 +8,12 @@
 
 // please make sure GLOBAL_BLOCK_NUM = ROW_TO_PROCESS
 template <typename T, typename I, size_t N, size_t THREADS, size_t VEC_SIZE, size_t WF_SIZE>
-__global__ void spgemm_numeric_vector_per_row_sort_one_pass_kernel(const T alpha, const size_t m, const size_t n,
-                                                                   const I *row_ptr_a, const I *col_idx_ptr_a,
-                                                                   const T *values_ptr_a, const I *row_ptr_b,
-                                                                   const I *col_idx_ptr_b, const T *values_ptr_b,
-                                                                   const I *row_ptr_c, I *ids, T *values) {
+__global__ void __launch_bounds__(THREADS)
+    spgemm_numeric_vector_per_row_sort_one_pass_kernel(const T alpha, const size_t m, const size_t n,
+                                                       const I *row_ptr_a, const I *col_idx_ptr_a,
+                                                       const T *values_ptr_a, const I *row_ptr_b,
+                                                       const I *col_idx_ptr_b, const T *values_ptr_b,
+                                                       const I *row_ptr_c, I *ids, T *values) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
@@ -96,11 +97,11 @@ __global__ void spgemm_numeric_vector_per_row_sort_one_pass_kernel(const T alpha
 
 // please make sure GLOBAL_BLOCK_NUM = ROW_TO_PROCESS
 template <typename T, typename I, size_t N, size_t THREADS, size_t WF_SIZE>
-__global__ void spgemm_numeric_block_per_row_sort_one_pass_kernel(const T alpha, const size_t m, const size_t n,
-                                                                  const I *row_ptr_a, const I *col_idx_ptr_a,
-                                                                  const T *values_ptr_a, const I *row_ptr_b,
-                                                                  const I *col_idx_ptr_b, const T *values_ptr_b,
-                                                                  const I *row_ptr_c, I *ids, T *values) {
+__global__ void __launch_bounds__(THREADS)
+    spgemm_numeric_block_per_row_sort_one_pass_kernel(const T alpha, const size_t m, const size_t n, const I *row_ptr_a,
+                                                      const I *col_idx_ptr_a, const T *values_ptr_a, const I *row_ptr_b,
+                                                      const I *col_idx_ptr_b, const T *values_ptr_b, const I *row_ptr_c,
+                                                      I *ids, T *values) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
@@ -185,10 +186,11 @@ __global__ void spgemm_numeric_block_per_row_sort_one_pass_kernel(const T alpha,
 }
 
 template <typename T, typename I, size_t N, size_t LDS_MAP_CAP, size_t LDS_HASH_MASK, size_t THREADS, size_t WF_SIZE>
-__global__ void spgemm_numeric_block_per_row_kernel(const T alpha, const size_t m, const size_t n, const I *row_ptr_a,
-                                                    const I *col_idx_ptr_a, const T *values_ptr_a, const I *row_ptr_b,
-                                                    const I *col_idx_ptr_b, const T *values_ptr_b, const I *row_ptr_c,
-                                                    int *begins, int *nexts, I *ids, T *values) {
+__global__ void __launch_bounds__(THREADS)
+    spgemm_numeric_block_per_row_kernel(const T alpha, const size_t m, const size_t n, const I *row_ptr_a,
+                                        const I *col_idx_ptr_a, const T *values_ptr_a, const I *row_ptr_b,
+                                        const I *col_idx_ptr_b, const T *values_ptr_b, const I *row_ptr_c, int *begins,
+                                        int *nexts, I *ids, T *values) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
@@ -309,11 +311,11 @@ __global__ void spgemm_numeric_block_per_row_kernel(const T alpha, const size_t 
 }
 
 template <typename T, typename I, size_t N, size_t LDS_MAP_CAP, size_t LDS_HASH_MASK, size_t THREADS, size_t WF_SIZE>
-__global__ void spgemm_numeric_block_per_row_sort_kernel(const T alpha, const size_t m, const size_t n,
-                                                         const I *row_ptr_a, const I *col_idx_ptr_a,
-                                                         const T *values_ptr_a, const I *row_ptr_b,
-                                                         const I *col_idx_ptr_b, const T *values_ptr_b,
-                                                         const I *row_ptr_c, I *ids, T *values) {
+__global__ void __launch_bounds__(THREADS)
+    spgemm_numeric_block_per_row_sort_kernel(const T alpha, const size_t m, const size_t n, const I *row_ptr_a,
+                                             const I *col_idx_ptr_a, const T *values_ptr_a, const I *row_ptr_b,
+                                             const I *col_idx_ptr_b, const T *values_ptr_b, const I *row_ptr_c, I *ids,
+                                             T *values) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
@@ -418,11 +420,11 @@ __global__ void spgemm_numeric_block_per_row_sort_kernel(const T alpha, const si
 
 template <typename T, typename I, size_t N, size_t LDS_MAP_CAP, size_t LDS_HASH_MASK, size_t THREADS, size_t VEC_SIZE,
           size_t WF_SIZE>
-__global__ void spgemm_numeric_vector_per_row_sort_kernel(const T alpha, const size_t m, const size_t n,
-                                                          const I *row_ptr_a, const I *col_idx_ptr_a,
-                                                          const T *values_ptr_a, const I *row_ptr_b,
-                                                          const I *col_idx_ptr_b, const T *values_ptr_b,
-                                                          const I *row_ptr_c, I *ids, T *values) {
+__global__ void __launch_bounds__(THREADS)
+    spgemm_numeric_vector_per_row_sort_kernel(const T alpha, const size_t m, const size_t n, const I *row_ptr_a,
+                                              const I *col_idx_ptr_a, const T *values_ptr_a, const I *row_ptr_b,
+                                              const I *col_idx_ptr_b, const T *values_ptr_b, const I *row_ptr_c, I *ids,
+                                              T *values) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
@@ -535,10 +537,11 @@ __global__ void spgemm_numeric_vector_per_row_sort_kernel(const T alpha, const s
 
 template <typename T, typename I, size_t N, size_t LDS_MAP_CAP, size_t LDS_HASH_MASK, size_t THREADS, size_t VEC_SIZE,
           size_t WF_SIZE>
-__global__ void spgemm_numeric_vector_per_row_kernel(const T alpha, const size_t m, const size_t n, const I *row_ptr_a,
-                                                     const I *col_idx_ptr_a, const T *values_ptr_a, const I *row_ptr_b,
-                                                     const I *col_idx_ptr_b, const T *values_ptr_b, const I *row_ptr_c,
-                                                     int *begins, int *nexts, I *ids, T *values) {
+__global__ void __launch_bounds__(THREADS)
+    spgemm_numeric_vector_per_row_kernel(const T alpha, const size_t m, const size_t n, const I *row_ptr_a,
+                                         const I *col_idx_ptr_a, const T *values_ptr_a, const I *row_ptr_b,
+                                         const I *col_idx_ptr_b, const T *values_ptr_b, const I *row_ptr_c, int *begins,
+                                         int *nexts, I *ids, T *values) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global

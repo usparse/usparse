@@ -6,15 +6,6 @@
 #include "hash_map_insert.hpp"
 #include <hip/hip_runtime.h>
 
-template <size_t WF_SIZE> __global__ void test_kernel() {
-  const int block_wf_id = threadIdx.x / WF_SIZE;
-  const int wf_thread_id = threadIdx.x % WF_SIZE;
-  int r = 64 * block_wf_id;
-  if (wf_thread_id == 0 && blockIdx.x == 0) {
-    printf("WF_SIZE: %lu, 64 * %d = %d\n", WF_SIZE, block_wf_id, r);
-  }
-}
-
 template <typename I, typename BitType, size_t VEC_SIZE, size_t WF_SIZE>
 __global__ void row_nnz_kernel(const I m, const I *map_row_ptr, const BitType *map_values, const int *use_count,
                                I *row_ptr_c) {
@@ -124,11 +115,12 @@ __global__ void compress_matrix_kernel(const size_t m, const I *row_ptr, const I
 }
 
 template <typename T, typename I, size_t N, size_t THREADS, size_t WF_SIZE>
-__global__ void
-spgemm_symbolic_block_per_row_one_pass_kernel(const size_t m, const I *row_ptr_a, const I *col_idx_ptr_a,
-                                              const I *row_ptr_b, const typename CompressMatrix<I>::IdType *ids_ptr_b,
-                                              const typename CompressMatrix<I>::BitSetEleType *col_idx_ptr_b,
-                                              const int *use_count, I *row_ptr_c) {
+__global__ void __launch_bounds__(THREADS)
+    spgemm_symbolic_block_per_row_one_pass_kernel(const size_t m, const I *row_ptr_a, const I *col_idx_ptr_a,
+                                                  const I *row_ptr_b,
+                                                  const typename CompressMatrix<I>::IdType *ids_ptr_b,
+                                                  const typename CompressMatrix<I>::BitSetEleType *col_idx_ptr_b,
+                                                  const int *use_count, I *row_ptr_c) {
   using idtype_t = typename CompressMatrix<I>::IdType;
   using bittype_t = typename CompressMatrix<I>::BitSetEleType;
   // thread id in global
@@ -229,11 +221,12 @@ spgemm_symbolic_block_per_row_one_pass_kernel(const size_t m, const I *row_ptr_a
 }
 
 template <typename T, typename I, size_t N, size_t THREADS, size_t VEC_SIZE, size_t WF_SIZE>
-__global__ void
-spgemm_symbolic_vector_per_row_one_pass_kernel(const size_t m, const I *row_ptr_a, const I *col_idx_ptr_a,
-                                               const I *row_ptr_b, const typename CompressMatrix<I>::IdType *ids_ptr_b,
-                                               const typename CompressMatrix<I>::BitSetEleType *col_idx_ptr_b,
-                                               const int *use_count, I *row_ptr_c) {
+__global__ void __launch_bounds__(THREADS)
+    spgemm_symbolic_vector_per_row_one_pass_kernel(const size_t m, const I *row_ptr_a, const I *col_idx_ptr_a,
+                                                   const I *row_ptr_b,
+                                                   const typename CompressMatrix<I>::IdType *ids_ptr_b,
+                                                   const typename CompressMatrix<I>::BitSetEleType *col_idx_ptr_b,
+                                                   const int *use_count, I *row_ptr_c) {
   using idtype_t = typename CompressMatrix<I>::IdType;
   using bittype_t = typename CompressMatrix<I>::BitSetEleType;
   // thread id in global
@@ -309,11 +302,13 @@ spgemm_symbolic_vector_per_row_one_pass_kernel(const size_t m, const I *row_ptr_
 }
 
 template <typename T, typename I, size_t N, size_t LDS_MAP_CAP, size_t LDS_HASH_MASK, size_t THREADS, size_t WF_SIZE>
-__global__ void spgemm_symbolic_block_per_row_kernel(
-    const size_t m, const I *row_ptr_a, const I *col_idx_ptr_a, const I *row_ptr_b,
-    const typename CompressMatrix<I>::IdType *ids_ptr_b, const typename CompressMatrix<I>::BitSetEleType *col_idx_ptr_b,
-    const int *use_count, const I *row_ptr_c, int *begins, int *nexts, typename CompressMatrix<I>::IdType *ids,
-    typename CompressMatrix<I>::BitSetEleType *values, int *map_use_count) {
+__global__ void __launch_bounds__(THREADS)
+    spgemm_symbolic_block_per_row_kernel(const size_t m, const I *row_ptr_a, const I *col_idx_ptr_a, const I *row_ptr_b,
+                                         const typename CompressMatrix<I>::IdType *ids_ptr_b,
+                                         const typename CompressMatrix<I>::BitSetEleType *col_idx_ptr_b,
+                                         const int *use_count, const I *row_ptr_c, int *begins, int *nexts,
+                                         typename CompressMatrix<I>::IdType *ids,
+                                         typename CompressMatrix<I>::BitSetEleType *values, int *map_use_count) {
   using idtype_t = typename CompressMatrix<I>::IdType;
   using bittype_t = typename CompressMatrix<I>::BitSetEleType;
   // thread id in global
@@ -442,11 +437,13 @@ __global__ void spgemm_symbolic_block_per_row_kernel(
 
 template <typename T, typename I, size_t N, size_t LDS_MAP_CAP, size_t LDS_HASH_MASK, size_t THREADS, size_t VEC_SIZE,
           size_t WF_SIZE>
-__global__ void spgemm_symbolic_vector_per_row_kernel(
-    const size_t m, const I *row_ptr_a, const I *col_idx_ptr_a, const I *row_ptr_b,
-    const typename CompressMatrix<I>::IdType *ids_ptr_b, const typename CompressMatrix<I>::BitSetEleType *col_idx_ptr_b,
-    const int *use_count, const I *row_ptr_c, int *begins, int *nexts, typename CompressMatrix<I>::IdType *ids,
-    typename CompressMatrix<I>::BitSetEleType *values, int *map_use_count) {
+__global__ void __launch_bounds__(THREADS)
+    spgemm_symbolic_vector_per_row_kernel(const size_t m, const I *row_ptr_a, const I *col_idx_ptr_a,
+                                          const I *row_ptr_b, const typename CompressMatrix<I>::IdType *ids_ptr_b,
+                                          const typename CompressMatrix<I>::BitSetEleType *col_idx_ptr_b,
+                                          const int *use_count, const I *row_ptr_c, int *begins, int *nexts,
+                                          typename CompressMatrix<I>::IdType *ids,
+                                          typename CompressMatrix<I>::BitSetEleType *values, int *map_use_count) {
   using idtype_t = typename CompressMatrix<I>::IdType;
   using bittype_t = typename CompressMatrix<I>::BitSetEleType;
   // thread id in global
