@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SPGEMM_DENSE_TYPES_H
+#define SPGEMM_DENSE_TYPES_H
 
 #include <hip/hip_runtime.h>
 #include <hipsparse.h>
@@ -18,3 +19,5 @@ enum dense_matrix_storage_option{row_first=1,col_first=0};
         exit(-1);                                                                              \
     }                                                                                          \
 }
+
+#endif //SPGEMM_DENSE_TYPES_H

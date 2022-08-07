@@ -2,7 +2,10 @@
 set(ACC_HIP_HEADER_FILES ${ACC_HIP_HEADER_FILES}
         include/types.hpp
         include/spgemm_dense_kernel.hpp
-        include/dense2csr_rocsparse.hpp
+        include/dense2csr.hpp
+        include/dense2csr_kernel.hpp
+        include/nnz_calc_kernel.hpp
+        include/utils_kernel.hpp
         )
 set(ACC_HIP_SOURCE_FILES ${ACC_HIP_SOURCE_FILES}
         src/spgemm_dense_kernel.cpp
