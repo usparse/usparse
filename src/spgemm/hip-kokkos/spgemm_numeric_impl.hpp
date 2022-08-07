@@ -17,68 +17,77 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
                     const I max_row_num, CsrMatrix<T, I> &matrix_c, bool &is_sorted) {
   constexpr size_t WF_SIZE = 64;
 
+  // calculate part of matrix_c
+  // part_split[16, 32, 64, 512, 1024, 2048]
+
   std::cout << "max_row_num: " << max_row_num << std::endl;
   if (max_row_num < 16) {
-    constexpr size_t BLOCK_THREAD_NUM = 64;
-    constexpr size_t VEC_SIZE = 16;
+    constexpr size_t N = 2;
+    constexpr size_t VEC_SIZE = 16 / N;
+    constexpr size_t BLOCK_THREAD_NUM = 256;
     constexpr size_t BLOCK_VEC_NUM = BLOCK_THREAD_NUM / VEC_SIZE;
     const size_t GLOBAL_BLOCK_NUM = matrix_c.rows / BLOCK_VEC_NUM + (matrix_c.rows % BLOCK_VEC_NUM == 0 ? 0 : 1);
 
-    (spgemm_numeric_vector_per_row_sort_one_pass_kernel<T, I, BLOCK_THREAD_NUM, VEC_SIZE,
+    (spgemm_numeric_vector_per_row_sort_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, VEC_SIZE,
                                                         WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
         alpha, matrix_a.rows, matrix_a.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
         matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
         matrix_c.values_ptr);
     is_sorted = true;
   } else if (max_row_num < 32) {
-    constexpr size_t BLOCK_THREAD_NUM = 64;
-    constexpr size_t VEC_SIZE = 32;
+    constexpr size_t N = 2;
+    constexpr size_t VEC_SIZE = 32 / N;
+    constexpr size_t BLOCK_THREAD_NUM = 256;
     constexpr size_t BLOCK_VEC_NUM = BLOCK_THREAD_NUM / VEC_SIZE;
     const size_t GLOBAL_BLOCK_NUM = matrix_c.rows / BLOCK_VEC_NUM + (matrix_c.rows % BLOCK_VEC_NUM == 0 ? 0 : 1);
 
-    (spgemm_numeric_vector_per_row_sort_one_pass_kernel<T, I, BLOCK_THREAD_NUM, VEC_SIZE,
+    (spgemm_numeric_vector_per_row_sort_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, VEC_SIZE,
                                                         WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
         alpha, matrix_a.rows, matrix_a.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
         matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
         matrix_c.values_ptr);
     is_sorted = true;
   } else if (max_row_num < 64) {
-    constexpr size_t BLOCK_THREAD_NUM = 64;
-    constexpr size_t VEC_SIZE = 64;
+    constexpr size_t N = 2;
+    constexpr size_t VEC_SIZE = 64 / N;
+    constexpr size_t BLOCK_THREAD_NUM = 256;
     constexpr size_t BLOCK_VEC_NUM = BLOCK_THREAD_NUM / VEC_SIZE;
     const size_t GLOBAL_BLOCK_NUM = matrix_c.rows / BLOCK_VEC_NUM + (matrix_c.rows % BLOCK_VEC_NUM == 0 ? 0 : 1);
 
-    (spgemm_numeric_vector_per_row_sort_one_pass_kernel<T, I, BLOCK_THREAD_NUM, VEC_SIZE,
+    (spgemm_numeric_vector_per_row_sort_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, VEC_SIZE,
                                                         WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
         alpha, matrix_a.rows, matrix_a.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
         matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
         matrix_c.values_ptr);
     is_sorted = true;
   } else if (max_row_num < 512) {
-    constexpr size_t BLOCK_THREAD_NUM = 512;
+    constexpr size_t N = 2;
+    constexpr size_t BLOCK_THREAD_NUM = 512 / N;
     const size_t GLOBAL_BLOCK_NUM = matrix_c.rows;
 
-    (spgemm_numeric_block_per_row_sort_one_pass_kernel<T, I, BLOCK_THREAD_NUM,
+    (spgemm_numeric_block_per_row_sort_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM,
                                                        WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
         alpha, matrix_a.rows, matrix_a.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
         matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
         matrix_c.values_ptr);
     is_sorted = true;
   } else if (max_row_num < 1024) {
-    constexpr size_t BLOCK_THREAD_NUM = 1024;
+    constexpr size_t N = 2;
+    constexpr size_t BLOCK_THREAD_NUM = 1024 / N;
     const size_t GLOBAL_BLOCK_NUM = matrix_c.rows;
 
-    (spgemm_numeric_block_per_row_sort_one_pass_kernel<T, I, BLOCK_THREAD_NUM,
+    (spgemm_numeric_block_per_row_sort_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM,
                                                        WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
         alpha, matrix_a.rows, matrix_a.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
         matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
         matrix_c.values_ptr);
     is_sorted = true;
   } else if (max_row_num < 2048) {
-    constexpr size_t BLOCK_THREAD_NUM = 2048;
+    constexpr size_t N = 2;
+    constexpr size_t BLOCK_THREAD_NUM = 2048 / N;
     const size_t GLOBAL_BLOCK_NUM = matrix_c.rows;
 
-    (spgemm_numeric_block_per_row_sort_one_pass_kernel<T, I, BLOCK_THREAD_NUM,
+    (spgemm_numeric_block_per_row_sort_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM,
                                                        WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
         alpha, matrix_a.rows, matrix_a.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
         matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,

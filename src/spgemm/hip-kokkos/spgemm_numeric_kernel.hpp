@@ -7,7 +7,7 @@
 #include <hip/hip_runtime.h>
 
 // please make sure GLOBAL_BLOCK_NUM = ROW_TO_PROCESS
-template <typename T, typename I, size_t THREADS, size_t VEC_SIZE, size_t WF_SIZE>
+template <typename T, typename I, size_t N, size_t THREADS, size_t VEC_SIZE, size_t WF_SIZE>
 __global__ void spgemm_numeric_vector_per_row_sort_one_pass_kernel(const T alpha, const size_t m, const size_t n,
                                                                    const I *row_ptr_a, const I *col_idx_ptr_a,
                                                                    const T *values_ptr_a, const I *row_ptr_b,
@@ -36,7 +36,7 @@ __global__ void spgemm_numeric_vector_per_row_sort_one_pass_kernel(const T alpha
   // thread num in vec
   constexpr int vec_thread_num = VEC_SIZE;
   // hashmap in LDS
-  constexpr size_t LDS_MAP_CAP = THREADS;
+  constexpr size_t LDS_MAP_CAP = VEC_SIZE * N;
   // hash mask
   constexpr size_t LDS_HASH_MASK = LDS_MAP_CAP - 1;
 
@@ -50,8 +50,6 @@ __global__ void spgemm_numeric_vector_per_row_sort_one_pass_kernel(const T alpha
   // init lds hashmap
   for (int i = block_thread_id; i < BLOCK_LDS_SIZE; i += block_thread_num) {
     shared_ids[i] = HashMap<T, I>::NullValue;
-  }
-  for (int i = block_thread_id; i < BLOCK_LDS_SIZE; i += block_thread_num) {
     shared_values[i] = 0;
   }
   __syncthreads();
@@ -97,7 +95,7 @@ __global__ void spgemm_numeric_vector_per_row_sort_one_pass_kernel(const T alpha
 }
 
 // please make sure GLOBAL_BLOCK_NUM = ROW_TO_PROCESS
-template <typename T, typename I, size_t THREADS, size_t WF_SIZE>
+template <typename T, typename I, size_t N, size_t THREADS, size_t WF_SIZE>
 __global__ void spgemm_numeric_block_per_row_sort_one_pass_kernel(const T alpha, const size_t m, const size_t n,
                                                                   const I *row_ptr_a, const I *col_idx_ptr_a,
                                                                   const T *values_ptr_a, const I *row_ptr_b,
@@ -124,7 +122,7 @@ __global__ void spgemm_numeric_block_per_row_sort_one_pass_kernel(const T alpha,
   // thread num in wavefront
   const int wf_thread_num = WF_SIZE;
   // hashmap in LDS
-  constexpr size_t LDS_MAP_CAP = THREADS;
+  constexpr size_t LDS_MAP_CAP = THREADS * N;
   // hash mask
   constexpr size_t LDS_HASH_MASK = LDS_MAP_CAP - 1;
 
