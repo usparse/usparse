@@ -6,6 +6,28 @@
 #include <cstddef>
 #include <hip/hip_runtime.h>
 
+// group [16, 32, 64, 512, 1024, 2048]
+template <typename I> __global__ void row_split_groups_kernel(const size_t m, const I *row_ptr_c, bool *row_group_ptr) {
+  // thread id in global
+  const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
+  // thread num in global
+  const int global_thread_num = gridDim.x * blockDim.x;
+
+  constexpr size_t GROUPS_NUM = 6;
+  constexpr I GROUPS_THRESHOLDS[GROUPS_NUM] = {16, 32, 64, 512, 1024, 2048};
+
+  for (int row = global_thread_id; row < m; row += global_thread_num) {
+    I row_nnz = row_ptr_c[row + 1] - row_ptr_c[row];
+#pragma unroll
+    for (int i = 0; i < GROUPS_NUM; ++i) {
+      if (row_nnz < GROUPS_THRESHOLDS[i]) {
+        row_group_ptr[i * m + row] = true;
+        break;
+      }
+    }
+  }
+}
+
 // please make sure GLOBAL_BLOCK_NUM = ROW_TO_PROCESS
 template <typename T, typename I, size_t N, size_t THREADS, size_t VEC_SIZE, size_t WF_SIZE>
 __global__ void __launch_bounds__(THREADS)
@@ -13,7 +35,7 @@ __global__ void __launch_bounds__(THREADS)
                                                        const I *row_ptr_a, const I *col_idx_ptr_a,
                                                        const T *values_ptr_a, const I *row_ptr_b,
                                                        const I *col_idx_ptr_b, const T *values_ptr_b,
-                                                       const I *row_ptr_c, I *ids, T *values) {
+                                                       bool *row_group_ptr, const I *row_ptr_c, I *ids, T *values) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
@@ -57,7 +79,7 @@ __global__ void __launch_bounds__(THREADS)
 
   int row_a = global_vec_id;
 
-  if (row_a >= m) {
+  if (row_a >= m || !row_group_ptr[row_a]) {
     return;
   }
   const I row_idx_begin = row_ptr_a[row_a];
@@ -100,8 +122,8 @@ template <typename T, typename I, size_t N, size_t THREADS, size_t WF_SIZE>
 __global__ void __launch_bounds__(THREADS)
     spgemm_numeric_block_per_row_sort_one_pass_kernel(const T alpha, const size_t m, const size_t n, const I *row_ptr_a,
                                                       const I *col_idx_ptr_a, const T *values_ptr_a, const I *row_ptr_b,
-                                                      const I *col_idx_ptr_b, const T *values_ptr_b, const I *row_ptr_c,
-                                                      I *ids, T *values) {
+                                                      const I *col_idx_ptr_b, const T *values_ptr_b,
+                                                      bool *row_group_ptr, const I *row_ptr_c, I *ids, T *values) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
@@ -145,7 +167,7 @@ __global__ void __launch_bounds__(THREADS)
   // each block process one row
   int row_a = global_block_id;
 
-  if (row_a >= m) {
+  if (row_a >= m || !row_group_ptr[row_a]) {
     return;
   }
 
