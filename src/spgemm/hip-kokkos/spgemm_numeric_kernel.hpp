@@ -71,7 +71,7 @@ __global__ void __launch_bounds__(THREADS)
     const I row_b = col_a;
     const I idx_begin_b = row_ptr_b[row_b];
     const I idx_end_b = row_ptr_b[row_b + 1];
-    for (int idx_b = idx_begin_b + vec_thread_id; idx_b < row_idx_end; idx_b += vec_thread_num) {
+    for (int idx_b = idx_begin_b + vec_thread_id; idx_b < idx_end_b; idx_b += vec_thread_num) {
       const T tmp_val = values_ptr_a[idx_a] * values_ptr_b[idx_b];
       const I col_b = col_idx_ptr_b[idx_b];
       // insert to lds hashmap
