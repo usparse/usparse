@@ -13,8 +13,8 @@ template <typename I> __global__ void row_split_groups_kernel(const size_t m, co
   // thread num in global
   const int global_thread_num = gridDim.x * blockDim.x;
 
-  constexpr size_t GROUPS_NUM = 6;
-  constexpr I GROUPS_THRESHOLDS[GROUPS_NUM] = {16, 32, 64, 512, 1024, 2048};
+  constexpr size_t GROUPS_NUM = 7;
+  constexpr I GROUPS_THRESHOLDS[GROUPS_NUM] = {16, 32, 64, 512, 1024, 2048, 4096};
 
   for (int row = global_thread_id; row < m; row += global_thread_num) {
     I row_nnz = row_ptr_c[row + 1] - row_ptr_c[row];
