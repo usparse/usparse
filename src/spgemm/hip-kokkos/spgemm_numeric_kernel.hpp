@@ -332,12 +332,14 @@ __global__ void __launch_bounds__(THREADS)
   }
 }
 
-template <typename T, typename I, size_t N, size_t LDS_MAP_CAP, size_t LDS_HASH_MASK, size_t THREADS, size_t WF_SIZE>
+template <typename T, typename I, typename BitSetEleType, size_t N, size_t LDS_MAP_CAP, size_t LDS_HASH_MASK,
+          size_t THREADS, size_t WF_SIZE>
 __global__ void __launch_bounds__(THREADS)
     spgemm_numeric_block_per_row_sort_kernel(const T alpha, const size_t m, const size_t n, const I *row_ptr_a,
                                              const I *col_idx_ptr_a, const T *values_ptr_a, const I *row_ptr_b,
-                                             const I *col_idx_ptr_b, const T *values_ptr_b, const I *row_ptr_c, I *ids,
-                                             T *values) {
+                                             const I *col_idx_ptr_b, const T *values_ptr_b, const I *row_ptr_c,
+                                             int *begins, int *nexts, const size_t idx_bits, I *ids, T *values,
+                                             I *col_idx_ptr_c, T *values_ptr_c) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
@@ -350,25 +352,47 @@ __global__ void __launch_bounds__(THREADS)
   const int block_thread_id = threadIdx.x;
   // thread num in block
   constexpr int block_thread_num = THREADS;
+  // wf id in block
+  const int block_wf_id = block_thread_id / WF_SIZE;
+  // wf num in block
+  constexpr int block_wf_num = THREADS / WF_SIZE;
+  // thread id in wf
+  const int wf_thread_id = block_thread_id % WF_SIZE;
+  // thread num in wf
+  const int wf_thread_num = WF_SIZE;
   // hashmap in LDS
+  constexpr int MEM_MAP_CAP = HashMap<T, I>::Capacity;
   constexpr int LDS_BEGINS_SIZE = LDS_MAP_CAP;
   constexpr int BLOCK_PROCESS_ONCE = THREADS;
 
   constexpr int NEXTS_SIZE_PER_BLOCK = BLOCK_PROCESS_ONCE * N;
   constexpr int LDS_NEXTS_SIZE = NEXTS_SIZE_PER_BLOCK;
 
+  constexpr int BITS_LEN = sizeof(BitSetEleType) * 8;
+
   __shared__ int shared_begins[LDS_BEGINS_SIZE];
   __shared__ int shared_nexts[LDS_NEXTS_SIZE];
   __shared__ I shared_ids[LDS_NEXTS_SIZE];
   __shared__ T shared_values[LDS_NEXTS_SIZE];
 
+  __shared__ BitSetEleType shared_sort_idx[MEM_MAP_CAP];
+  __shared__ int shared_sort_sum[BITS_LEN];
+  __shared__ int shared_reduce_sum[block_wf_num * BITS_LEN];
+
   int *block_lds_begins = shared_begins;
   int *block_lds_nexts = shared_nexts;
   I *block_lds_ids = shared_ids;
   T *block_lds_values = shared_values;
+  BitSetEleType *block_sort_idx = shared_sort_idx;
+  int *block_sort_sum = shared_sort_sum;
+
+  int *wf_reduce_sum = &shared_reduce_sum[block_wf_id * BITS_LEN];
   // init lds hashmap
   for (int i = block_thread_id; i < LDS_BEGINS_SIZE; i += block_thread_num) {
     shared_begins[i] = HashMap<T, I>::NullValue;
+  }
+  for (int i = block_thread_id; i < MEM_MAP_CAP; i += block_thread_num) {
+    shared_sort_idx[i] = static_cast<BitSetEleType>(0);
   }
   for (int i = block_thread_id; i < LDS_NEXTS_SIZE; i += block_thread_num) {
     shared_nexts[i] = HashMap<T, I>::NullValue;
@@ -376,28 +400,58 @@ __global__ void __launch_bounds__(THREADS)
   __syncthreads();
   // each vec process one row
   __shared__ int block_lds_use_size;
+  __shared__ int block_mem_use_size;
 
   for (int row_a = global_block_id; row_a < m; row_a += global_block_num) {
     const I row_idx_begin = row_ptr_a[row_a];
     const I row_idx_end = row_ptr_a[row_a + 1];
 
+    int *block_mem_begins = begins + HashMap<T, I>::Capacity * row_a;
+    int *block_mem_nexts = nexts + row_ptr_c[row_a];
     I *block_mem_ids = ids + row_ptr_c[row_a];
     T *block_mem_values = values + row_ptr_c[row_a];
+    I *block_col_idx_c = col_idx_ptr_c + row_ptr_c[row_a];
+    T *block_values_c = values_ptr_c + row_ptr_c[row_a];
 
     if (block_thread_id == 0) {
       block_lds_use_size = 0;
+      block_mem_use_size = 0;
     }
     __syncthreads();
-    int idx_a = row_idx_begin;
-    for (; idx_a < row_idx_end; ++idx_a) {
+    for (int idx_a = row_idx_begin; idx_a < row_idx_end; ++idx_a) {
       const I col_a = col_idx_ptr_a[idx_a];
       const I row_b = col_a;
       const I idx_begin_b = row_ptr_b[row_b];
       const I idx_end_b = row_ptr_b[row_b + 1];
       const int block_rounds = (idx_end_b - idx_begin_b) / BLOCK_PROCESS_ONCE +
                                ((idx_end_b - idx_begin_b) % BLOCK_PROCESS_ONCE == 0 ? 0 : 1);
-      __syncthreads();
       for (int round = 0; round < block_rounds; ++round) {
+        if (block_lds_use_size + BLOCK_PROCESS_ONCE > NEXTS_SIZE_PER_BLOCK) {
+          // if lds hashmap is full, write to device memory hashmap
+          const int end_offset = block_lds_use_size;
+          __syncthreads();
+          for (int i = block_thread_id; i < end_offset; i += block_thread_num) {
+            linear_chain_hashmap_vector_insert_add<T, I, HashMap<T, I>::HashMask>(
+                block_mem_begins, block_mem_nexts, block_mem_ids, block_mem_values, block_lds_ids[i],
+                block_lds_values[i] * alpha, &block_mem_use_size);
+            const int offset = block_lds_ids[i] & HashMap<T, I>::HashMask;
+            const BitSetEleType bits_value = 1 << (block_lds_ids[i] / HashMap<T, I>::Capacity);
+            atomicOr(block_sort_idx + offset, bits_value);
+          }
+          __syncthreads();
+          // reset lds hashmap
+          for (int i = block_thread_id; i < LDS_MAP_CAP; i += block_thread_num) {
+            block_lds_begins[i] = HashMap<T, I>::NullValue;
+          }
+          for (int i = block_thread_id; i < end_offset; i += block_thread_num) {
+            block_lds_nexts[i] = HashMap<T, I>::NullValue;
+          }
+          if (block_thread_id == 0) {
+            block_lds_use_size = 0;
+          }
+          __syncthreads();
+        }
+        __syncthreads();
         const int idx_b = idx_begin_b + BLOCK_PROCESS_ONCE * round + block_thread_id;
         if (idx_b < idx_end_b) {
           const T tmp_val = values_ptr_a[idx_a] * values_ptr_b[idx_b];
@@ -406,29 +460,111 @@ __global__ void __launch_bounds__(THREADS)
           linear_chain_hashmap_vector_insert_add<T, I, LDS_HASH_MASK>(
               block_lds_begins, block_lds_nexts, block_lds_ids, block_lds_values, col_b, tmp_val, &block_lds_use_size);
         }
+        __syncthreads();
       }
-      __syncthreads();
     }
     __syncthreads();
-    // sort and write to device memory
     const int end_offset = block_lds_use_size;
-
+    __syncthreads();
     for (int i = block_thread_id; i < end_offset; i += block_thread_num) {
-      const I base_id = block_lds_ids[i];
-      const T base_values = block_lds_values[i];
-      int smaller_count = 0;
-      for (int j = 0; j < end_offset; ++j) {
-        if (block_lds_ids[j] < base_id) {
-          smaller_count++;
+      linear_chain_hashmap_vector_insert_add<T, I, HashMap<T, I>::HashMask>(
+          block_mem_begins, block_mem_nexts, block_mem_ids, block_mem_values, block_lds_ids[i],
+          block_lds_values[i] * alpha, &block_mem_use_size);
+      const int offset = block_lds_ids[i] & HashMap<T, I>::HashMask;
+      const BitSetEleType bits_value = 1 << (block_lds_ids[i] / HashMap<T, I>::Capacity);
+      atomicOr(block_sort_idx + offset, bits_value);
+    }
+    __syncthreads();
+    // reduce sort idx
+    int local_sum_array[BITS_LEN];
+
+    const int BITS_LIMIT = idx_bits;
+    for (int i = 0; i < BITS_LIMIT; ++i) {
+      local_sum_array[i] = 0;
+    }
+    for (int i = block_thread_id; i < MEM_MAP_CAP; i += block_thread_num) {
+      BitSetEleType tmp = block_sort_idx[i];
+      for (int j = 0; j < BITS_LIMIT - 1; ++j) {
+        if (tmp & (1 << j)) {
+          local_sum_array[j + 1]++;
         }
       }
-      block_mem_ids[smaller_count] = base_id;
-      block_mem_values[smaller_count] = base_values * alpha;
+    }
+    __syncthreads();
+    // wavefront reduce
+    for (int i = WF_SIZE >> 1; i > 0; i >>= 1) {
+      for (int j = 0; j < BITS_LIMIT; ++j) {
+        local_sum_array[j] += __shfl_down(local_sum_array[j], i, WF_SIZE);
+      }
+    }
+    if (wf_thread_id == 0) {
+      for (int i = 0; i < BITS_LIMIT; ++i) {
+        wf_reduce_sum[i] = local_sum_array[i];
+      }
+    }
+    __syncthreads();
+    // block reduce
+    if (block_wf_id == 0) {
+      for (int i = 0; i < BITS_LIMIT; ++i) {
+        local_sum_array[i] = 0;
+      }
+      for (int i = wf_thread_id; i < block_wf_num; i += wf_thread_num) {
+        for (int j = 0; j < BITS_LIMIT; ++j) {
+          local_sum_array[j] += shared_reduce_sum[i * BITS_LEN + j];
+        }
+      }
+      // wavefront reduce
+      for (int i = WF_SIZE >> 1; i > 0; i >>= 1) {
+        for (int j = 0; j < BITS_LIMIT; ++j) {
+          local_sum_array[j] += __shfl_down(local_sum_array[j], i, WF_SIZE);
+        }
+      }
+      if (wf_thread_id == 0) {
+        for (int i = 0; i < BITS_LIMIT; ++i) {
+          block_sort_sum[i] = local_sum_array[i];
+        }
+      }
+    }
+    __syncthreads();
+    // scan
+    if (block_wf_id == 0) {
+      int local_sum = wf_thread_id < BITS_LIMIT ? block_sort_sum[wf_thread_id] : 0;
+      for (int i = 1; i < WF_SIZE; i <<= 1) {
+        int tmp = __shfl_up(local_sum, i, WF_SIZE);
+        if (wf_thread_id >= i) {
+          local_sum += tmp;
+        }
+      }
+      if (wf_thread_id < BITS_LIMIT) {
+        block_sort_sum[wf_thread_id] = local_sum;
+      }
+    }
+    __syncthreads();
+    // calc idx
+    for (int idx = block_thread_id; idx < block_mem_use_size; idx += block_thread_num) {
+      const I col = block_mem_ids[idx];
+      const T value = block_mem_values[idx];
+
+      const size_t hash_val = col & HashMap<T, I>::HashMask;
+      const int sort_bits_move = col / HashMap<T, I>::Capacity;
+      const int sort_bits = 1 << sort_bits_move;
+      int write_idx = block_sort_sum[sort_bits_move];
+      for (int i = 0; i < hash_val; ++i) {
+        if (block_sort_idx[i] & sort_bits) {
+          write_idx++;
+        }
+      }
+      // write
+      block_col_idx_c[write_idx] = col;
+      block_values_c[write_idx] = value;
     }
     __syncthreads();
     // reset lds hashmap
-    for (int i = block_thread_id; i < LDS_MAP_CAP; i += block_thread_num) {
+    for (int i = block_thread_id; i < LDS_BEGINS_SIZE; i += block_thread_num) {
       block_lds_begins[i] = HashMap<T, I>::NullValue;
+    }
+    for (int i = block_thread_id; i < MEM_MAP_CAP; i += block_thread_num) {
+      block_sort_idx[i] = static_cast<BitSetEleType>(0);
     }
     for (int i = block_thread_id; i < end_offset; i += block_thread_num) {
       block_lds_nexts[i] = HashMap<T, I>::NullValue;

@@ -1,6 +1,7 @@
 #ifndef SPGEMM_KOKKOS_SPGEMM_SYMBOLIC_IMPL_HPP
 #define SPGEMM_KOKKOS_SPGEMM_SYMBOLIC_IMPL_HPP
 
+#include "build_flag.h"
 #include "compress_matrix.h"
 #include "csr_matrix.h"
 #include "error_macro.hpp"
@@ -28,7 +29,9 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
   // symbolic
   // max num in bits
   I max_bits_num = matrix_b.cols / 32 + (matrix_b.cols % 32 == 0 ? 0 : 1);
+#ifdef DEBUG_MODE
   std::cout << "max_bits_num: " << max_bits_num << std::endl;
+#endif
   if (max_bits_num < 16) {
     constexpr size_t N = 2;
     constexpr size_t VEC_SIZE = 16 / N;

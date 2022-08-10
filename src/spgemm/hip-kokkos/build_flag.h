@@ -5,4 +5,8 @@
 // #define TIME_MODE
 #endif
 
+#ifndef DEBUG_MODE
+// #define DEBUG_MODE
+#endif
+
 #endif // SPGEMM_KOKKOS_BUILD_FLAG_H
