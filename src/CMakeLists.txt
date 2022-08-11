@@ -1,4 +1,4 @@
-# include(configure.cmake)
+include(configure.cmake)
 
 set(HEADER_FILES
         common_function.hpp
@@ -20,7 +20,10 @@ include_directories(
 
 # set variable ACC_FILES for architecture source files.
 # set variable ACC_LIBS to link if some architecture is enabled.
+set(SPGEMM_KERNEL_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/spgemm)
+set(SORT_KERNEL_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/sort)
 add_subdirectory(spgemm)
+add_subdirectory(sort)
 
 # make lib
 add_executable(${SPGEMM_BIN_NAME} ${HEADER_FILES} ${SOURCE_FILES})
@@ -29,6 +32,8 @@ target_include_directories(
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}$<SEMICOLON>${PROJECT_BINARY_DIR}/generated>
         $<INSTALL_INTERFACE:include>
+        PRIVATE
+        ${SPGEMM_KERNEL_SOURCE_DIR}
 )
 
 target_link_libraries(

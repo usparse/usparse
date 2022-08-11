@@ -2,8 +2,8 @@
 // Created by genshen on 2022/6/5.
 //
 
-#ifndef MISA_MD_HIP_REDUCE_HPP
-#define MISA_MD_HIP_REDUCE_HPP
+#ifndef COMMON_HIP_REDUCE_HPP
+#define COMMON_HIP_REDUCE_HPP
 
 #include <hip/hip_runtime.h>
 
@@ -76,4 +76,4 @@ template <typename T> struct _type_vec1 {
   }
 };
 
-#endif // MISA_MD_HIP_REDUCE_HPP
+#endif // COMMON_HIP_REDUCE_HPP

@@ -1,9 +1,11 @@
 #ifndef SPGEMM_KOKKOS_UTILS_KERNEL_HPP
 #define SPGEMM_KOKKOS_UTILS_KERNEL_HPP
 
+#include <hip/hip_runtime.h>
+
 // impl of scan than fan
 template <typename T, size_t VEC_SIZE, size_t R, size_t THREADS, size_t WF_SIZE>
-__global__ void prefix_sum_kernel(const size_t len, T *array, T *buffer) {
+__global__ void __launch_bounds__(THREADS) prefix_sum_kernel(const size_t len, T *array, T *buffer) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
@@ -95,7 +97,7 @@ __global__ void prefix_sum_kernel(const size_t len, T *array, T *buffer) {
 }
 
 template <typename T, size_t VEC_SIZE, size_t THREADS, size_t WF_SIZE>
-__global__ void buffer_reduce_kernel(const size_t len, T *buffer) {
+__global__ void __launch_bounds__(THREADS) buffer_reduce_kernel(const size_t len, T *buffer) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
@@ -152,7 +154,7 @@ __global__ void buffer_reduce_kernel(const size_t len, T *buffer) {
 }
 
 template <typename T, size_t R, size_t THREADS, size_t WF_SIZE>
-__global__ void reduction_addend_kernel(const size_t len, T *array, T *buffer) {
+__global__ void __launch_bounds__(THREADS) reduction_addend_kernel(const size_t len, T *array, T *buffer) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
@@ -176,6 +178,16 @@ __global__ void reduction_addend_kernel(const size_t len, T *array, T *buffer) {
     const int idx = block_scan_begin + THREADS * i + block_thread_id;
     if (idx < block_scan_end) {
       array[idx] += buffer[global_block_id - 1];
+    }
+  }
+}
+
+template <typename T> __global__ void scan_single_kernel(const size_t len, T *array) {
+  // thread id in global
+  const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
+  if (global_thread_id == 0) {
+    for (int I = 1; I < len; ++I) {
+      array[I] += array[I - 1];
     }
   }
 }

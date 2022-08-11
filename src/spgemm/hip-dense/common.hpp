@@ -5,11 +5,6 @@
 #include <hipsparse.h>
 #include <rocsparse.h>
 
-typedef double xtype;
-typedef double csrValueType;
-typedef int csrIndexType;
-
-enum dense_matrix_storage_option{row_first=1,col_first=0};
 
 #define HIP_CHECK(stat)                                                                        \
 {                                                                                              \

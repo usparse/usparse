@@ -15,5 +15,10 @@ constexpr int __WRAP_SIZE__ = __WF_SIZE__;
 #cmakedefine DEVICE_SIDE_VERIFY
 #cmakedefine gpu
 
+// Sort kernel strategy
+#cmakedefine SORT_KERNEL_STRATEGY @SORT_KERNEL_STRATEGY@
+#cmakedefine SORT_KERNEL_STRATEGY_DEFAULT
+#cmakedefine SORT_KERNEL_STRATEGY_BLOCK_RADIX
+#cmakedefine SORT_KERNEL_STRATEGY_ROCSPARSE
 
 #endif // SPGEMM_BUILDING_CONFIG_H
