@@ -151,15 +151,12 @@ __global__ void __launch_bounds__(THREADS)
   // hashmap in LDS
   constexpr int BLOCK_LDS_SIZE = LDS_MAP_CAP;
 
-  __shared__ idtype_t shared_ids[BLOCK_LDS_SIZE];
   __shared__ bittype_t shared_values[BLOCK_LDS_SIZE];
   __shared__ I shared_nnz_count[block_wf_num];
-
-  idtype_t *block_lds_ids = shared_ids;
+  
   bittype_t *block_lds_values = shared_values;
   // init lds hashmap
   for (int i = block_thread_id; i < BLOCK_LDS_SIZE; i += block_thread_num) {
-    shared_ids[i] = HashMap<T, I>::NullValue;
     shared_values[i] = 0;
   }
   for (int i = block_thread_id; i < block_wf_num; i += block_thread_num) {
@@ -184,16 +181,13 @@ __global__ void __launch_bounds__(THREADS)
     const bittype_t *block_mem_col_b = col_idx_ptr_b + idx_begin_b;
     const int b_count = use_count[row_b];
     for (int idx_b = wf_thread_id; idx_b < b_count; idx_b += wf_thread_num) {
-      open_address_hashmap_vector_insert_or<bittype_t, idtype_t, LDS_HASH_MASK>(
-          block_lds_ids, block_lds_values, block_mem_id_b[idx_b], block_mem_col_b[idx_b]);
+      atomicOr(block_lds_values + block_mem_id_b[idx_b], block_mem_col_b[idx_b]);
     }
   }
   __syncthreads();
   I nnz_count = 0;
   for (int idx = block_thread_id; idx < LDS_MAP_CAP; idx += block_thread_num) {
-    if (block_lds_ids[idx] != HashMap<T, I>::NullValue) {
-      nnz_count += __builtin_popcount(block_lds_values[idx]);
-    }
+    nnz_count += __builtin_popcount(block_lds_values[idx]);
   }
   __syncthreads();
   // wf reduce
@@ -260,7 +254,6 @@ __global__ void __launch_bounds__(THREADS)
 
   __shared__ bittype_t shared_values[BLOCK_LDS_SIZE];
 
-  // ******: BUG 在这，block_vec_id 为 4，vec_lds_values为0 ？？？？
   bittype_t *vec_lds_values = shared_values + LDS_MAP_CAP * block_vec_id;
   // init lds array
   for (int i = block_thread_id; i < BLOCK_LDS_SIZE; i += block_thread_num) {
