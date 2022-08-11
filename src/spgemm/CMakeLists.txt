@@ -1,6 +1,7 @@
 # all enabled strategies
 set(ENABLED_STRATEGIES
     kokkos
+    dense
     )
 
 # find HIP
@@ -17,7 +18,6 @@ foreach (X_STRATEGY IN LISTS ENABLED_STRATEGIES)
     else ()
         string(REPLACE "_" "-" X_KERNEL_STRATEGY_SRC_DIR_POSTFIX "-${X_STRATEGY_LOWER}")
     endif ()
-
     set (ACC_SRC_PATH "${CMAKE_CURRENT_SOURCE_DIR}/${ARCH_NAME}${X_KERNEL_STRATEGY_SRC_DIR_POSTFIX}")
     # check ACC_SRC_PATH and add_subdirectory
     if (NOT EXISTS "${ACC_SRC_PATH}" OR NOT IS_DIRECTORY "${ACC_SRC_PATH}")
@@ -32,6 +32,8 @@ endforeach ()
 set(ACC_HIP_HEADER_FILES ${ACC_HEADER_FILES}
         api/spgemm_hip_api.h
         api/spgemm_hip_types.h
+        common/reduction_kernel.hpp
+        common/scan_kernel.hpp
         )
 
 set(ACC_HIP_SOURCE_FILES ${ACC_SOURCE_FILES}

@@ -15,11 +15,6 @@ constexpr int __WRAP_SIZE__ = __WF_SIZE__;
 #cmakedefine DEVICE_SIDE_VERIFY
 #cmakedefine gpu
 
-// SpGEMM kernel strategy
-#cmakedefine SPGEMM_KERNEL_STRATEGY @SPGEMM_KERNEL_STRATEGY@
-#cmakedefine SPGEMM_KERNEL_STRATEGY_DEFAULT
-#cmakedefine SPGEMM_KERNEL_STRATEGY_KOKKOS
-
 // Sort kernel strategy
 #cmakedefine SORT_KERNEL_STRATEGY @SORT_KERNEL_STRATEGY@
 #cmakedefine SORT_KERNEL_STRATEGY_DEFAULT

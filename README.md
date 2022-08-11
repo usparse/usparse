@@ -1,8 +1,3 @@
-# 项目管理
-- 每个策略新建一个分支，最终在dev分支上合并所有策略
-- 每种策略新建一个文件夹（${HOME}/src/spgemm/${Folder_name}）
-- 将每种策略编译为一个库，编译方式：1、项目${HOME}目录下config.cmake中添加库名称；2、${HOME}/src/spgemm目录下在CMakeLists.txt文件中添加新策略的路径；3、${HOME}/src/spgemm/${Folder_name}目录下添加CMakeLists.txt文件（可直接复制hip文件夹中的CMakeLists.txt文件进行修改）进行库的编译
-
 # SpGEMM
 > SpGEMM for GPU
 
@@ -17,13 +12,13 @@
 - Build and verify on GPU side.
 (Note: make sure lib `rocsparse` is loaded):
 ```
-CC=clang CXX=hipcc cmake -DCMAKE_BUILD_TYPE=Release -DDEVICE_SIDE_VERIFY_FLAG=ON -DSPGEMM_KERNEL_STRATEGY=${spgemm_strategy_name} -DSORT_KERNEL_STRATEGY=${sort_strategy_name} -B./${build_dir} -hip -S./
+CC=clang CXX=hipcc cmake -DCMAKE_BUILD_TYPE=Release -DDEVICE_SIDE_VERIFY_FLAG=ON -B./${build_dir} -S./
 cmake --build ./${build_dir} -j8
 ```
 
 - Build and verify on CPU side.
 ```
-CC=clang CXX=hipcc cmake -DCMAKE_BUILD_TYPE=Release -DDEVICE_SIDE_VERIFY_FLAG=OFF -DSPGEMM_KERNEL_STRATEGY=${spgemm_strategy_name} -DSORT_KERNEL_STRATEGY=${sort_strategy_name} -B./${build_dir} -hip -S./
+CC=clang CXX=hipcc cmake -DCMAKE_BUILD_TYPE=Release -B./${build_dir} -S./
 cmake --build ./${build_dir} -j8
 ```
 

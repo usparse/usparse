@@ -2,7 +2,7 @@
 #define SPGEMM_HIP_KOKKOS_SCAN_IMPL_HPP
 
 #include "error_macro.hpp"
-#include "scan_kernel.hpp"
+#include "common/scan_kernel.hpp"
 
 template <typename T> void scan_in_place(const size_t len, T *array) {
   constexpr size_t THREADS = 256;
