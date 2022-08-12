@@ -1,30 +1,24 @@
 #ifndef SPGEMM_KOKKOS_SPGEMM_SYMBOLIC_IMPL_HPP
 #define SPGEMM_KOKKOS_SPGEMM_SYMBOLIC_IMPL_HPP
 
-#include "build_flag.h"
 #include "compress_matrix.h"
 #include "csr_matrix.h"
 #include "error_macro.hpp"
 #include "max_num.h"
 #include "scan.h"
+#include "spgemm_compress.h"
 #include "spgemm_symbolic_kernel.hpp"
 #include <cstddef>
 #include <hip/hip_runtime.h>
-
+#ifdef DEBUG_MODE
 #include <iostream>
+#endif
 
 template <typename T, typename I>
 void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b, I *row_ptr_c, size_t *nnz_c,
                      I *max_row_num) {
-  using idType = typename CompressMatrix<I>::IdType;
-  using bitType = typename CompressMatrix<I>::BitSetEleType;
-
   // compress matrix B
-  CompressMatrix<I> compress_matrix_b(matrix_b.rows, matrix_b.cols, matrix_b.nnz, matrix_b.row_ptr);
-  (compress_matrix_kernel<I, CompressMatrix<I>::BitsLen, 32, 64>)<<<512, 256>>>(
-      matrix_b.rows, matrix_b.row_ptr, matrix_b.col_idx_ptr, compress_matrix_b.ids_ptr, compress_matrix_b.col_idx_ptr,
-      compress_matrix_b.use_count);
-
+  CompressMatrix<I> compress_matrix_b = spgemm_compress<T, I>(matrix_b);
   constexpr size_t WF_SIZE = 64;
   // symbolic
   // max num in bits
@@ -113,6 +107,8 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
         matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
         compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_ptr_c);
   } else {
+    using idType = typename CompressMatrix<I>::IdType;
+    using bitType = typename CompressMatrix<I>::BitSetEleType;
     // calc size of trunk
     I *row_trunk_ptr = nullptr;
     KOKKOS_HIP_CHECK(hipMalloc((void **)(&row_trunk_ptr), (matrix_a.rows + 1) * sizeof(I)))

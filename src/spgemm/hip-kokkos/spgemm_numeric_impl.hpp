@@ -8,11 +8,9 @@
 #include <cstddef>
 #include <hip/hip_runtime.h>
 
+#ifdef DEBUG_MODE
 #include <iostream>
-
-constexpr size_t expr_max(const size_t num1, const size_t num2) { return num1 > num2 ? num1 : num2; }
-
-constexpr size_t expr_min(const size_t num1, const size_t num2) { return num1 < num2 ? num1 : num2; }
+#endif
 
 template <typename T, typename I>
 void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b,
