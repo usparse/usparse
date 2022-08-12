@@ -102,18 +102,6 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
           matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, row_group_ptr + matrix_c.rows * 5,
           matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr);
     }
-    // if (max_row_num > 2048) {
-    //   constexpr size_t N = 4;
-    //   constexpr size_t BLOCK_THREAD_NUM = 4096 / N;
-    //   const size_t GLOBAL_BLOCK_NUM = matrix_c.rows;
-
-    //   (spgemm_numeric_block_per_row_sort_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM,
-    //                                                      WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
-    //       alpha, matrix_a.rows, matrix_a.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
-    //       matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, row_group_ptr + matrix_c.rows * 6,
-    //       matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr);
-    // }
-    // KOKKOS_HIP_CHECK(hipFree(row_group_ptr));
     is_sorted = true;
   } else {
     constexpr int CHUNK_SIZE = 2048;
@@ -127,6 +115,7 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
         alpha, matrix_c.rows, matrix_c.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
         matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
         matrix_c.values_ptr, workspace_b);
+    KOKKOS_HIP_CHECK(hipFree(workspace_b));
     is_sorted = true;
     // HashMap<T, I> hash_map(matrix_c.col_idx_ptr, matrix_c.values_ptr, matrix_c.rows, matrix_c.nnz);
     // if (matrix_c.cols < 32 * HashMap<T, I>::Capacity) {
