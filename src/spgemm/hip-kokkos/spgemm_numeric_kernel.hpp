@@ -6,6 +6,8 @@
 #include <cstddef>
 #include <hip/hip_runtime.h>
 
+#include <rocsparse.h>
+
 // group [16, 32, 64, 512, 1024, 2048]
 template <typename I> __global__ void row_split_groups_kernel(const size_t m, const I *row_ptr_c, bool *row_group_ptr) {
   // thread id in global
@@ -204,6 +206,144 @@ __global__ void __launch_bounds__(THREADS)
     }
     *(block_mem_ids_end - bigger_count - 1) = base_id;
     *(block_mem_values_end - bigger_count - 1) = base_values * alpha;
+  }
+}
+
+template <typename T, typename I, size_t CHUNK_SIZE, size_t THREADS, size_t VEC_SIZE, size_t WF_SIZE>
+__global__ void __launch_bounds__(THREADS)
+    spgemm_numeric_block_per_row_sort_multipass_kernel(const T alpha, const size_t m, const size_t n,
+                                                       const I *row_ptr_a, const I *col_idx_ptr_a,
+                                                       const T *values_ptr_a, const I *row_ptr_b,
+                                                       const I *col_idx_ptr_b, const T *values_ptr_b,
+                                                       const I *row_ptr_c, I *ids, T *values, I *workspace_b) {
+  // thread id in global
+  const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
+  // thread num in global
+  const int global_thread_num = gridDim.x * blockDim.x;
+  // block id in global
+  const int global_block_id = blockIdx.x;
+  // block num in global
+  const int global_block_num = gridDim.x;
+  // thread id in block
+  const int block_thread_id = threadIdx.x;
+  // thread num in block
+  constexpr int block_thread_num = THREADS;
+  // vec id in block
+  const int block_vec_id = threadIdx.x / VEC_SIZE;
+  // vec num in block
+  constexpr int block_vec_num = THREADS / VEC_SIZE;
+  // thread id in vec
+  const int vec_thread_id = global_thread_id % VEC_SIZE;
+  // thread num in vec
+  constexpr int vec_thread_num = VEC_SIZE;
+  // chunks
+  __shared__ bool table[CHUNK_SIZE];
+  __shared__ T data[CHUNK_SIZE];
+
+  __shared__ I next_chunk;
+  // block processes a row
+  const int row_a = global_block_id;
+
+  if (row_a >= m) {
+    return;
+  }
+
+  const I row_idx_begin = row_ptr_a[row_a];
+  const I row_idx_end = row_ptr_a[row_a + 1];
+  I row_begin_c = row_ptr_c[row_a];
+
+  int chunk_begin = 0;
+  int chunk_end = CHUNK_SIZE;
+
+  while (chunk_begin < n) {
+    // init
+    for (int i = block_thread_id; i < CHUNK_SIZE; i += block_thread_num) {
+      table[i] = 0;
+      data[i] = static_cast<T>(0);
+    }
+    if (block_thread_id == 0) {
+      next_chunk = n;
+    }
+    __syncthreads();
+    I min_col = n;
+
+    for (I idx_a = row_idx_begin + block_vec_id; idx_a < row_idx_end; idx_a += block_vec_num) {
+      const I col_a = col_idx_ptr_a[idx_a];
+      const I row_b = col_a;
+      const T val_A = alpha * values_ptr_a[idx_a];
+
+      I idx_begin_b = (chunk_begin == 0) ? row_ptr_b[row_b] : workspace_b[idx_a];
+      I idx_end_b = row_ptr_b[row_b + 1];
+
+      I next_k = idx_begin_b + vec_thread_id;
+      for (I idx_b = next_k; idx_b < idx_end_b; idx_b += vec_thread_num) {
+        const I col_b = col_idx_ptr_b[idx_b];
+        if (col_b >= chunk_begin && col_b < chunk_end) {
+          table[col_b - chunk_begin] = 1;
+          atomicAdd(data + col_b - chunk_begin, val_A * values_ptr_b[idx_b]);
+        } else if (col_b >= chunk_end) {
+          next_k = idx_b;
+          min_col = min(min_col, col_b);
+          break;
+        }
+      }
+      // rocsparse_wfreduce_min<VEC_SIZE>(&next_k);
+      for (int i = 1; i < VEC_SIZE; i <<= 1) {
+        next_k = min(next_k, __shfl_up(next_k, i, VEC_SIZE));
+      }
+
+      if (vec_thread_id == vec_thread_num - 1) {
+        workspace_b[idx_a] = next_k;
+      }
+    }
+    // rocsparse_wfreduce_min<VEC_SIZE>(&min_col);
+    for (int i = 1; i < VEC_SIZE; i <<= 1) {
+      min_col = min(min_col, __shfl_up(min_col, i, VEC_SIZE));
+    }
+
+    if (vec_thread_id == vec_thread_num - 1) {
+      atomicMin(&next_chunk, min_col);
+    }
+    __syncthreads();
+    // re-use shared memory
+    int *scan_offsets = reinterpret_cast<int *>(data);
+    // compress
+    for (int i = block_thread_id; i < CHUNK_SIZE; i += block_thread_num) {
+      bool has_nnz = table[i];
+      T value = data[i];
+
+      unsigned long long mask = __ballot(has_nnz);
+      int nnz = __popcll(mask);
+
+      unsigned long long lanemask_le = UINT64_MAX >> (sizeof(unsigned long long) * CHAR_BIT - (__lane_id() + 1));
+
+      int offset = __popcll(lanemask_le & mask);
+      __syncthreads();
+
+      scan_offsets[block_thread_id / WF_SIZE] = nnz;
+      __syncthreads();
+
+      for (unsigned int j = 1; j < block_thread_num / WF_SIZE; ++j) {
+        if (block_thread_id >= j * WF_SIZE) {
+          offset += scan_offsets[j - 1];
+        }
+      }
+      I idx = row_begin_c + offset - 1;
+
+      if (has_nnz) {
+        ids[idx] = chunk_begin + i;
+        values[idx] = value;
+      }
+
+      if (block_thread_id == block_thread_num - 1) {
+        scan_offsets[block_thread_num / WF_SIZE - 1] = offset;
+      }
+      __syncthreads();
+      row_begin_c += scan_offsets[block_thread_num / WF_SIZE - 1];
+    }
+    chunk_begin = next_chunk;
+    chunk_end = chunk_begin + CHUNK_SIZE;
+    __syncthreads();
   }
 }
 
