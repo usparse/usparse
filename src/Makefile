@@ -28,13 +28,14 @@ all: $(EXECUTABLE)
 ## spgemm building start.
 ### configs
 GENERATED_HEADER_PATH = ./generated
-SPGEMM_LIB_INC_PATH = -I./ -I$(GENERATED_HEADER_PATH) -I./sort -I./sort/api -I./sort/hip-block-radix -I./spgemm -I./spgemm/api/ -I./spgemm/common -I./spgemm/hip-dense -I./spgemm/hip-kokkos
+SPGEMM_SOLVER_SRC_PATH = ./
+SPGEMM_LIB_INC_PATH = -I./ -I$(GENERATED_HEADER_PATH) -I$(SPGEMM_SOLVER_SRC_PATH)/sort -I$(SPGEMM_SOLVER_SRC_PATH)/sort/api -I$(SPGEMM_SOLVER_SRC_PATH)/sort/hip-block-radix -I$(SPGEMM_SOLVER_SRC_PATH)/spgemm -I$(SPGEMM_SOLVER_SRC_PATH)/spgemm/api/ -I$(SPGEMM_SOLVER_SRC_PATH)/spgemm/common -I$(SPGEMM_SOLVER_SRC_PATH)/spgemm/hip-dense -I$(SPGEMM_SOLVER_SRC_PATH)/spgemm/hip-kokkos
 SPGEMM_LIB_HIPCC_FLAGS = $(SPGEMM_LIB_INC_PATH) -O2 -std=gnu++14 # --save-temps
 SORT_LIB_HIPCC_FLAGS = $(SPGEMM_LIB_INC_PATH) -O2 -std=gnu++14
 
-SPGEMM_BIN_NAME = spgemm-hip
-SPGEMM_KERNEL_LIB_NAME = spgemm-kernels
-SORT_KERNEL_LIB_NAME = sort-kernels
+# SPGEMM_BIN_NAME = spgemm-hip
+# SPGEMM_KERNEL_LIB_NAME = spgemm-kernels
+# SORT_KERNEL_LIB_NAME = sort-kernels
 SPGEMM_KERNEL_LIB_PATH = libspgemm-kernels.a
 SORT_KERNEL_LIB_PATH = libsort-kernels.a
 ### configs end
@@ -43,15 +44,15 @@ SORT_KERNEL_LIB_PATH = libsort-kernels.a
 $(SORT_KERNEL_LIB_PATH): sort_api_sort_hip_api.cc.o
 	ar qc $(SORT_KERNEL_LIB_PATH) sort_api_sort_hip_api.cc.o
 	ranlib $(SORT_KERNEL_LIB_PATH)
-sort_api_sort_hip_api.cc.o: sort/api/sort_hip_api.cc
-	$(HIPCC) $(SORT_LIB_HIPCC_FLAGS) -o sort_api_sort_hip_api.cc.o -c sort/api/sort_hip_api.cc
+sort_api_sort_hip_api.cc.o: $(SPGEMM_SOLVER_SRC_PATH)/sort/api/sort_hip_api.cc
+	$(HIPCC) $(SORT_LIB_HIPCC_FLAGS) -o sort_api_sort_hip_api.cc.o -c $(SPGEMM_SOLVER_SRC_PATH)/sort/api/sort_hip_api.cc
 ### sort lib end
 ### spgemm lib
 $(SPGEMM_KERNEL_LIB_PATH): spgemm_api_spgemm_hip_api.cc.o
 	ar qc $(SPGEMM_KERNEL_LIB_PATH)  spgemm_api_spgemm_hip_api.cc.o
 	ranlib $(SPGEMM_KERNEL_LIB_PATH)
-spgemm_api_spgemm_hip_api.cc.o: spgemm/api/spgemm_hip_api.cc
-	$(HIPCC) $(SORT_LIB_HIPCC_FLAGS) -o spgemm_api_spgemm_hip_api.cc.o -c spgemm/api/spgemm_hip_api.cc
+spgemm_api_spgemm_hip_api.cc.o: $(SPGEMM_SOLVER_SRC_PATH)/spgemm/api/spgemm_hip_api.cc
+	$(HIPCC) $(SORT_LIB_HIPCC_FLAGS) -o spgemm_api_spgemm_hip_api.cc.o -c $(SPGEMM_SOLVER_SRC_PATH)/spgemm/api/spgemm_hip_api.cc
 ### spgemm lib end
 ## spgemm building end.
 
