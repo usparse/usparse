@@ -36,7 +36,7 @@ cp -r ${source_dir}/common_function.hpp ${tar_dir}
 cp -r ${source_dir}/Csrsparse.hpp ${tar_dir}
 cp -r ${source_dir}/main.cpp ${tar_dir}
 cp -r ${source_dir}/Makefile ${tar_dir}
-cp -r ${source_dir}/../README.md ${tar_dir}
+cp -r ./README-demo.md ${tar_dir}/README.md 
 cp -r ${source_dir}/../.gitignore ${tar_dir}
 
 ## change Makefile
