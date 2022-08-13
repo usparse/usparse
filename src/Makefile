@@ -27,7 +27,7 @@ all: $(EXECUTABLE)
 
 ## spgemm building start.
 ### configs
-GENERATED_HEADER_PATH = ./
+GENERATED_HEADER_PATH = ./generated
 SPGEMM_LIB_INC_PATH = -I./ -I$(GENERATED_HEADER_PATH) -I./sort -I./sort/api -I./sort/hip-block-radix -I./spgemm -I./spgemm/api/ -I./spgemm/common -I./spgemm/hip-dense -I./spgemm/hip-kokkos
 SPGEMM_LIB_HIPCC_FLAGS = $(SPGEMM_LIB_INC_PATH) -O2 -std=gnu++14 # --save-temps
 SORT_LIB_HIPCC_FLAGS = $(SPGEMM_LIB_INC_PATH) -O2 -std=gnu++14
