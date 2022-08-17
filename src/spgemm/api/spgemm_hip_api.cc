@@ -23,9 +23,8 @@ void sparse_gemm_hip(const hip_sparse_operation transA, const hip_sparse_operati
     const size_t buff_size = dense_spgemm(transA, transB, alpha, m,n,k,nnzA, pOffsetA, pColIndexA, pValueA,nnzB, pOffsetB, pColIndexB, pValueB,pNnzC, pOffsetC, ppColIndexC, ppValueC,nullptr);
     
     void *buffer_data = nullptr;
-    // HIP_CHECK(hipHostMalloc((void**)tmp_c,m*n*sizeof(dtype)));
     HIP_CHECK(hipMalloc((void**)&buffer_data, buff_size));
-    HIP_CHECK(hipMemset(buffer_data,0, buff_size));
+    // HIP_CHECK(hipMemset(buffer_data,0, buff_size));
 
     dense_spgemm(transA, transB, alpha, m,n,k,nnzA, pOffsetA, pColIndexA, pValueA,nnzB, pOffsetB, pColIndexB, pValueB,pNnzC, pOffsetC, ppColIndexC, ppValueC,buffer_data);
 
@@ -39,8 +38,8 @@ template void sparse_gemm_hip<dp_data_type, idx_type>(const hip_sparse_operation
                                                       const size_t nnzB, const idx_type *pOffsetB, const idx_type *pColIndexB, const dp_data_type *pValueB, 
                                                       size_t *pNnzC, idx_type *pOffsetC, idx_type **ppColIndexC, dp_data_type **ppValueC);
 
-// template void sparse_gemm_hip<sp_data_type, idx_type>(const hip_sparse_operation transA, const hip_sparse_operation transB, 
-//                                                       const sp_data_type alpha, const sp_data_type beta, const size_t m, const size_t n, const size_t k, 
-//                                                       const size_t nnzA, const idx_type *pOffsetA, const idx_type *pColIndexA, const sp_data_type *pValueA,
-//                                                       const size_t nnzB, const idx_type *pOffsetB, const idx_type *pColIndexB, const sp_data_type *pValueB, 
-//                                                       size_t *pNnzC, idx_type *pOffsetC, idx_type **ppColIndexC, sp_data_type **ppValueC);
+template void sparse_gemm_hip<sp_data_type, idx_type>(const hip_sparse_operation transA, const hip_sparse_operation transB, 
+                                                      const sp_data_type alpha, const sp_data_type beta, const size_t m, const size_t n, const size_t k, 
+                                                      const size_t nnzA, const idx_type *pOffsetA, const idx_type *pColIndexA, const sp_data_type *pValueA,
+                                                      const size_t nnzB, const idx_type *pOffsetB, const idx_type *pColIndexB, const sp_data_type *pValueB, 
+                                                      size_t *pNnzC, idx_type *pOffsetC, idx_type **ppColIndexC, sp_data_type **ppValueC);

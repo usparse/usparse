@@ -73,3 +73,53 @@ __global__  void dense2csr_kernel(const size_t m,
         }
     }
 }
+
+template <typename T, typename I>
+__global__ void dense2csr_kernel(const size_t m,
+                          const size_t n,
+                          const I* dense_col,
+                          const T* dense_val,
+                          T* csr_val,
+                          I* csr_row_ptr,
+                          I* csr_col_ind){
+    
+    const int row_a=blockIdx.x;
+    const int row_start=csr_row_ptr[row_a];
+    const int row_end=csr_row_ptr[row_a+1];
+    for(int i=threadIdx.x;i<row_end-row_start;i+=blockDim.x){
+        csr_col_ind[row_start+i]=dense_col[row_a*n+i];
+        csr_val[row_start+i]=dense_val[row_a*n+i];
+    }
+
+    // const int row_a=blockIdx.x;
+    // const int row_start=csr_row_ptr[row_a];
+    // const int row_end=csr_row_ptr[row_a+1];
+    // const int nnz=row_end-row_start;
+    // const int loop_col=nnz/4*4;
+    // const int loop_val=nnz/2*2;
+    // for(int i=threadIdx.x*4;i<loop_col;i+=blockDim.x*4){
+    //     csr_col_ind[row_start+i]=dense_col[row_a*n+i];
+    //     csr_col_ind[row_start+i+1]=dense_col[row_a*n+i+1];
+    //     csr_col_ind[row_start+i+2]=dense_col[row_a*n+i+2];
+    //     csr_col_ind[row_start+i+3]=dense_col[row_a*n+i+3];
+    //     // csr_val[row_start+i]=dense_val[row_a*n+i];
+    // }
+    // // __syncthreads();
+    // if(nnz%4!=0){
+    //     for(int i=threadIdx.x+loop_col;i<nnz;i+=blockDim.x){
+    //         csr_col_ind[row_start+i]=dense_col[row_a*n+i];
+    //     }
+    // }
+    // // __syncthreads();
+    // for(int i=threadIdx.x*2;i<loop_val;i+=blockDim.x*2){
+    //     csr_val[row_start+i]=dense_val[row_a*n+i];
+    //     csr_val[row_start+i+1]=dense_val[row_a*n+i+1];
+    // }
+    // // __syncthreads();
+    // if(nnz%2!=0){
+    //     for(int i=threadIdx.x+loop_val;i<nnz;i+=blockDim.x){
+    //         csr_col_ind[row_start+i]=dense_col[row_a*n+i];
+    //     }
+    // }
+    // __syncthreads();
+}
