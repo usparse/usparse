@@ -27,7 +27,7 @@ size_t dense_spgemm(const hip_sparse_operation transA,
 		T**                pdptr_value_C,
         void *buffer_data) {
     T* tmp_dev_value_c; 
-    if(nnz_B/(k*n)>0.05){
+    if(((double)nnz_B/(double)(k*n))>0.05){
         if(m>20000){
             if(buffer_data == nullptr) {
                 const size_t buff2 = (nnz_calc<T,I,256, 4>)(m, n, nullptr, nullptr);
@@ -77,7 +77,7 @@ size_t dense_spgemm(const hip_sparse_operation transA,
 
         I *workspace_b = (I *)buffer_data;
         I *tmp_dev_col_c = (I *)(workspace_b+nnz_A);    //稠密col矩阵
-        T *tmp_dev_value_c = (T *) (tmp_dev_col_c+m*n);   //稠密value矩阵
+        tmp_dev_value_c = (T *) (tmp_dev_col_c+m*n);   //稠密value矩阵
 
         HIP_CHECK(hipMemset(dptr_offset_C,0,(m+1)*sizeof(I)));
 
