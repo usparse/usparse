@@ -8,7 +8,7 @@ template <typename T, typename I> CompressMatrix<I> spgemm_compress(const CsrMat
   using idType = typename CompressMatrix<I>::IdType;
   using bitType = typename CompressMatrix<I>::BitSetEleType;
   CompressMatrix<I> compress_matrix(matrix.rows, matrix.cols, matrix.nnz, matrix.row_ptr);
-  I max_bits_num = matrix.cols / 32 + (matrix.cols % 32 == 0 ? 0 : 1);
+  I max_bits_num = matrix.cols / CompressMatrix<I>::BitsLen + (matrix.cols % CompressMatrix<I>::BitsLen == 0 ? 0 : 1);
   constexpr size_t WF_SIZE = 64;
   constexpr size_t N = 4;
   const size_t GLOBAL_BLOCK_NUM = 512;

@@ -22,7 +22,8 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
   constexpr size_t WF_SIZE = 64;
   // symbolic
   // max num in bits
-  I max_bits_num = matrix_b.cols / 32 + (matrix_b.cols % 32 == 0 ? 0 : 1);
+  I max_bits_num =
+      matrix_b.cols / CompressMatrix<I>::BitsLen + (matrix_b.cols % CompressMatrix<I>::BitsLen == 0 ? 0 : 1);
 #ifdef DEBUG_MODE
   std::cout << "max_bits_num: " << max_bits_num << std::endl;
 #endif

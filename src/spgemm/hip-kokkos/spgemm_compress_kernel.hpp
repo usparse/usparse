@@ -68,20 +68,18 @@ __global__ void __launch_bounds__(THREADS)
   __shared__ idtype_t shared_ids[LDS_PER_VEC * block_vec_num];
   __shared__ idtype_t shared_write_ids[LDS_PER_VEC * block_vec_num];
   __shared__ bittype_t shared_write_bits[LDS_PER_VEC * block_vec_num];
-  __shared__ int shared_count[block_vec_num];
-  __shared__ idtype_t shared_last_id[block_vec_num];
 
   idtype_t *const vec_lds_ids = &shared_ids[LDS_PER_VEC * block_vec_id];
   idtype_t *const vec_lds_write_ids = &shared_write_ids[LDS_PER_VEC * block_vec_id];
   bittype_t *const vec_lds_write_bits = &shared_write_bits[LDS_PER_VEC * block_vec_id];
-  int *const vec_lds_count = &shared_count[block_vec_id];
-  idtype_t *const vec_last_id = &shared_last_id[block_vec_id];
+  int vec_lds_count;
+  int vec_last_id;
 
   // each vector process a row
   for (int row = global_vec_id; row < m; row += global_vec_num) {
     if (vec_thread_id == 0) {
-      *vec_lds_count = -1;
-      *vec_last_id = 0xffffffff;
+      vec_lds_count = -1;
+      vec_last_id = 0xffffffff;
     }
     const I row_idx_begin = row_ptr[row];
     const I row_idx_end = row_ptr[row + 1];
@@ -93,64 +91,43 @@ __global__ void __launch_bounds__(THREADS)
     for (int round = 0; round < vector_rounds; ++round) {
       vec_lds_write_bits[vec_thread_id] = static_cast<bittype_t>(0);
       const int idx = row_idx_begin + round * vec_thread_num + vec_thread_id;
-      idtype_t my_id;
-      bittype_t my_bit;
-      if (idx >= row_idx_end) {
-        const I col = col_idx_ptr[row_idx_end - 1];
-        my_id = col / BitsLen;
-        my_bit = static_cast<bittype_t>(0);
-      } else {
-        const I col = col_idx_ptr[idx];
-        my_id = col / BitsLen;
-        my_bit = 0x1 << (col % BitsLen);
-      }
-      if (vec_thread_id == 0) {
-        if (my_id != *vec_last_id) {
-          (*vec_lds_count)++;
-        }
-        vec_lds_write_ids[0] = my_id;
-      }
-      __threadfence();
-      const int base_count = *vec_lds_count;
-      __threadfence();
-      if (vec_thread_id == 0) {
-        (*vec_lds_count) = 1;
-      }
+      const I col = idx < row_idx_end ? col_idx_ptr[idx] : col_idx_ptr[row_idx_end - 1];
+      idtype_t my_id = col / BitsLen;
+      bittype_t my_bit = idx < row_idx_end ? (0x1 << (col % BitsLen)) : static_cast<bittype_t>(0);
+
       vec_lds_ids[vec_thread_id] = my_id;
       __threadfence();
-      const int max_id = vec_lds_ids[vec_thread_num - 1];
-      int count = 0;
-      bool flag = false;
-      if (vec_thread_id > 0 && vec_lds_ids[vec_thread_id - 1] != my_id) {
-        flag = true;
-        count = atomicAdd(vec_lds_count, 1);
-        vec_lds_write_ids[count] = my_id;
+      int idx_offset = 0;
+      if (vec_thread_id == 0) {
+        if (my_id != vec_last_id) {
+          vec_lds_count++;
+        }
+        idx_offset = 0;
+      } else {
+        idx_offset = (vec_lds_ids[vec_thread_id] == vec_lds_ids[vec_thread_id - 1] ? 0 : 1);
       }
-      __threadfence();
-      if (my_id == max_id && flag) {
-        idtype_t tmp = vec_lds_write_ids[*vec_lds_count - 1];
-        vec_lds_write_ids[count] = tmp;
-        vec_lds_write_ids[*vec_lds_count - 1] = my_id;
-      }
-      const int lds_count = *vec_lds_count;
-      for (int i = 0; i < lds_count; ++i) {
-        if (my_id == vec_lds_write_ids[i]) {
-          atomicOr(vec_lds_write_bits + i, my_bit);
+      // scan
+      for (int i = 1; i < VEC_SIZE; i <<= 1) {
+        int tmp = __shfl_up(idx_offset, i, VEC_SIZE);
+        if (vec_thread_id >= i) {
+          idx_offset += tmp;
         }
       }
+      atomicExch(&vec_lds_write_ids[idx_offset], my_id);
+      atomicOr(&vec_lds_write_bits[idx_offset], my_bit);
       __threadfence();
-      if (vec_thread_id < lds_count) {
+      // write
+      const int base_count = __shfl(vec_lds_count, 0, VEC_SIZE);
+      const int lds_count = __shfl(idx_offset, VEC_SIZE - 1, VEC_SIZE);
+      if (vec_thread_id <= lds_count) {
         vec_mem_ids[base_count + vec_thread_id] = vec_lds_write_ids[vec_thread_id];
         vec_mem_bits[base_count + vec_thread_id] |= vec_lds_write_bits[vec_thread_id];
       }
-      if (vec_thread_id == 0) {
-        *vec_last_id = max_id;
-        *vec_lds_count = base_count + lds_count - 1;
-      }
-      __threadfence();
+      vec_last_id = __shfl(my_id, VEC_SIZE - 1, VEC_SIZE);
+      vec_lds_count = __shfl(base_count + lds_count, VEC_SIZE - 1, VEC_SIZE);
     }
     if (vec_thread_id == 0) {
-      use_count[row] = *vec_lds_count + 1;
+      use_count[row] = vec_lds_count + 1;
     }
   }
 }
