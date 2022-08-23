@@ -89,68 +89,133 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
                                                    WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
         matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
         compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_ptr_c);
-  } else if (max_bits_num < 2048) {
-    constexpr size_t N = 2;
-    constexpr size_t BLOCK_THREAD_NUM = 2048 / N;
-    const size_t GLOBAL_BLOCK_NUM = matrix_a.rows;
-
-    (spgemm_symbolic_block_per_row_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM,
-                                                   WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
-        matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
-        compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_ptr_c);
-  } else if (max_bits_num < 4096) {
-    constexpr size_t N = 2;
-    constexpr size_t BLOCK_THREAD_NUM = 4096 / N;
-    const size_t GLOBAL_BLOCK_NUM = matrix_a.rows;
-
-    (spgemm_symbolic_block_per_row_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM,
-                                                   WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
-        matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
-        compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_ptr_c);
   } else {
-    using idType = typename CompressMatrix<I>::IdType;
-    using bitType = typename CompressMatrix<I>::BitSetEleType;
     // calc size of trunk
-    I *row_trunk_ptr = nullptr;
-    KOKKOS_HIP_CHECK(hipMalloc((void **)(&row_trunk_ptr), (matrix_a.rows + 1) * sizeof(I)))
-    KOKKOS_HIP_CHECK(hipMemset(row_trunk_ptr, 0, sizeof(I)))
+    I *dchunk_num_ptr = nullptr;
+    KOKKOS_HIP_CHECK(hipMalloc((void **)(&dchunk_num_ptr), (matrix_a.rows + 1) * sizeof(I)))
+    KOKKOS_HIP_CHECK(hipMemset(dchunk_num_ptr, 0, sizeof(I)))
     (trunk_nums_kernel<I, 32, 64>)<<<512, 256>>>(matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr,
-                                                 compress_matrix_b.use_count, row_trunk_ptr);
-    scan_in_place<I>(matrix_a.rows + 1, row_trunk_ptr);
-    I trunk_num_c = 0;
-    KOKKOS_HIP_CHECK(hipMemcpy(&trunk_num_c, row_trunk_ptr + matrix_a.rows, sizeof(I), hipMemcpyDeviceToHost))
+                                                 compress_matrix_b.use_count, dchunk_num_ptr);
+    I max_chunk_num = static_cast<I>(0);
+    // max num in row_ptr
+    I *dmax_chunk_num_ptr = nullptr;
+    KOKKOS_HIP_CHECK(hipMalloc((void **)(&dmax_chunk_num_ptr), sizeof(I)));
+    max_num_in_array<I>(matrix_a.rows + 1, dchunk_num_ptr, dmax_chunk_num_ptr);
+    KOKKOS_HIP_CHECK(hipMemcpy(&max_chunk_num, dmax_chunk_num_ptr, sizeof(I), hipMemcpyDeviceToHost))
+    KOKKOS_HIP_CHECK(hipFree(dmax_chunk_num_ptr))
+#ifdef DEBUG_MODE
+    std::cout << "max_chunk_num: " << max_chunk_num << std::endl;
+#endif
+    max_chunk_num = matrix_b.cols < max_chunk_num ? matrix_b.cols : max_chunk_num;
+    if (max_chunk_num < 16) {
+      constexpr size_t N = 2;
+      constexpr size_t VEC_SIZE = 16 / N;
+      constexpr size_t BLOCK_THREAD_NUM = 256;
+      constexpr size_t BLOCK_VEC_NUM = BLOCK_THREAD_NUM / VEC_SIZE;
+      const size_t GLOBAL_BLOCK_NUM = matrix_a.rows / BLOCK_VEC_NUM + (matrix_a.rows % BLOCK_VEC_NUM == 0 ? 0 : 1);
 
-    // alloc hashmap
-    idType *map_ids = nullptr;
-    bitType *map_values = nullptr;
-    int *map_use_count = nullptr;
-    KOKKOS_HIP_CHECK(hipMalloc((void **)(&map_ids), trunk_num_c * sizeof(idType)));
-    KOKKOS_HIP_CHECK(hipMalloc((void **)(&map_values), trunk_num_c * sizeof(bitType)));
-    KOKKOS_HIP_CHECK(hipMalloc((void **)(&map_use_count), matrix_a.rows * sizeof(int)));
+      (spgemm_symbolic_vector_per_row_kernel<T, I, N, BLOCK_THREAD_NUM, VEC_SIZE,
+                                             WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+          matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
+          compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_ptr_c);
+    } else if (max_chunk_num < 32) {
+      constexpr size_t N = 2;
+      constexpr size_t VEC_SIZE = 32 / N;
+      constexpr size_t BLOCK_THREAD_NUM = 256;
+      constexpr size_t BLOCK_VEC_NUM = BLOCK_THREAD_NUM / VEC_SIZE;
+      const size_t GLOBAL_BLOCK_NUM = matrix_a.rows / BLOCK_VEC_NUM + (matrix_a.rows % BLOCK_VEC_NUM == 0 ? 0 : 1);
 
-    HashMap<bitType, idType> hash_map(map_ids, map_values, matrix_a.rows, trunk_num_c);
-    constexpr size_t LDS_MAP_CAP = 1 << 5;
-    constexpr size_t LDS_HASH_MASK = LDS_MAP_CAP - 1;
-    const size_t GLOBAL_BLOCK_NUM = 128;
-    constexpr size_t BLOCK_THREAD_NUM = 128;
-    constexpr size_t VEC_SIZE = 32;
-    constexpr size_t BLOCK_WF_NUM = BLOCK_THREAD_NUM / WF_SIZE;
-    constexpr size_t BLOCK_VEC_NUM = BLOCK_THREAD_NUM / VEC_SIZE;
-    constexpr size_t N = 4;
-    (spgemm_symbolic_block_per_row_kernel<T, I, N, LDS_MAP_CAP, LDS_HASH_MASK, BLOCK_THREAD_NUM,
-                                          WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
-        matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
-        compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_trunk_ptr, hash_map.begins, hash_map.nexts,
-        hash_map.ids, hash_map.values, map_use_count);
-    // calc row_ptr
-    (row_nnz_kernel<I, bitType, 32, 64>
-     <<<512, 256>>>(matrix_a.rows, row_trunk_ptr, hash_map.values, map_use_count, row_ptr_c));
+      (spgemm_symbolic_vector_per_row_kernel<T, I, N, BLOCK_THREAD_NUM, VEC_SIZE,
+                                             WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+          matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
+          compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_ptr_c);
 
-    // free memory
-    KOKKOS_HIP_CHECK(hipFree(map_use_count))
-    KOKKOS_HIP_CHECK(hipFree(map_values))
-    KOKKOS_HIP_CHECK(hipFree(map_ids))
-    KOKKOS_HIP_CHECK(hipFree(row_trunk_ptr))
+    } else if (max_chunk_num < 64) {
+      constexpr size_t N = 2;
+      constexpr size_t VEC_SIZE = 64 / N;
+      constexpr size_t BLOCK_THREAD_NUM = 256;
+      constexpr size_t BLOCK_VEC_NUM = BLOCK_THREAD_NUM / VEC_SIZE;
+      const size_t GLOBAL_BLOCK_NUM = matrix_a.rows / BLOCK_VEC_NUM + (matrix_a.rows % BLOCK_VEC_NUM == 0 ? 0 : 1);
+
+      (spgemm_symbolic_vector_per_row_kernel<T, I, N, BLOCK_THREAD_NUM, VEC_SIZE,
+                                             WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+          matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
+          compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_ptr_c);
+
+    } else if (max_chunk_num < 128) {
+      constexpr size_t N = 2;
+      constexpr size_t VEC_SIZE = 128 / N;
+      constexpr size_t BLOCK_THREAD_NUM = 256;
+      constexpr size_t BLOCK_VEC_NUM = BLOCK_THREAD_NUM / VEC_SIZE;
+      const size_t GLOBAL_BLOCK_NUM = matrix_a.rows / BLOCK_VEC_NUM + (matrix_a.rows % BLOCK_VEC_NUM == 0 ? 0 : 1);
+
+      (spgemm_symbolic_vector_per_row_kernel<T, I, N, BLOCK_THREAD_NUM, VEC_SIZE,
+                                             WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+          matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
+          compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_ptr_c);
+
+    } else if (max_chunk_num < 512) {
+      constexpr size_t N = 2;
+      constexpr size_t BLOCK_THREAD_NUM = 512 / N;
+      const size_t GLOBAL_BLOCK_NUM = matrix_a.rows;
+      (spgemm_symbolic_block_per_row_kernel<T, I, N, BLOCK_THREAD_NUM,
+                                            WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+          matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
+          compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_ptr_c);
+    } else if (max_chunk_num < 1024) {
+      constexpr size_t N = 2;
+      constexpr size_t BLOCK_THREAD_NUM = 1024 / N;
+      const size_t GLOBAL_BLOCK_NUM = matrix_a.rows;
+      (spgemm_symbolic_block_per_row_kernel<T, I, N, BLOCK_THREAD_NUM,
+                                            WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+          matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
+          compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_ptr_c);
+    } else if (max_chunk_num < 2048) {
+      constexpr size_t N = 2;
+      constexpr size_t BLOCK_THREAD_NUM = 2048 / N;
+      const size_t GLOBAL_BLOCK_NUM = matrix_a.rows;
+      (spgemm_symbolic_block_per_row_kernel<T, I, N, BLOCK_THREAD_NUM,
+                                            WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+          matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
+          compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_ptr_c);
+    } else {
+      using idType = typename CompressMatrix<I>::IdType;
+      using bitType = typename CompressMatrix<I>::BitSetEleType;
+      scan_in_place<I>(matrix_a.rows + 1, dchunk_num_ptr);
+      I chunk_num_c = 0;
+      KOKKOS_HIP_CHECK(hipMemcpy(&chunk_num_c, dchunk_num_ptr + matrix_a.rows, sizeof(I), hipMemcpyDeviceToHost))
+      // alloc hashmap
+      idType *map_ids = nullptr;
+      bitType *map_values = nullptr;
+      int *map_use_count = nullptr;
+      KOKKOS_HIP_CHECK(hipMalloc((void **)(&map_ids), chunk_num_c * sizeof(idType)));
+      KOKKOS_HIP_CHECK(hipMalloc((void **)(&map_values), chunk_num_c * sizeof(bitType)));
+      KOKKOS_HIP_CHECK(hipMalloc((void **)(&map_use_count), matrix_a.rows * sizeof(int)));
+
+      HashMap<bitType, idType> hash_map(map_ids, map_values, matrix_a.rows, chunk_num_c);
+      constexpr size_t LDS_MAP_CAP = 1 << 5;
+      constexpr size_t LDS_HASH_MASK = LDS_MAP_CAP - 1;
+      const size_t GLOBAL_BLOCK_NUM = 128;
+      constexpr size_t BLOCK_THREAD_NUM = 128;
+      constexpr size_t VEC_SIZE = 32;
+      constexpr size_t BLOCK_WF_NUM = BLOCK_THREAD_NUM / WF_SIZE;
+      constexpr size_t BLOCK_VEC_NUM = BLOCK_THREAD_NUM / VEC_SIZE;
+      constexpr size_t N = 4;
+      (spgemm_symbolic_block_per_row_kernel<T, I, N, LDS_MAP_CAP, LDS_HASH_MASK, BLOCK_THREAD_NUM,
+                                            WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+          matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
+          compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, dchunk_num_ptr, hash_map.begins, hash_map.nexts,
+          hash_map.ids, hash_map.values, map_use_count);
+      // calc row_ptr
+      (row_nnz_kernel<I, bitType, 32, 64>
+       <<<512, 256>>>(matrix_a.rows, dchunk_num_ptr, hash_map.values, map_use_count, row_ptr_c));
+
+      // free memory
+      KOKKOS_HIP_CHECK(hipFree(map_use_count))
+      KOKKOS_HIP_CHECK(hipFree(map_values))
+      KOKKOS_HIP_CHECK(hipFree(map_ids))
+    }
+    KOKKOS_HIP_CHECK(hipFree(dchunk_num_ptr))
   }
 
   // max num in row_ptr
