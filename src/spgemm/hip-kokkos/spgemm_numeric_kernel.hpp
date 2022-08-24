@@ -6,8 +6,6 @@
 #include <cstddef>
 #include <hip/hip_runtime.h>
 
-#include <rocsparse.h>
-
 // group [16, 32, 64, 512, 1024, 2048]
 template <typename I> __global__ void row_split_groups_kernel(const size_t m, const I *row_ptr_c, bool *row_group_ptr) {
   // thread id in global
@@ -15,16 +13,18 @@ template <typename I> __global__ void row_split_groups_kernel(const size_t m, co
   // thread num in global
   const int global_thread_num = gridDim.x * blockDim.x;
 
-  constexpr size_t GROUPS_NUM = 7;
-  constexpr I GROUPS_THRESHOLDS[GROUPS_NUM] = {16, 32, 64, 512, 1024, 2048, 4096};
+  constexpr size_t GROUPS_NUM = 6;
+  constexpr I GROUPS_THRESHOLDS[GROUPS_NUM] = {16, 32, 64, 512, 1024, 2048};
 
   for (int row = global_thread_id; row < m; row += global_thread_num) {
     I row_nnz = row_ptr_c[row + 1] - row_ptr_c[row];
+    if (row_nnz > 0) {
 #pragma unroll
-    for (int i = 0; i < GROUPS_NUM; ++i) {
-      if (row_nnz < GROUPS_THRESHOLDS[i]) {
-        row_group_ptr[i * m + row] = true;
-        break;
+      for (int i = 0; i < GROUPS_NUM; ++i) {
+        if (row_nnz < GROUPS_THRESHOLDS[i]) {
+          row_group_ptr[i * m + row] = true;
+          break;
+        }
       }
     }
   }
@@ -32,12 +32,10 @@ template <typename I> __global__ void row_split_groups_kernel(const size_t m, co
 
 // please make sure GLOBAL_BLOCK_NUM = ROW_TO_PROCESS
 template <typename T, typename I, size_t N, size_t THREADS, size_t VEC_SIZE, size_t WF_SIZE>
-__global__ void __launch_bounds__(THREADS)
-    spgemm_numeric_vector_per_row_sort_one_pass_kernel(const T alpha, const size_t m, const size_t n,
-                                                       const I *row_ptr_a, const I *col_idx_ptr_a,
-                                                       const T *values_ptr_a, const I *row_ptr_b,
-                                                       const I *col_idx_ptr_b, const T *values_ptr_b,
-                                                       bool *row_group_ptr, const I *row_ptr_c, I *ids, T *values) {
+__global__ void __launch_bounds__(THREADS) spgemm_numeric_open_address_hashmap_vector_per_row_sorted_one_pass_kernel(
+    const T alpha, const size_t m, const size_t n, const I *row_ptr_a, const I *col_idx_ptr_a, const T *values_ptr_a,
+    const I *row_ptr_b, const I *col_idx_ptr_b, const T *values_ptr_b, const bool *row_group_ptr, const I *row_ptr_c,
+    I *ids, T *values) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
@@ -66,6 +64,13 @@ __global__ void __launch_bounds__(THREADS)
   constexpr size_t LDS_HASH_MASK = LDS_MAP_CAP - 1;
 
   constexpr int BLOCK_LDS_SIZE = LDS_MAP_CAP * block_vec_num;
+
+  int row_a = global_vec_id;
+
+  if (row_a >= m || !row_group_ptr[row_a]) {
+    return;
+  }
+
   __shared__ I shared_ids[BLOCK_LDS_SIZE];
   __shared__ T shared_values[BLOCK_LDS_SIZE];
 
@@ -73,17 +78,11 @@ __global__ void __launch_bounds__(THREADS)
   T *vec_lds_values = shared_values + LDS_MAP_CAP * block_vec_id;
 
   // init lds hashmap
-  for (int i = block_thread_id; i < BLOCK_LDS_SIZE; i += block_thread_num) {
-    shared_ids[i] = HashMap<T, I>::NullValue;
-    shared_values[i] = 0;
+  for (int i = vec_thread_id; i < LDS_MAP_CAP; i += vec_thread_num) {
+    vec_lds_ids[i] = HashMap<T, I>::NullValue;
+    vec_lds_values[i] = 0;
   }
-  __syncthreads();
 
-  int row_a = global_vec_id;
-
-  if (row_a >= m || !row_group_ptr[row_a]) {
-    return;
-  }
   const I row_idx_begin = row_ptr_a[row_a];
   const I row_idx_end = row_ptr_a[row_a + 1];
 
@@ -121,11 +120,10 @@ __global__ void __launch_bounds__(THREADS)
 
 // please make sure GLOBAL_BLOCK_NUM = ROW_TO_PROCESS
 template <typename T, typename I, size_t N, size_t THREADS, size_t WF_SIZE>
-__global__ void __launch_bounds__(THREADS)
-    spgemm_numeric_block_per_row_sort_one_pass_kernel(const T alpha, const size_t m, const size_t n, const I *row_ptr_a,
-                                                      const I *col_idx_ptr_a, const T *values_ptr_a, const I *row_ptr_b,
-                                                      const I *col_idx_ptr_b, const T *values_ptr_b,
-                                                      bool *row_group_ptr, const I *row_ptr_c, I *ids, T *values) {
+__global__ void __launch_bounds__(THREADS) spgemm_numeric_open_address_hashmap_block_per_row_sorted_one_pass_kernel(
+    const T alpha, const size_t m, const size_t n, const I *row_ptr_a, const I *col_idx_ptr_a, const T *values_ptr_a,
+    const I *row_ptr_b, const I *col_idx_ptr_b, const T *values_ptr_b, const bool *row_group_ptr, const I *row_ptr_c,
+    I *ids, T *values) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
@@ -211,11 +209,11 @@ __global__ void __launch_bounds__(THREADS)
 
 template <typename T, typename I, size_t CHUNK_SIZE, size_t THREADS, size_t VEC_SIZE, size_t WF_SIZE>
 __global__ void __launch_bounds__(THREADS)
-    spgemm_numeric_block_per_row_sort_multipass_kernel(const T alpha, const size_t m, const size_t n,
-                                                       const I *row_ptr_a, const I *col_idx_ptr_a,
-                                                       const T *values_ptr_a, const I *row_ptr_b,
-                                                       const I *col_idx_ptr_b, const T *values_ptr_b,
-                                                       const I *row_ptr_c, I *ids, T *values, I *workspace_b) {
+    spgemm_numeric_block_per_row_sorted_multipass_kernel(const T alpha, const size_t m, const size_t n,
+                                                         const I *row_ptr_a, const I *col_idx_ptr_a,
+                                                         const T *values_ptr_a, const I *row_ptr_b,
+                                                         const I *col_idx_ptr_b, const T *values_ptr_b,
+                                                         const I *row_ptr_c, I *ids, T *values, I *workspace_b) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
@@ -287,7 +285,6 @@ __global__ void __launch_bounds__(THREADS)
           break;
         }
       }
-      // rocsparse_wfreduce_min<VEC_SIZE>(&next_k);
       for (int i = 1; i < VEC_SIZE; i <<= 1) {
         next_k = min(next_k, __shfl_up(next_k, i, VEC_SIZE));
       }
@@ -296,7 +293,6 @@ __global__ void __launch_bounds__(THREADS)
         workspace_b[idx_a] = next_k;
       }
     }
-    // rocsparse_wfreduce_min<VEC_SIZE>(&min_col);
     for (int i = 1; i < VEC_SIZE; i <<= 1) {
       min_col = min(min_col, __shfl_up(min_col, i, VEC_SIZE));
     }
@@ -349,10 +345,10 @@ __global__ void __launch_bounds__(THREADS)
 
 template <typename T, typename I, size_t N, size_t LDS_MAP_CAP, size_t LDS_HASH_MASK, size_t THREADS, size_t WF_SIZE>
 __global__ void __launch_bounds__(THREADS)
-    spgemm_numeric_block_per_row_kernel(const T alpha, const size_t m, const size_t n, const I *row_ptr_a,
-                                        const I *col_idx_ptr_a, const T *values_ptr_a, const I *row_ptr_b,
-                                        const I *col_idx_ptr_b, const T *values_ptr_b, const I *row_ptr_c, int *begins,
-                                        int *nexts, I *ids, T *values) {
+    spgemm_numeric_linear_chain_block_per_row_kernel(const T alpha, const size_t m, const size_t n, const I *row_ptr_a,
+                                                     const I *col_idx_ptr_a, const T *values_ptr_a, const I *row_ptr_b,
+                                                     const I *col_idx_ptr_b, const T *values_ptr_b, const I *row_ptr_c,
+                                                     int *begins, int *nexts, I *ids, T *values) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
@@ -474,12 +470,10 @@ __global__ void __launch_bounds__(THREADS)
 
 template <typename T, typename I, typename BitSetEleType, size_t N, size_t LDS_MAP_CAP, size_t LDS_HASH_MASK,
           size_t THREADS, size_t WF_SIZE>
-__global__ void __launch_bounds__(THREADS)
-    spgemm_numeric_block_per_row_sort_kernel(const T alpha, const size_t m, const size_t n, const I *row_ptr_a,
-                                             const I *col_idx_ptr_a, const T *values_ptr_a, const I *row_ptr_b,
-                                             const I *col_idx_ptr_b, const T *values_ptr_b, const I *row_ptr_c,
-                                             int *begins, int *nexts, const size_t idx_bits, I *ids, T *values,
-                                             I *col_idx_ptr_c, T *values_ptr_c) {
+__global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_block_per_row_sorted_kernel(
+    const T alpha, const size_t m, const size_t n, const I *row_ptr_a, const I *col_idx_ptr_a, const T *values_ptr_a,
+    const I *row_ptr_b, const I *col_idx_ptr_b, const T *values_ptr_b, const I *row_ptr_c, int *begins, int *nexts,
+    const size_t idx_bits, I *ids, T *values, I *col_idx_ptr_c, T *values_ptr_c) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
@@ -716,13 +710,108 @@ __global__ void __launch_bounds__(THREADS)
   }
 }
 
-template <typename T, typename I, size_t N, size_t LDS_MAP_CAP, size_t LDS_HASH_MASK, size_t THREADS, size_t VEC_SIZE,
-          size_t WF_SIZE>
-__global__ void __launch_bounds__(THREADS)
-    spgemm_numeric_vector_per_row_sort_kernel(const T alpha, const size_t m, const size_t n, const I *row_ptr_a,
-                                              const I *col_idx_ptr_a, const T *values_ptr_a, const I *row_ptr_b,
-                                              const I *col_idx_ptr_b, const T *values_ptr_b, const I *row_ptr_c, I *ids,
-                                              T *values) {
+template <typename T, typename I, size_t N, size_t THREADS, size_t WF_SIZE>
+__global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_block_per_row_sorted_one_pass_kernel(
+    const T alpha, const size_t m, const size_t n, const I *row_ptr_a, const I *col_idx_ptr_a, const T *values_ptr_a,
+    const I *row_ptr_b, const I *col_idx_ptr_b, const T *values_ptr_b, const bool *row_group_ptr, const I *row_ptr_c,
+    I *ids, T *values) {
+  // thread id in global
+  const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
+  // thread num in global
+  const int global_thread_num = gridDim.x * blockDim.x;
+  // block id in global
+  const int global_block_id = blockIdx.x;
+  // block num in global
+  const int global_block_num = gridDim.x;
+  // thread id in block
+  const int block_thread_id = threadIdx.x;
+  // thread num in block
+  constexpr int block_thread_num = THREADS;
+  // hashmap in LDS
+  constexpr size_t LDS_MAP_CAP = THREADS * N;
+  // hash mask
+  constexpr size_t LDS_HASH_MASK = LDS_MAP_CAP - 1;
+  constexpr int LDS_BEGINS_SIZE = LDS_MAP_CAP;
+  constexpr int BLOCK_PROCESS_ONCE = THREADS;
+
+  constexpr int NEXTS_SIZE_PER_BLOCK = BLOCK_PROCESS_ONCE * N;
+  constexpr int LDS_NEXTS_SIZE = NEXTS_SIZE_PER_BLOCK;
+  // each block process one row
+  int row_a = global_block_id;
+
+  if (row_a >= m || !row_group_ptr[row_a]) {
+    return;
+  }
+  __shared__ int shared_begins[LDS_BEGINS_SIZE];
+  __shared__ int shared_nexts[LDS_NEXTS_SIZE];
+  __shared__ I shared_ids[LDS_NEXTS_SIZE];
+  __shared__ T shared_values[LDS_NEXTS_SIZE];
+  __shared__ int block_lds_use_size;
+
+  int *block_lds_begins = shared_begins;
+  int *block_lds_nexts = shared_nexts;
+  I *block_lds_ids = shared_ids;
+  T *block_lds_values = shared_values;
+  // init lds hashmap
+  for (int i = block_thread_id; i < LDS_BEGINS_SIZE; i += block_thread_num) {
+    shared_begins[i] = HashMap<T, I>::NullValue;
+  }
+  for (int i = block_thread_id; i < LDS_NEXTS_SIZE; i += block_thread_num) {
+    shared_nexts[i] = HashMap<T, I>::NullValue;
+  }
+  if (block_thread_id == 0) {
+    block_lds_use_size = 0;
+  }
+  __syncthreads();
+
+  const I row_idx_begin = row_ptr_a[row_a];
+  const I row_idx_end = row_ptr_a[row_a + 1];
+
+  I *block_mem_ids = ids + row_ptr_c[row_a];
+  T *block_mem_values = values + row_ptr_c[row_a];
+
+  for (int idx_a = row_idx_begin; idx_a < row_idx_end; ++idx_a) {
+    const I col_a = col_idx_ptr_a[idx_a];
+    const I row_b = col_a;
+    const I idx_begin_b = row_ptr_b[row_b];
+    const I idx_end_b = row_ptr_b[row_b + 1];
+    const int block_rounds =
+        (idx_end_b - idx_begin_b) / BLOCK_PROCESS_ONCE + ((idx_end_b - idx_begin_b) % BLOCK_PROCESS_ONCE == 0 ? 0 : 1);
+    for (int round = 0; round < block_rounds; ++round) {
+      const int idx_b = idx_begin_b + BLOCK_PROCESS_ONCE * round + block_thread_id;
+      if (idx_b < idx_end_b) {
+        const T tmp_val = values_ptr_a[idx_a] * values_ptr_b[idx_b];
+        const I col_b = col_idx_ptr_b[idx_b];
+        // insert to lds hashmap
+        linear_chain_hashmap_vector_insert_add<T, I, LDS_HASH_MASK>(
+            block_lds_begins, block_lds_nexts, block_lds_ids, block_lds_values, col_b, tmp_val, &block_lds_use_size);
+      }
+    }
+    __syncthreads();
+  }
+  __syncthreads();
+  // sort and write to device memory
+  const int end_offset = block_lds_use_size;
+
+  for (int i = block_thread_id; i < end_offset; i += block_thread_num) {
+    const I base_id = block_lds_ids[i];
+    const T base_values = block_lds_values[i];
+    int smaller_count = 0;
+    for (int j = 0; j < end_offset; ++j) {
+      if (block_lds_ids[j] < base_id) {
+        smaller_count++;
+      }
+    }
+    block_mem_ids[smaller_count] = base_id;
+    block_mem_values[smaller_count] = base_values * alpha;
+  }
+}
+
+template <typename T, typename I, size_t N, size_t THREADS, size_t VEC_SIZE, size_t WF_SIZE>
+__global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_vector_per_row_sorted_one_pass_kernel(
+    const T alpha, const size_t m, const size_t n, const I *row_ptr_a, const I *col_idx_ptr_a, const T *values_ptr_a,
+    const I *row_ptr_b, const I *col_idx_ptr_b, const T *values_ptr_b, const bool *row_group_ptr, const I *row_ptr_c,
+    I *ids, T *values) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
@@ -745,7 +834,16 @@ __global__ void __launch_bounds__(THREADS)
   const int vec_thread_id = global_thread_id % VEC_SIZE;
   // thread num in vec
   constexpr int vec_thread_num = VEC_SIZE;
+
+  int row_a = global_vec_id;
+
+  if (row_a >= m || !row_group_ptr[row_a]) {
+    return;
+  }
   // hashmap in LDS
+  constexpr size_t LDS_MAP_CAP = VEC_SIZE * N;
+  // hash mask
+  constexpr size_t LDS_HASH_MASK = LDS_MAP_CAP - 1;
   constexpr int LDS_BEGINS_SIZE = LDS_MAP_CAP * block_vec_num;
   constexpr int VEC_PROCESS_ONCE = VEC_SIZE;
 
@@ -762,84 +860,64 @@ __global__ void __launch_bounds__(THREADS)
   T *vec_lds_values = shared_values + NEXTS_SIZE_PER_VEC * block_vec_id;
 
   // init lds hashmap
-  for (int i = block_thread_id; i < LDS_BEGINS_SIZE; i += block_thread_num) {
-    shared_begins[i] = HashMap<T, I>::NullValue;
+  for (int i = vec_thread_id; i < LDS_MAP_CAP; i += vec_thread_num) {
+    vec_lds_begins[i] = HashMap<T, I>::NullValue;
   }
-  for (int i = block_thread_id; i < LDS_NEXTS_SIZE; i += block_thread_num) {
-    shared_nexts[i] = HashMap<T, I>::NullValue;
+  for (int i = vec_thread_id; i < NEXTS_SIZE_PER_VEC; i += vec_thread_num) {
+    vec_lds_nexts[i] = HashMap<T, I>::NullValue;
   }
-  __syncthreads();
   // each vec process one row
   __shared__ int lds_use_size[block_vec_num];
-  __shared__ int mem_use_size[block_vec_num];
   int *vec_lds_use_size = lds_use_size + block_vec_id;
-  int *vec_mem_use_size = mem_use_size + block_vec_id;
 
-  for (int row_a = global_vec_id; row_a < m; row_a += global_vec_num) {
-    const I row_idx_begin = row_ptr_a[row_a];
-    const I row_idx_end = row_ptr_a[row_a + 1];
+  const I row_idx_begin = row_ptr_a[row_a];
+  const I row_idx_end = row_ptr_a[row_a + 1];
 
-    I *vec_mem_ids = ids + row_ptr_c[row_a];
-    T *vec_mem_values = values + row_ptr_c[row_a];
+  I *vec_mem_ids = ids + row_ptr_c[row_a];
+  T *vec_mem_values = values + row_ptr_c[row_a];
 
-    if (vec_thread_id == 0) {
-      *vec_lds_use_size = 0;
-      *vec_mem_use_size = 0;
+  if (vec_thread_id == 0) {
+    *vec_lds_use_size = 0;
+  }
+  for (int idx_a = row_idx_begin; idx_a < row_idx_end; ++idx_a) {
+    const I col_a = col_idx_ptr_a[idx_a];
+    const I row_b = col_a;
+    const I idx_begin_b = row_ptr_b[row_b];
+    const I idx_end_b = row_ptr_b[row_b + 1];
+    for (int idx_b = idx_begin_b + vec_thread_id; idx_b < idx_end_b; idx_b += vec_thread_num) {
+      const T tmp_val = values_ptr_a[idx_a] * values_ptr_b[idx_b];
+      const I col_b = col_idx_ptr_b[idx_b];
+      // insert to lds hashmap
+      linear_chain_hashmap_vector_insert_add<T, I, LDS_HASH_MASK>(vec_lds_begins, vec_lds_nexts, vec_lds_ids,
+                                                                  vec_lds_values, col_b, tmp_val, vec_lds_use_size);
     }
-    int idx_a = row_idx_begin;
-    for (; idx_a < row_idx_end; ++idx_a) {
-      const I col_a = col_idx_ptr_a[idx_a];
-      const I row_b = col_a;
-      const I idx_begin_b = row_ptr_b[row_b];
-      const I idx_end_b = row_ptr_b[row_b + 1];
-      const int vec_rounds =
-          (idx_end_b - idx_begin_b) / VEC_PROCESS_ONCE + ((idx_end_b - idx_begin_b) % VEC_PROCESS_ONCE == 0 ? 0 : 1);
-      for (int round = 0; round < vec_rounds; ++round) {
-        const int idx_b = idx_begin_b + VEC_PROCESS_ONCE * round + vec_thread_id;
-        if (idx_b < idx_end_b) {
-          const T tmp_val = values_ptr_a[idx_a] * values_ptr_b[idx_b];
-          const I col_b = col_idx_ptr_b[idx_b];
-          // insert to lds hashmap
-          linear_chain_hashmap_vector_insert_add<T, I, LDS_HASH_MASK>(vec_lds_begins, vec_lds_nexts, vec_lds_ids,
-                                                                      vec_lds_values, col_b, tmp_val, vec_lds_use_size);
-        }
+  }
+  // sort and write to device memory
+  const int end_offset = *vec_lds_use_size;
+
+  for (int i = vec_thread_id; i < end_offset; i += vec_thread_num) {
+    const I base_id = vec_lds_ids[i];
+    const T base_values = vec_lds_values[i];
+    int smaller_count = 0;
+    for (int j = 0; j < end_offset; ++j) {
+      if (vec_lds_ids[j] < base_id) {
+        smaller_count++;
       }
     }
-    // sort and write to device memory
-    const int end_offset = *vec_lds_use_size;
-
-    for (int i = vec_thread_id; i < end_offset; i += vec_thread_num) {
-      const I base_id = vec_lds_ids[i];
-      const T base_values = vec_lds_values[i];
-      int smaller_count = 0;
-      for (int j = 0; j < end_offset; ++j) {
-        if (vec_lds_ids[j] < base_id) {
-          smaller_count++;
-        }
-      }
-      vec_mem_ids[smaller_count] = base_id;
-      vec_mem_values[smaller_count] = base_values * alpha;
-    }
-    // reset lds hashmap
-    for (int i = vec_thread_id; i < LDS_MAP_CAP; i += vec_thread_num) {
-      vec_lds_begins[i] = HashMap<T, I>::NullValue;
-    }
-    for (int i = vec_thread_id; i < end_offset; i += vec_thread_num) {
-      vec_lds_nexts[i] = HashMap<T, I>::NullValue;
-    }
-    if (vec_thread_id == 0) {
-      *vec_lds_use_size = 0;
-    }
+    vec_mem_ids[smaller_count] = base_id;
+    vec_mem_values[smaller_count] = base_values * alpha;
   }
 }
 
 template <typename T, typename I, size_t N, size_t LDS_MAP_CAP, size_t LDS_HASH_MASK, size_t THREADS, size_t VEC_SIZE,
           size_t WF_SIZE>
 __global__ void __launch_bounds__(THREADS)
-    spgemm_numeric_vector_per_row_kernel(const T alpha, const size_t m, const size_t n, const I *row_ptr_a,
-                                         const I *col_idx_ptr_a, const T *values_ptr_a, const I *row_ptr_b,
-                                         const I *col_idx_ptr_b, const T *values_ptr_b, const I *row_ptr_c, int *begins,
-                                         int *nexts, I *ids, T *values) {
+    spgemm_numeric_linear_chain_hashmap_vector_per_row_kernel(const T alpha, const size_t m, const size_t n,
+                                                              const I *row_ptr_a, const I *col_idx_ptr_a,
+                                                              const T *values_ptr_a, const I *row_ptr_b,
+                                                              const I *col_idx_ptr_b, const T *values_ptr_b,
+                                                              const I *row_ptr_c, int *begins, int *nexts, I *ids,
+                                                              T *values) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
