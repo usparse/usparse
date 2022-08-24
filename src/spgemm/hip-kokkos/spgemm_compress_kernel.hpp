@@ -20,22 +20,29 @@ __global__ void compress_matrix_thread_per_row_kernel(const size_t m, const I *r
 
     idtype_t *thread_mem_ids = ids + row_idx_begin;
     bittype_t *thread_mem_bits = bits_cols + row_idx_begin;
-    idtype_t count = -1;
-    idtype_t id = 0xffffffff;
+    idtype_t count = 0;
+    idtype_t write_id = col_idx_ptr[row_idx_begin] / BitsLen;
+    bittype_t write_bit = static_cast<bittype_t>(0);
     for (int idx = row_idx_begin; idx < row_idx_end; idx++) {
       const I col = col_idx_ptr[idx];
       const idtype_t my_id = col / BitsLen;
       const bittype_t my_bit = 0x1 << (col % BitsLen);
-      if (my_id == id) {
-        thread_mem_bits[count] |= my_bit;
+      if (my_id == write_id) {
+        write_bit |= my_bit;
       } else {
+        thread_mem_ids[count] = write_id;
+        thread_mem_bits[count] = write_bit;
+        write_id = my_id;
+        write_bit = my_bit;
         count++;
-        thread_mem_ids[count] = my_id;
-        thread_mem_bits[count] = my_bit;
-        id = my_id;
       }
     }
-    use_count[row] = count + 1;
+    if (write_bit != static_cast<bittype_t>(0)) {
+      thread_mem_ids[count] = write_id;
+      thread_mem_bits[count] = write_bit;
+      count++;
+    }
+    use_count[row] = count;
   }
 }
 
@@ -113,7 +120,7 @@ __global__ void __launch_bounds__(THREADS)
           idx_offset += tmp;
         }
       }
-      atomicExch(&vec_lds_write_ids[idx_offset], my_id);
+      vec_lds_write_ids[idx_offset] = my_id;
       atomicOr(&vec_lds_write_bits[idx_offset], my_bit);
       __threadfence();
       // write
@@ -150,6 +157,14 @@ __global__ void __launch_bounds__(THREADS)
   const int global_block_num = gridDim.x;
   // thread id in block
   const int block_thread_id = threadIdx.x;
+  // wavefront id in block
+  const int block_wf_id = block_thread_id / WF_SIZE;
+  // wavefront num in block
+  constexpr int block_wf_num = THREADS / WF_SIZE;
+  // thread id in wavefront
+  const int wf_thread_id = block_thread_id % WF_SIZE;
+  // thread num in wavefront
+  const int wf_thread_num = WF_SIZE;
   // thread num in block
   constexpr int block_thread_num = THREADS;
 
@@ -159,7 +174,9 @@ __global__ void __launch_bounds__(THREADS)
   __shared__ idtype_t block_lds_write_ids[LDS_PER_BLOCK];
   __shared__ bittype_t block_lds_write_bits[LDS_PER_BLOCK];
   __shared__ int block_lds_count;
+  __shared__ int block_offset_count;
   __shared__ idtype_t block_last_id;
+  __shared__ int block_scan_reduce[THREADS / WF_SIZE];
 
   // each block process a row
   for (int row = global_block_id; row < m; row += global_block_num) {
@@ -178,68 +195,76 @@ __global__ void __launch_bounds__(THREADS)
     for (int round = 0; round < block_rounds; ++round) {
       block_lds_write_bits[block_thread_id] = static_cast<bittype_t>(0);
       const int idx = row_idx_begin + round * block_thread_num + block_thread_id;
-      idtype_t my_id;
-      bittype_t my_bit;
-      if (idx >= row_idx_end) {
-        const I col = col_idx_ptr[row_idx_end - 1];
-        my_id = col / BitsLen;
-        my_bit = static_cast<bittype_t>(0);
-      } else {
-        const I col = col_idx_ptr[idx];
-        my_id = col / BitsLen;
-        my_bit = 0x1 << (col % BitsLen);
-      }
-      if (block_thread_id == 0) {
-        if (my_id != block_last_id) {
-          block_lds_count++;
-        }
-        block_lds_write_ids[0] = my_id;
+      const I col = idx < row_idx_end ? col_idx_ptr[idx] : col_idx_ptr[row_idx_end - 1];
+      idtype_t my_id = col / BitsLen;
+      bittype_t my_bit = idx < row_idx_end ? (0x1 << (col % BitsLen)) : static_cast<bittype_t>(0);
+
+      block_lds_ids[block_thread_id] = my_id;
+      int idx_offset = 0;
+      if (block_thread_id == 0 && my_id != block_last_id) {
+        block_lds_count++;
       }
       __syncthreads();
+      if (block_thread_id > 0) {
+        idx_offset = (block_lds_ids[block_thread_id] == block_lds_ids[block_thread_id - 1] ? 0 : 1);
+      }
+      // ScanThenFan
+      // wf scan
+      for (int i = 1; i < WF_SIZE; i <<= 1) {
+        int tmp = __shfl_up(idx_offset, i, WF_SIZE);
+        if (wf_thread_id >= i) {
+          idx_offset += tmp;
+        }
+      }
+      if (wf_thread_id == WF_SIZE - 1) {
+        block_scan_reduce[block_wf_id] = idx_offset;
+      }
+      __syncthreads();
+      // block scan
+      if (block_wf_id == 0) {
+        int sum = 0;
+        for (int i = wf_thread_id; i < THREADS / WF_SIZE; i += wf_thread_num) {
+          sum += block_scan_reduce[i];
+        }
+        // wf scan
+        for (int i = 1; i < WF_SIZE; i <<= 1) {
+          int tmp = __shfl_up(sum, i, WF_SIZE);
+          if (wf_thread_id >= i) {
+            sum += tmp;
+          }
+        }
+        if (wf_thread_id < THREADS / WF_SIZE) {
+          block_scan_reduce[wf_thread_id] = sum;
+        }
+      }
+      __syncthreads();
+      // fan
+      if (block_wf_id > 0) {
+        idx_offset += block_scan_reduce[block_wf_id - 1];
+      }
+      block_lds_write_ids[idx_offset] = my_id;
+      atomicOr(&block_lds_write_bits[idx_offset], my_bit);
+      if (block_thread_id == THREADS - 1) {
+        block_offset_count = idx_offset;
+      }
       const int base_count = block_lds_count;
       __syncthreads();
-      if (block_thread_id == 0) {
-        block_lds_count = 1;
-      }
-      block_lds_ids[block_thread_id] = my_id;
-      __syncthreads();
-      const int max_id = block_lds_ids[block_thread_num - 1];
-      int count = 0;
-      bool flag = false;
-      if (block_thread_id > 0 && block_lds_ids[block_thread_id - 1] != my_id) {
-        flag = true;
-        count = atomicAdd(&block_lds_count, 1);
-        block_lds_write_ids[count] = my_id;
-      }
-      __syncthreads();
-      if (my_id == max_id && flag) {
-        idtype_t tmp = block_lds_write_ids[block_lds_count - 1];
-        block_lds_write_ids[count] = tmp;
-        block_lds_write_ids[block_lds_count - 1] = my_id;
-      }
-      __syncthreads();
-      const int lds_count = block_lds_count;
-      for (int i = 0; i < lds_count; ++i) {
-        if (my_id == block_lds_write_ids[i]) {
-          atomicOr(&block_lds_write_bits[i], my_bit);
-        }
-      }
-      __syncthreads();
-      // write back
-      if (block_thread_id < lds_count) {
+      // write
+      const int lds_count = block_offset_count;
+      if (block_thread_id <= lds_count) {
         block_mem_ids[base_count + block_thread_id] = block_lds_write_ids[block_thread_id];
         block_mem_bits[base_count + block_thread_id] |= block_lds_write_bits[block_thread_id];
       }
-      if (block_thread_id == 0) {
-        block_last_id = max_id;
-        block_lds_count = base_count + lds_count - 1;
+      // update last_id / lds_count
+      if (block_thread_id == THREADS - 1) {
+        block_last_id = my_id;
+        block_lds_count = base_count + lds_count;
       }
       __syncthreads();
     }
     if (block_thread_id == 0) {
       use_count[row] = block_lds_count + 1;
     }
-    // __syncthreads();
   }
 }
 
