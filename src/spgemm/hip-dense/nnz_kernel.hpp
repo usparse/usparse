@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SPGEMM_NNZ_KERNEL_HPP
+#define SPGEMM_NNZ_KERNEL_HPP
 
 #include "common/scan_kernel.hpp"
 #include "common/reduction_kernel.hpp"
@@ -126,3 +127,5 @@ __global__ void nnz_kernel_long_row(const size_t m, const size_t n, const T *A, 
     ptr_offset_A[bid] = nnz.data;
   }
 }
+
+#endif // SPGEMM_NNZ_KERNEL_HPP

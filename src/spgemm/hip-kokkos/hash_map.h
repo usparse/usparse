@@ -6,19 +6,17 @@
 
 // tips: array in hashmap allocate in device
 template <typename T, typename I> struct HashMap {
-  using dtype = T;
-  using csrIdxType = I;
   static constexpr int M = 10;
   static constexpr size_t Capacity = 0x1 << M;
   static constexpr size_t HashMask = Capacity - 1;
   static constexpr int NullValue = 0xffffffff;
 
-  csrIdxType *ids;
-  dtype *values;
+  I *ids;
+  T *values;
   int *begins;
   int *nexts;
 
-  HashMap(csrIdxType *col_idx_ptr, dtype *values_ptr, size_t rows, size_t nnz) : ids(col_idx_ptr), values(values_ptr) {
+  HashMap(I *col_idx_ptr, T *values_ptr, size_t rows, size_t nnz) : ids(col_idx_ptr), values(values_ptr) {
     KOKKOS_HIP_CHECK(hipMalloc((void **)&begins, sizeof(int) * HashMap::Capacity * rows))
     KOKKOS_HIP_CHECK(hipMemset(begins, HashMap::NullValue, sizeof(int) * HashMap::Capacity * rows))
     KOKKOS_HIP_CHECK(hipMalloc((void **)&nexts, sizeof(int) * nnz))

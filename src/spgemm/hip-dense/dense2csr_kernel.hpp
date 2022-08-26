@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SPGEMM_DENSE2CSR_KERNEL_HPP
+#define SPGEMM_DENSE2CSR_KERNEL_HPP
 
 #include "building_config.h"
 
@@ -123,3 +124,5 @@ __global__ void dense2csr_kernel(const size_t m,
     // }
     // __syncthreads();
 }
+
+#endif // SPGEMM_DENSE2CSR_KERNEL_HPP
