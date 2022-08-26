@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SPGEMM_DENSE2CSR_IMPL_HPP
+#define SPGEMM_DENSE2CSR_IMPL_HPP
 
 #include <hip/hip_runtime.h>
 
@@ -39,3 +40,5 @@ void dense2csr(const size_t m,const size_t n,T *dev_dense,I *ptr_offset,I **ptr_
 
     dense2csr_template(m,n,dev_dense,n,*ptr_value,ptr_offset,*ptr_colindex);
 }
+
+#endif // SPGEMM_DENSE2CSR_IMPL_HPP

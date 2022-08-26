@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SPGEMM_NNZ_IMPL_HPP
+#define SPGEMM_NNZ_IMPL_HPP
 
 #include "nnz_kernel.hpp"
 #include "building_config.h"
@@ -46,3 +47,5 @@ size_t nnz_calc(const size_t m, const size_t n, const T* A, const size_t ld, I* 
     (reduction_kernel_warpper<T,I,THREADS, R, 32>)(m, n, A, ld, ptr_offset_A, temp_buffer, BLOCKS, LEN);
     return 0;
 }
+
+#endif // SPGEMM_NNZ_IMPL_HPP

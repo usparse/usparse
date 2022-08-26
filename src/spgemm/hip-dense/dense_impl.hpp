@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SPGEMM_DENSE_IMPL_HPP
+#define SPGEMM_DENSE_IMPL_HPP
 
 #include "dense_kernel.hpp"
 #include "dense2csr_impl.hpp"
@@ -46,3 +47,4 @@ size_t dense_spgemm(const hip_sparse_operation transA,
     return 0;
 };
 
+#endif // SPGEMM_DENSE_IMPL_HPP
