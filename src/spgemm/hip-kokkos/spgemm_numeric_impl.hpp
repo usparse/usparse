@@ -118,14 +118,14 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
     constexpr int VEC_SIZE = 16;
     constexpr int BLOCK_THREAD_NUM = 512;
     const int GLOBAL_BLOCK_NUM = matrix_c.rows;
-    I *workspace_b = nullptr;
-    KOKKOS_HIP_CHECK(hipMalloc((void **)&workspace_b, sizeof(I) * matrix_a.nnz))
+    // I *workspace_b = nullptr;
+    // KOKKOS_HIP_CHECK(hipMalloc((void **)&workspace_b, sizeof(I) * matrix_a.nnz))
     (spgemm_numeric_block_per_row_sorted_multipass_kernel<T, I, CHUNK_SIZE, BLOCK_THREAD_NUM, VEC_SIZE,
                                                           WF_SIZE>)<<<matrix_c.rows, 512>>>(
         alpha, matrix_c.rows, matrix_c.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
         matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
-        matrix_c.values_ptr, workspace_b);
-    KOKKOS_HIP_CHECK(hipFree(workspace_b));
+        matrix_c.values_ptr);
+    // KOKKOS_HIP_CHECK(hipFree(workspace_b));
     is_sorted = true;
   }
 }

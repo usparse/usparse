@@ -213,7 +213,7 @@ __global__ void __launch_bounds__(THREADS)
                                                          const I *row_ptr_a, const I *col_idx_ptr_a,
                                                          const T *values_ptr_a, const I *row_ptr_b,
                                                          const I *col_idx_ptr_b, const T *values_ptr_b,
-                                                         const I *row_ptr_c, I *ids, T *values, I *workspace_b) {
+                                                         const I *row_ptr_c, I *ids, T *values) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
@@ -237,6 +237,7 @@ __global__ void __launch_bounds__(THREADS)
   // chunks
   __shared__ bool table[CHUNK_SIZE];
   __shared__ T data[CHUNK_SIZE];
+  __shared__ I s_workspace_b[32];
 
   __shared__ I next_chunk;
   // block processes a row
@@ -270,7 +271,7 @@ __global__ void __launch_bounds__(THREADS)
       const I row_b = col_a;
       const T val_A = values_ptr_a[idx_a];
 
-      I idx_begin_b = (chunk_begin == 0) ? row_ptr_b[row_b] : workspace_b[idx_a];
+      I idx_begin_b = (chunk_begin == 0) ? row_ptr_b[row_b] : s_workspace_b[idx_a-row_idx_begin];
       I idx_end_b = row_ptr_b[row_b + 1];
 
       I next_k = idx_begin_b + vec_thread_id;
@@ -290,7 +291,7 @@ __global__ void __launch_bounds__(THREADS)
       }
 
       if (vec_thread_id == vec_thread_num - 1) {
-        workspace_b[idx_a] = next_k;
+        s_workspace_b[idx_a-row_idx_begin] = next_k;
       }
     }
     for (int i = 1; i < VEC_SIZE; i <<= 1) {

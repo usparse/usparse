@@ -26,7 +26,7 @@ void nnz_kernel_wrapper(const size_t m, const size_t n, const T* A, const size_t
 }
 
 template<typename T, typename I,int THREADS, int R, int VEC_SIZE>
-void reduction_kernel_warpper(const size_t m, const size_t n, const T* A, const size_t ld, I* ptr_offset_A,
+void reduction_kernel_warpper(const size_t m, const size_t n, I* ptr_offset_A,
     I *temp_buffer, const int BLOCKS, const int LEN) {
    // reduce than fan
     prefix_sum_kernel<I, VEC_SIZE, R, THREADS, __WF_SIZE__><<<BLOCKS, THREADS>>>(LEN, ptr_offset_A+1, temp_buffer);
@@ -35,7 +35,7 @@ void reduction_kernel_warpper(const size_t m, const size_t n, const T* A, const 
 }
 
 template<typename T, typename I, int THREADS, int R>
-size_t nnz_calc(const size_t m, const size_t n, const T* A, const size_t ld, I* ptr_offset_A, I *temp_buffer)
+size_t nnz_calc(const size_t m, const size_t n, I* ptr_offset_A, I *temp_buffer)
 {
     const size_t LEN = m + 1;
     const size_t BLOCKS = LEN / (THREADS * R) + (LEN % (THREADS * R) == 0 ? 0 : 1);
@@ -43,6 +43,6 @@ size_t nnz_calc(const size_t m, const size_t n, const T* A, const size_t ld, I* 
         const size_t BUFFER_SIZE = (BLOCKS) * sizeof(I);
         return BUFFER_SIZE;
     }
-    (reduction_kernel_warpper<T,I,THREADS, R, 32>)(m, n, A, ld, ptr_offset_A, temp_buffer, BLOCKS, LEN);
+    (reduction_kernel_warpper<T,I,THREADS, R, 32>)(m, n, ptr_offset_A, temp_buffer, BLOCKS, LEN);
     return 0;
 }
