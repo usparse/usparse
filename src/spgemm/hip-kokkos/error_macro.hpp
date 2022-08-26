@@ -16,6 +16,7 @@
     }                                                                                                                  \
   }
 
+#ifdef UNDEF // note, ROCSPARSE_CHECK macro is not used, we remove it.
 #define ROCSPARSE_CHECK(stat)                                                                                          \
   {                                                                                                                    \
     if (stat != rocsparse_status_success) {                                                                            \
@@ -23,5 +24,6 @@
       exit(-1);                                                                                                        \
     }                                                                                                                  \
   }
+#endif
 
 #endif // SPGEMM_KOKKOS_ERROR_MACRO_HPP
