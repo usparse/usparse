@@ -1,0 +1,271 @@
+#ifndef SPGEMM_KOKKOS_SPGEMM_COMPRESS_KERNEL_HPP
+#define SPGEMM_KOKKOS_SPGEMM_COMPRESS_KERNEL_HPP
+
+template <typename I, size_t BitsLen>
+__global__ void compress_matrix_thread_per_row_kernel(const size_t m, const I *row_ptr, const I *col_idx_ptr,
+                                                      typename CompressMatrix<I>::IdType *ids,
+                                                      typename CompressMatrix<I>::BitSetEleType *bits_cols,
+                                                      int *use_count) {
+  using idtype_t = typename CompressMatrix<I>::IdType;
+  using bittype_t = typename CompressMatrix<I>::BitSetEleType;
+
+  // thread id in global
+  const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
+  // thread num in global
+  const int global_thread_num = gridDim.x * blockDim.x;
+  // each thread process a row
+  for (int row = global_thread_id; row < m; row += global_thread_num) {
+    const I row_idx_begin = row_ptr[row];
+    const I row_idx_end = row_ptr[row + 1];
+
+    idtype_t *thread_mem_ids = ids + row_idx_begin;
+    bittype_t *thread_mem_bits = bits_cols + row_idx_begin;
+    idtype_t count = 0;
+    idtype_t write_id = col_idx_ptr[row_idx_begin] / BitsLen;
+    bittype_t write_bit = static_cast<bittype_t>(0);
+    for (int idx = row_idx_begin; idx < row_idx_end; idx++) {
+      const I col = col_idx_ptr[idx];
+      const idtype_t my_id = col / BitsLen;
+      const bittype_t my_bit = 0x1 << (col % BitsLen);
+      if (my_id == write_id) {
+        write_bit |= my_bit;
+      } else {
+        thread_mem_ids[count] = write_id;
+        thread_mem_bits[count] = write_bit;
+        write_id = my_id;
+        write_bit = my_bit;
+        count++;
+      }
+    }
+    if (write_bit != static_cast<bittype_t>(0)) {
+      thread_mem_ids[count] = write_id;
+      thread_mem_bits[count] = write_bit;
+      count++;
+    }
+    use_count[row] = count;
+  }
+}
+
+template <typename I, size_t BitsLen, size_t THREADS, size_t VEC_SIZE, size_t WF_SIZE>
+__global__ void __launch_bounds__(THREADS)
+    compress_matrix_vector_per_row_kernel(const size_t m, const I *row_ptr, const I *col_idx_ptr,
+                                          typename CompressMatrix<I>::IdType *ids,
+                                          typename CompressMatrix<I>::BitSetEleType *bits_cols, int *use_count) {
+  using idtype_t = typename CompressMatrix<I>::IdType;
+  using bittype_t = typename CompressMatrix<I>::BitSetEleType;
+
+  // thread id in global
+  const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
+  // thread num in global
+  const int global_thread_num = gridDim.x * blockDim.x;
+  // vec id in global
+  const int global_vec_id = global_thread_id / VEC_SIZE;
+  // vec num in global
+  const int global_vec_num = global_thread_num / VEC_SIZE;
+  // vec id in block
+  const int block_vec_id = threadIdx.x / VEC_SIZE;
+  // vec num in block
+  constexpr int block_vec_num = THREADS / VEC_SIZE;
+  // thread id in vec
+  const int vec_thread_id = threadIdx.x % VEC_SIZE;
+  // thread num in vec
+  constexpr int vec_thread_num = VEC_SIZE;
+
+  const int LDS_PER_VEC = vec_thread_num;
+  __shared__ idtype_t shared_ids[LDS_PER_VEC * block_vec_num];
+  __shared__ idtype_t shared_write_ids[LDS_PER_VEC * block_vec_num];
+  __shared__ bittype_t shared_write_bits[LDS_PER_VEC * block_vec_num];
+
+  idtype_t *const vec_lds_ids = &shared_ids[LDS_PER_VEC * block_vec_id];
+  idtype_t *const vec_lds_write_ids = &shared_write_ids[LDS_PER_VEC * block_vec_id];
+  bittype_t *const vec_lds_write_bits = &shared_write_bits[LDS_PER_VEC * block_vec_id];
+  int vec_lds_count;
+  int vec_last_id;
+
+  // each vector process a row
+  for (int row = global_vec_id; row < m; row += global_vec_num) {
+    if (vec_thread_id == 0) {
+      vec_lds_count = -1;
+      vec_last_id = 0xffffffff;
+    }
+    const I row_idx_begin = row_ptr[row];
+    const I row_idx_end = row_ptr[row + 1];
+
+    idtype_t *vec_mem_ids = ids + row_idx_begin;
+    bittype_t *vec_mem_bits = bits_cols + row_idx_begin;
+    const int vector_rounds = ((row_idx_end - row_idx_begin) / vec_thread_num) +
+                              (((row_idx_end - row_idx_begin) % vec_thread_num) == 0 ? 0 : 1);
+    for (int round = 0; round < vector_rounds; ++round) {
+      vec_lds_write_bits[vec_thread_id] = static_cast<bittype_t>(0);
+      const int idx = row_idx_begin + round * vec_thread_num + vec_thread_id;
+      const I col = idx < row_idx_end ? col_idx_ptr[idx] : col_idx_ptr[row_idx_end - 1];
+      idtype_t my_id = col / BitsLen;
+      bittype_t my_bit = idx < row_idx_end ? (0x1 << (col % BitsLen)) : static_cast<bittype_t>(0);
+
+      vec_lds_ids[vec_thread_id] = my_id;
+      __threadfence();
+      int idx_offset = 0;
+      if (vec_thread_id == 0) {
+        if (my_id != vec_last_id) {
+          vec_lds_count++;
+        }
+        idx_offset = 0;
+      } else {
+        idx_offset = (vec_lds_ids[vec_thread_id] == vec_lds_ids[vec_thread_id - 1] ? 0 : 1);
+      }
+      // scan
+      for (int i = 1; i < VEC_SIZE; i <<= 1) {
+        int tmp = __shfl_up(idx_offset, i, VEC_SIZE);
+        if (vec_thread_id >= i) {
+          idx_offset += tmp;
+        }
+      }
+      vec_lds_write_ids[idx_offset] = my_id;
+      atomicOr(&vec_lds_write_bits[idx_offset], my_bit);
+      __threadfence();
+      // write
+      const int base_count = __shfl(vec_lds_count, 0, VEC_SIZE);
+      const int lds_count = __shfl(idx_offset, VEC_SIZE - 1, VEC_SIZE);
+      if (vec_thread_id <= lds_count) {
+        vec_mem_ids[base_count + vec_thread_id] = vec_lds_write_ids[vec_thread_id];
+        vec_mem_bits[base_count + vec_thread_id] |= vec_lds_write_bits[vec_thread_id];
+      }
+      vec_last_id = __shfl(my_id, VEC_SIZE - 1, VEC_SIZE);
+      vec_lds_count = __shfl(base_count + lds_count, VEC_SIZE - 1, VEC_SIZE);
+    }
+    if (vec_thread_id == 0) {
+      use_count[row] = vec_lds_count + 1;
+    }
+  }
+}
+
+template <typename I, size_t BitsLen, size_t THREADS, size_t WF_SIZE>
+__global__ void __launch_bounds__(THREADS)
+    compress_matrix_block_per_row_kernel(const size_t m, const I *row_ptr, const I *col_idx_ptr,
+                                         typename CompressMatrix<I>::IdType *ids,
+                                         typename CompressMatrix<I>::BitSetEleType *bits_cols, int *use_count) {
+  using idtype_t = typename CompressMatrix<I>::IdType;
+  using bittype_t = typename CompressMatrix<I>::BitSetEleType;
+
+  // thread id in global
+  const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
+  // thread num in global
+  const int global_thread_num = gridDim.x * blockDim.x;
+  // block id in global
+  const int global_block_id = blockIdx.x;
+  // block num in global
+  const int global_block_num = gridDim.x;
+  // thread id in block
+  const int block_thread_id = threadIdx.x;
+  // wavefront id in block
+  const int block_wf_id = block_thread_id / WF_SIZE;
+  // wavefront num in block
+  constexpr int block_wf_num = THREADS / WF_SIZE;
+  // thread id in wavefront
+  const int wf_thread_id = block_thread_id % WF_SIZE;
+  // thread num in wavefront
+  const int wf_thread_num = WF_SIZE;
+  // thread num in block
+  constexpr int block_thread_num = THREADS;
+
+  const int LDS_PER_BLOCK = block_thread_num;
+
+  __shared__ idtype_t block_lds_ids[LDS_PER_BLOCK];
+  __shared__ idtype_t block_lds_write_ids[LDS_PER_BLOCK];
+  __shared__ bittype_t block_lds_write_bits[LDS_PER_BLOCK];
+  __shared__ int block_lds_count;
+  __shared__ int block_offset_count;
+  __shared__ idtype_t block_last_id;
+  __shared__ int block_scan_reduce[THREADS / WF_SIZE];
+
+  // each block process a row
+  for (int row = global_block_id; row < m; row += global_block_num) {
+    if (block_thread_id == 0) {
+      block_lds_count = -1;
+      block_last_id = 0xffffffff;
+    }
+    const I row_idx_begin = row_ptr[row];
+    const I row_idx_end = row_ptr[row + 1];
+
+    idtype_t *block_mem_ids = ids + row_idx_begin;
+    bittype_t *block_mem_bits = bits_cols + row_idx_begin;
+    __syncthreads();
+    const int block_rounds = ((row_idx_end - row_idx_begin) / block_thread_num) +
+                             (((row_idx_end - row_idx_begin) % block_thread_num) == 0 ? 0 : 1);
+    for (int round = 0; round < block_rounds; ++round) {
+      block_lds_write_bits[block_thread_id] = static_cast<bittype_t>(0);
+      const int idx = row_idx_begin + round * block_thread_num + block_thread_id;
+      const I col = idx < row_idx_end ? col_idx_ptr[idx] : col_idx_ptr[row_idx_end - 1];
+      idtype_t my_id = col / BitsLen;
+      bittype_t my_bit = idx < row_idx_end ? (0x1 << (col % BitsLen)) : static_cast<bittype_t>(0);
+
+      block_lds_ids[block_thread_id] = my_id;
+      int idx_offset = 0;
+      if (block_thread_id == 0 && my_id != block_last_id) {
+        block_lds_count++;
+      }
+      __syncthreads();
+      if (block_thread_id > 0) {
+        idx_offset = (block_lds_ids[block_thread_id] == block_lds_ids[block_thread_id - 1] ? 0 : 1);
+      }
+      // ScanThenFan
+      // wf scan
+      for (int i = 1; i < WF_SIZE; i <<= 1) {
+        int tmp = __shfl_up(idx_offset, i, WF_SIZE);
+        if (wf_thread_id >= i) {
+          idx_offset += tmp;
+        }
+      }
+      if (wf_thread_id == WF_SIZE - 1) {
+        block_scan_reduce[block_wf_id] = idx_offset;
+      }
+      __syncthreads();
+      // block scan
+      if (block_wf_id == 0) {
+        int sum = 0;
+        for (int i = wf_thread_id; i < THREADS / WF_SIZE; i += wf_thread_num) {
+          sum += block_scan_reduce[i];
+        }
+        // wf scan
+        for (int i = 1; i < WF_SIZE; i <<= 1) {
+          int tmp = __shfl_up(sum, i, WF_SIZE);
+          if (wf_thread_id >= i) {
+            sum += tmp;
+          }
+        }
+        if (wf_thread_id < THREADS / WF_SIZE) {
+          block_scan_reduce[wf_thread_id] = sum;
+        }
+      }
+      __syncthreads();
+      // fan
+      if (block_wf_id > 0) {
+        idx_offset += block_scan_reduce[block_wf_id - 1];
+      }
+      block_lds_write_ids[idx_offset] = my_id;
+      atomicOr(&block_lds_write_bits[idx_offset], my_bit);
+      if (block_thread_id == THREADS - 1) {
+        block_offset_count = idx_offset;
+      }
+      const int base_count = block_lds_count;
+      __syncthreads();
+      // write
+      const int lds_count = block_offset_count;
+      if (block_thread_id <= lds_count) {
+        block_mem_ids[base_count + block_thread_id] = block_lds_write_ids[block_thread_id];
+        block_mem_bits[base_count + block_thread_id] |= block_lds_write_bits[block_thread_id];
+      }
+      // update last_id / lds_count
+      if (block_thread_id == THREADS - 1) {
+        block_last_id = my_id;
+        block_lds_count = base_count + lds_count;
+      }
+      __syncthreads();
+    }
+    if (block_thread_id == 0) {
+      use_count[row] = block_lds_count + 1;
+    }
+  }
+}
+
+#endif // SPGEMM_KOKKOS_SPGEMM_COMPRESS_KERNEL_HPP

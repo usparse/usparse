@@ -5,4 +5,16 @@
 // #define TIME_MODE
 #endif
 
+#ifndef DEBUG_MODE
+// #define DEBUG_MODE
+#endif
+
+#ifndef SYMBOLIC_LINEAR_CHAIN_HASHMAP
+// #define SYMBOLIC_LINEAR_CHAIN_HASHMAP
+#endif
+
+#ifndef NUMERIC_LINEAR_CHAIN_HASHMAP
+#define NUMERIC_LINEAR_CHAIN_HASHMAP
+#endif
+
 #endif // SPGEMM_KOKKOS_BUILD_FLAG_H

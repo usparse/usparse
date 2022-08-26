@@ -42,7 +42,7 @@ CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, cons
   spgemm_symbolic<T, I>(matrix_a, matrix_b, row_ptr_c, &nnz_c, &max_row_num);
   hipDeviceSynchronize();
   timer.stop();
-  std::cout << "Synbolic phase: " << timer.time_use.count() << "(us)" << std::endl;
+  std::cout << "Symbolic phase: " << timer.time_use.count() << "(us)" << std::endl;
   // Numeric Phase
   timer.start();
   bool is_sorted = false;
