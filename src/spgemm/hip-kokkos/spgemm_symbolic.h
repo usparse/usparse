@@ -15,6 +15,6 @@
  **/
 template <typename T, typename I>
 void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b, I *row_ptr_c, size_t *nnz_c,
-                     I *max_row_num);
+                     I *max_row_num, I *bp);
 
 #endif // SPGEMM_KOKKOS_SPGEMM_SYMBOLIC_H

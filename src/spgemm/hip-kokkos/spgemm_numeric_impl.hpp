@@ -14,7 +14,7 @@
 
 template <typename T, typename I>
 void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b,
-                    const I max_row_num, CsrMatrix<T, I> &matrix_c, bool &is_sorted) {
+                    const I max_row_num, CsrMatrix<T, I> &matrix_c, I *bp, bool &is_sorted) {
   constexpr size_t WF_SIZE = 64;
 
   // calculate part of matrix_c
@@ -114,18 +114,28 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
     }
     is_sorted = true;
   } else {
+    const double sparseness = static_cast<double>(matrix_c.nnz) / static_cast<double>(matrix_c.rows * matrix_c.cols);
+
     constexpr int CHUNK_SIZE = 2048;
-    constexpr int VEC_SIZE = 16;
     constexpr int BLOCK_THREAD_NUM = 512;
     const int GLOBAL_BLOCK_NUM = matrix_c.rows;
-    I *workspace_b = nullptr;
-    KOKKOS_HIP_CHECK(hipMalloc((void **)&workspace_b, sizeof(I) * matrix_a.nnz))
-    (spgemm_numeric_block_per_row_sorted_multipass_kernel<T, I, CHUNK_SIZE, BLOCK_THREAD_NUM, VEC_SIZE,
-                                                          WF_SIZE>)<<<matrix_c.rows, 512>>>(
-        alpha, matrix_c.rows, matrix_c.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
-        matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
-        matrix_c.values_ptr, workspace_b);
-    KOKKOS_HIP_CHECK(hipFree(workspace_b));
+    const int BPS_PER_ROW = matrix_b.cols / CHUNK_SIZE + (matrix_b.cols % CHUNK_SIZE == 0 ? 0 : 1);
+
+    if (sparseness < 0.2) {
+      constexpr int VEC_SIZE = 16;
+      (spgemm_numeric_block_per_row_sorted_bp_kernel<T, I, CHUNK_SIZE, BLOCK_THREAD_NUM, VEC_SIZE,
+                                                     WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+          alpha, matrix_c.rows, matrix_c.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
+          matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
+          matrix_c.values_ptr, bp, BPS_PER_ROW);
+    } else {
+      constexpr int VEC_SIZE = 64;
+      (spgemm_numeric_block_per_row_sorted_bp_kernel<T, I, CHUNK_SIZE, BLOCK_THREAD_NUM, VEC_SIZE,
+                                                     WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+          alpha, matrix_c.rows, matrix_c.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
+          matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
+          matrix_c.values_ptr, bp, BPS_PER_ROW);
+    }
     is_sorted = true;
   }
 }

@@ -16,6 +16,6 @@
  **/
 template <typename T, typename I>
 void spgemm_numeric(const I alpha, const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b,
-                    const I max_row_num, CsrMatrix<T, I> &matrix_c, bool &is_sorted);
+                    const I max_row_num, CsrMatrix<T, I> &matrix_c, I *bp, bool &is_sorted);
 
 #endif // SPGEMM_KOKKOS_SPGEMM_NUMERIC_H
