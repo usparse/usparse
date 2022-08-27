@@ -58,7 +58,7 @@ spgemm_api_spgemm_hip_api.cc.o: $(SPGEMM_SOLVER_SRC_PATH)/spgemm/api/spgemm_hip_
 
 
 $(EXECUTABLE): main.cpp.o  $(SORT_KERNEL_LIB_PATH) $(SPGEMM_KERNEL_LIB_PATH)
-	$(HIPCC) main.cpp.o $(LDFLAGS) -o $(EXECUTABLE) -L./ $(SORT_KERNEL_LIB_PATH) $(SPGEMM_KERNEL_LIB_PATH)
+	$(HIPCC) main.cpp.o $(LDFLAGS) -o $(EXECUTABLE) -L./ $(SPGEMM_KERNEL_LIB_PATH) $(SORT_KERNEL_LIB_PATH)
 
 main.cpp.o: main.cpp
 	$(HIPCC) $(CXXFLAGS) ${SPGEMM_LIB_HIPCC_FLAGS} -c main.cpp -o main.cpp.o
