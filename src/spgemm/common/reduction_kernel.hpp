@@ -8,26 +8,26 @@
 #include <hip/hip_runtime.h>
 
 // register and __shfl_down based wavefront reduction
-template <typename T, int WF_SIZE>
+template <typename T>
 __device__ __forceinline__ void SHFL_DOWN_WF_REDUCE(T &total_sum, const T local_sum) {
   total_sum += local_sum;
-  if (WF_SIZE > 32) {
-    total_sum += __shfl_down(total_sum, 32, WF_SIZE);
+  if (__WF_SIZE__ > 32) {
+    total_sum += __shfl_down(total_sum, 32, __WF_SIZE__);
   }
-  if (WF_SIZE > 16) {
-    total_sum += __shfl_down(total_sum, 16, WF_SIZE);
+  if (__WF_SIZE__ > 16) {
+    total_sum += __shfl_down(total_sum, 16, __WF_SIZE__);
   }
-  if (WF_SIZE > 8) {
-    total_sum += __shfl_down(total_sum, 8, WF_SIZE);
+  if (__WF_SIZE__ > 8) {
+    total_sum += __shfl_down(total_sum, 8, __WF_SIZE__);
   }
-  if (WF_SIZE > 4) {
-    total_sum += __shfl_down(total_sum, 4, WF_SIZE);
+  if (__WF_SIZE__ > 4) {
+    total_sum += __shfl_down(total_sum, 4, __WF_SIZE__);
   }
-  if (WF_SIZE > 2) {
-    total_sum += __shfl_down(total_sum, 2, WF_SIZE);
+  if (__WF_SIZE__ > 2) {
+    total_sum += __shfl_down(total_sum, 2, __WF_SIZE__);
   }
-  if (WF_SIZE > 1) {
-    total_sum += __shfl_down(total_sum, 1, WF_SIZE);
+  if (__WF_SIZE__ > 1) {
+    total_sum += __shfl_down(total_sum, 1, __WF_SIZE__);
   }
 }
 

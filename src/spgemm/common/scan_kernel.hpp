@@ -4,7 +4,7 @@
 #include <hip/hip_runtime.h>
 
 // impl of scan than fan
-template <typename T, size_t VEC_SIZE, size_t R, size_t THREADS, size_t WF_SIZE>
+template <typename T, size_t VEC_SIZE, size_t R, size_t THREADS>
 __global__ void __launch_bounds__(THREADS) prefix_sum_kernel(const size_t len, T *array, T *buffer) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
@@ -96,7 +96,7 @@ __global__ void __launch_bounds__(THREADS) prefix_sum_kernel(const size_t len, T
   }
 }
 
-template <typename T, size_t VEC_SIZE, size_t THREADS, size_t WF_SIZE>
+template <typename T, size_t VEC_SIZE, size_t THREADS>
 __global__ void __launch_bounds__(THREADS) buffer_reduce_kernel(const size_t len, T *buffer) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
@@ -153,7 +153,7 @@ __global__ void __launch_bounds__(THREADS) buffer_reduce_kernel(const size_t len
   }
 }
 
-template <typename T, size_t R, size_t THREADS, size_t WF_SIZE>
+template <typename T, size_t R, size_t THREADS>
 __global__ void __launch_bounds__(THREADS) reduction_addend_kernel(const size_t len, T *array, T *buffer) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;

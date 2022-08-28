@@ -31,7 +31,7 @@ template <typename I> __global__ void row_split_groups_kernel(const size_t m, co
 }
 
 // please make sure GLOBAL_BLOCK_NUM = ROW_TO_PROCESS
-template <typename T, typename I, size_t N, size_t THREADS, size_t VEC_SIZE, size_t WF_SIZE>
+template <typename T, typename I, size_t N, size_t THREADS, size_t VEC_SIZE>
 __global__ void __launch_bounds__(THREADS) spgemm_numeric_open_address_hashmap_vector_per_row_sorted_one_pass_kernel(
     const T alpha, const size_t m, const size_t n, const I *row_ptr_a, const I *col_idx_ptr_a, const T *values_ptr_a,
     const I *row_ptr_b, const I *col_idx_ptr_b, const T *values_ptr_b, const bool *row_group_ptr, const I *row_ptr_c,
@@ -119,7 +119,7 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_open_address_hashmap_v
 }
 
 // please make sure GLOBAL_BLOCK_NUM = ROW_TO_PROCESS
-template <typename T, typename I, size_t N, size_t THREADS, size_t WF_SIZE>
+template <typename T, typename I, size_t N, size_t THREADS>
 __global__ void __launch_bounds__(THREADS) spgemm_numeric_open_address_hashmap_block_per_row_sorted_one_pass_kernel(
     const T alpha, const size_t m, const size_t n, const I *row_ptr_a, const I *col_idx_ptr_a, const T *values_ptr_a,
     const I *row_ptr_b, const I *col_idx_ptr_b, const T *values_ptr_b, const bool *row_group_ptr, const I *row_ptr_c,
@@ -137,13 +137,13 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_open_address_hashmap_b
   // thread num in block
   constexpr int block_thread_num = THREADS;
   // wavefront id in block
-  const int block_wf_id = block_thread_id / WF_SIZE;
+  const int block_wf_id = block_thread_id / __WF_SIZE__;
   // wavefront num in block
-  constexpr int block_wf_num = THREADS / WF_SIZE;
+  constexpr int block_wf_num = THREADS / __WF_SIZE__;
   // thread id in wavefront
-  const int wf_thread_id = block_thread_id % WF_SIZE;
+  const int wf_thread_id = block_thread_id % __WF_SIZE__;
   // thread num in wavefront
-  const int wf_thread_num = WF_SIZE;
+  const int wf_thread_num = __WF_SIZE__;
   // hashmap in LDS
   constexpr size_t LDS_MAP_CAP = THREADS * N;
   // hash mask
@@ -207,7 +207,7 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_open_address_hashmap_b
   }
 }
 
-template <typename T, typename I, size_t CHUNK_SIZE, size_t THREADS, size_t VEC_SIZE, size_t WF_SIZE>
+template <typename T, typename I, size_t CHUNK_SIZE, size_t THREADS, size_t VEC_SIZE>
 __global__ void __launch_bounds__(THREADS)
     spgemm_numeric_block_per_row_sorted_multipass_kernel(const T alpha, const size_t m, const size_t n,
                                                          const I *row_ptr_a, const I *col_idx_ptr_a,
@@ -316,11 +316,11 @@ __global__ void __launch_bounds__(THREADS)
       int offset = __popcll(lanemask_le & mask);
       __syncthreads();
 
-      scan_offsets[block_thread_id / WF_SIZE] = nnz;
+      scan_offsets[block_thread_id / __WF_SIZE__] = nnz;
       __syncthreads();
 
-      for (unsigned int j = 1; j < block_thread_num / WF_SIZE; ++j) {
-        if (block_thread_id >= j * WF_SIZE) {
+      for (unsigned int j = 1; j < block_thread_num / __WF_SIZE__; ++j) {
+        if (block_thread_id >= j * __WF_SIZE__) {
           offset += scan_offsets[j - 1];
         }
       }
@@ -332,10 +332,10 @@ __global__ void __launch_bounds__(THREADS)
       }
 
       if (block_thread_id == block_thread_num - 1) {
-        scan_offsets[block_thread_num / WF_SIZE - 1] = offset;
+        scan_offsets[block_thread_num / __WF_SIZE__ - 1] = offset;
       }
       __syncthreads();
-      row_begin_c += scan_offsets[block_thread_num / WF_SIZE - 1];
+      row_begin_c += scan_offsets[block_thread_num / __WF_SIZE__ - 1];
     }
     chunk_begin = next_chunk;
     chunk_end = chunk_begin + CHUNK_SIZE;
@@ -343,7 +343,7 @@ __global__ void __launch_bounds__(THREADS)
   }
 }
 
-template <typename T, typename I, size_t N, size_t LDS_MAP_CAP, size_t LDS_HASH_MASK, size_t THREADS, size_t WF_SIZE>
+template <typename T, typename I, size_t N, size_t LDS_MAP_CAP, size_t LDS_HASH_MASK, size_t THREADS>
 __global__ void __launch_bounds__(THREADS)
     spgemm_numeric_linear_chain_block_per_row_kernel(const T alpha, const size_t m, const size_t n, const I *row_ptr_a,
                                                      const I *col_idx_ptr_a, const T *values_ptr_a, const I *row_ptr_b,
@@ -469,7 +469,7 @@ __global__ void __launch_bounds__(THREADS)
 }
 
 template <typename T, typename I, typename BitSetEleType, size_t N, size_t LDS_MAP_CAP, size_t LDS_HASH_MASK,
-          size_t THREADS, size_t WF_SIZE>
+          size_t THREADS>
 __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_block_per_row_sorted_kernel(
     const T alpha, const size_t m, const size_t n, const I *row_ptr_a, const I *col_idx_ptr_a, const T *values_ptr_a,
     const I *row_ptr_b, const I *col_idx_ptr_b, const T *values_ptr_b, const I *row_ptr_c, int *begins, int *nexts,
@@ -487,13 +487,13 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_b
   // thread num in block
   constexpr int block_thread_num = THREADS;
   // wf id in block
-  const int block_wf_id = block_thread_id / WF_SIZE;
+  const int block_wf_id = block_thread_id / __WF_SIZE__;
   // wf num in block
-  constexpr int block_wf_num = THREADS / WF_SIZE;
+  constexpr int block_wf_num = THREADS / __WF_SIZE__;
   // thread id in wf
-  const int wf_thread_id = block_thread_id % WF_SIZE;
+  const int wf_thread_id = block_thread_id % __WF_SIZE__;
   // thread num in wf
-  const int wf_thread_num = WF_SIZE;
+  const int wf_thread_num = __WF_SIZE__;
   // hashmap in LDS
   constexpr int MEM_MAP_CAP = HashMap<T, I>::Capacity;
   constexpr int LDS_BEGINS_SIZE = LDS_MAP_CAP;
@@ -626,9 +626,9 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_b
     }
     __syncthreads();
     // wavefront reduce
-    for (int i = WF_SIZE >> 1; i > 0; i >>= 1) {
+    for (int i = __WF_SIZE__ >> 1; i > 0; i >>= 1) {
       for (int j = 0; j < BITS_LIMIT; ++j) {
-        local_sum_array[j] += __shfl_down(local_sum_array[j], i, WF_SIZE);
+        local_sum_array[j] += __shfl_down(local_sum_array[j], i, __WF_SIZE__);
       }
     }
     if (wf_thread_id == 0) {
@@ -648,9 +648,9 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_b
         }
       }
       // wavefront reduce
-      for (int i = WF_SIZE >> 1; i > 0; i >>= 1) {
+      for (int i = __WF_SIZE__ >> 1; i > 0; i >>= 1) {
         for (int j = 0; j < BITS_LIMIT; ++j) {
-          local_sum_array[j] += __shfl_down(local_sum_array[j], i, WF_SIZE);
+          local_sum_array[j] += __shfl_down(local_sum_array[j], i, __WF_SIZE__);
         }
       }
       if (wf_thread_id == 0) {
@@ -663,8 +663,8 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_b
     // scan
     if (block_wf_id == 0) {
       int local_sum = wf_thread_id < BITS_LIMIT ? block_sort_sum[wf_thread_id] : 0;
-      for (int i = 1; i < WF_SIZE; i <<= 1) {
-        int tmp = __shfl_up(local_sum, i, WF_SIZE);
+      for (int i = 1; i < __WF_SIZE__; i <<= 1) {
+        int tmp = __shfl_up(local_sum, i, __WF_SIZE__);
         if (wf_thread_id >= i) {
           local_sum += tmp;
         }
@@ -710,7 +710,7 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_b
   }
 }
 
-template <typename T, typename I, size_t N, size_t THREADS, size_t WF_SIZE>
+template <typename T, typename I, size_t N, size_t THREADS>
 __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_block_per_row_sorted_one_pass_kernel(
     const T alpha, const size_t m, const size_t n, const I *row_ptr_a, const I *col_idx_ptr_a, const T *values_ptr_a,
     const I *row_ptr_b, const I *col_idx_ptr_b, const T *values_ptr_b, const bool *row_group_ptr, const I *row_ptr_c,
@@ -807,7 +807,7 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_b
   }
 }
 
-template <typename T, typename I, size_t N, size_t THREADS, size_t VEC_SIZE, size_t WF_SIZE>
+template <typename T, typename I, size_t N, size_t THREADS, size_t VEC_SIZE>
 __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_vector_per_row_sorted_one_pass_kernel(
     const T alpha, const size_t m, const size_t n, const I *row_ptr_a, const I *col_idx_ptr_a, const T *values_ptr_a,
     const I *row_ptr_b, const I *col_idx_ptr_b, const T *values_ptr_b, const bool *row_group_ptr, const I *row_ptr_c,
@@ -909,8 +909,7 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_v
   }
 }
 
-template <typename T, typename I, size_t N, size_t LDS_MAP_CAP, size_t LDS_HASH_MASK, size_t THREADS, size_t VEC_SIZE,
-          size_t WF_SIZE>
+template <typename T, typename I, size_t N, size_t LDS_MAP_CAP, size_t LDS_HASH_MASK, size_t THREADS, size_t VEC_SIZE>
 __global__ void __launch_bounds__(THREADS)
     spgemm_numeric_linear_chain_hashmap_vector_per_row_kernel(const T alpha, const size_t m, const size_t n,
                                                               const I *row_ptr_a, const I *col_idx_ptr_a,

@@ -14,12 +14,10 @@ void sparse_gemm_hip(const hip_sparse_operation transA, const hip_sparse_operati
                      const size_t nnzA, const I *pOffsetA, const I *pColIndexA, const T *pValueA,
                      const size_t nnzB, const I *pOffsetB, const I *pColIndexB, const T *pValueB, 
                      size_t *pNnzC, I *pOffsetC, I **ppColIndexC, T **ppValueC) {
-// #ifdef SPGEMM_KERNEL_STRATEGY_KOKKOS
-  // C = alpha * A * B
-  kokkos_spgemm<T, I>(alpha, m, n, k, nnzA, pOffsetA, pColIndexA, pValueA, 
+
+    kokkos_spgemm<T, I>(alpha, m, n, k, nnzA, pOffsetA, pColIndexA, pValueA, 
                       nnzB, pOffsetB, pColIndexB, pValueB, 
                       pNnzC, pOffsetC, ppColIndexC, ppValueC);
-// #endif
     // const size_t buff_size = dense_spgemm(transA, transB, alpha, m,n,k,nnzA, pOffsetA, pColIndexA, pValueA,nnzB, pOffsetB, pColIndexB, pValueB,pNnzC, pOffsetC, ppColIndexC, ppValueC,nullptr);
     
     // void *buffer_data = nullptr;

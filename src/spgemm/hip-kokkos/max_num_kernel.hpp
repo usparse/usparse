@@ -3,7 +3,7 @@
 
 #include <hip/hip_runtime.h>
 
-template <typename T, size_t VEC_SIZE, size_t R, size_t THREADS, size_t WF_SIZE>
+template <typename T, size_t VEC_SIZE, size_t R, size_t THREADS>
 __global__ void __launch_bounds__(THREADS) max_num_vector_kernel(const size_t len, const T *array, T *buffer) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
@@ -70,7 +70,7 @@ __global__ void __launch_bounds__(THREADS) max_num_vector_kernel(const size_t le
   }
 }
 
-template <typename T, size_t VEC_SIZE, size_t THREADS, size_t WF_SIZE>
+template <typename T, size_t VEC_SIZE, size_t THREADS>
 __global__ void __launch_bounds__(THREADS) max_num_once_wf_kernel(const size_t len, const T *buffer, T *max_num) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;

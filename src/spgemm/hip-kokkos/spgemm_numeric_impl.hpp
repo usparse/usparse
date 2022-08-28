@@ -15,7 +15,6 @@
 template <typename T, typename I>
 void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b,
                     const I max_row_num, CsrMatrix<T, I> &matrix_c, bool &is_sorted) {
-  constexpr size_t WF_SIZE = 64;
 
   // calculate part of matrix_c
   // part_split[16, 32, 64, 512, 1024, 2048]
@@ -26,18 +25,16 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
 
 #ifdef NUMERIC_LINEAR_CHAIN_HASHMAP
 #define NUMERIC_VECTOR_PER_ROW_ONE_PASS_METHOD                                                                         \
-  spgemm_numeric_linear_chain_hashmap_vector_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, VEC_SIZE,       \
-                                                                            WF_SIZE>
+  spgemm_numeric_linear_chain_hashmap_vector_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, VEC_SIZE>
 #define NUMERIC_BLOCK_PER_ROW_ONE_PASS_METHOD                                                                          \
-  spgemm_numeric_linear_chain_hashmap_block_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, WF_SIZE>
+  spgemm_numeric_linear_chain_hashmap_block_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>
 #endif
 
 #ifndef NUMERIC_LINEAR_CHAIN_HASHMAP
 #define NUMERIC_VECTOR_PER_ROW_ONE_PASS_METHOD                                                                         \
-  spgemm_numeric_open_address_hashmap_vector_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, VEC_SIZE,       \
-                                                                            WF_SIZE>
+  spgemm_numeric_open_address_hashmap_vector_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, VEC_SIZE>
 #define NUMERIC_BLOCK_PER_ROW_ONE_PASS_METHOD                                                                          \
-  spgemm_numeric_open_address_hashmap_block_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, WF_SIZE>
+  spgemm_numeric_open_address_hashmap_block_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>
 #endif
 
   if (max_row_num < 2048) {
@@ -121,14 +118,12 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
     I *workspace_b = nullptr;
     KOKKOS_HIP_CHECK(hipMalloc((void **)&workspace_b, sizeof(I) * matrix_a.nnz))
     if((double)matrix_b.nnz/(matrix_b.rows*matrix_b.cols)>0.05){
-        (spgemm_numeric_block_per_row_sorted_multipass_kernel<T, I, CHUNK_SIZE, BLOCK_THREAD_NUM, 64,
-                                                          WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+        (spgemm_numeric_block_per_row_sorted_multipass_kernel<T, I, CHUNK_SIZE, BLOCK_THREAD_NUM, 64>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
         alpha, matrix_c.rows, matrix_c.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
         matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
         matrix_c.values_ptr,workspace_b);
     }else{
-        (spgemm_numeric_block_per_row_sorted_multipass_kernel<T, I, CHUNK_SIZE, BLOCK_THREAD_NUM, 16,
-                                                          WF_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+        (spgemm_numeric_block_per_row_sorted_multipass_kernel<T, I, CHUNK_SIZE, BLOCK_THREAD_NUM, 16>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
         alpha, matrix_c.rows, matrix_c.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
         matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
         matrix_c.values_ptr,workspace_b);

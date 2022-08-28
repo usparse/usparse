@@ -46,7 +46,7 @@ __global__ void compress_matrix_thread_per_row_kernel(const size_t m, const I *r
   }
 }
 
-template <typename I, size_t BitsLen, size_t THREADS, size_t VEC_SIZE, size_t WF_SIZE>
+template <typename I, size_t BitsLen, size_t THREADS, size_t VEC_SIZE>
 __global__ void __launch_bounds__(THREADS)
     compress_matrix_vector_per_row_kernel(const size_t m, const I *row_ptr, const I *col_idx_ptr,
                                           typename CompressMatrix<I>::IdType *ids,
@@ -139,7 +139,7 @@ __global__ void __launch_bounds__(THREADS)
   }
 }
 
-template <typename I, size_t BitsLen, size_t THREADS, size_t WF_SIZE>
+template <typename I, size_t BitsLen, size_t THREADS>
 __global__ void __launch_bounds__(THREADS)
     compress_matrix_block_per_row_kernel(const size_t m, const I *row_ptr, const I *col_idx_ptr,
                                          typename CompressMatrix<I>::IdType *ids,
@@ -158,13 +158,13 @@ __global__ void __launch_bounds__(THREADS)
   // thread id in block
   const int block_thread_id = threadIdx.x;
   // wavefront id in block
-  const int block_wf_id = block_thread_id / WF_SIZE;
+  const int block_wf_id = block_thread_id / __WF_SIZE__;
   // wavefront num in block
-  constexpr int block_wf_num = THREADS / WF_SIZE;
+  constexpr int block_wf_num = THREADS / __WF_SIZE__;
   // thread id in wavefront
-  const int wf_thread_id = block_thread_id % WF_SIZE;
+  const int wf_thread_id = block_thread_id % __WF_SIZE__;
   // thread num in wavefront
-  const int wf_thread_num = WF_SIZE;
+  const int wf_thread_num = __WF_SIZE__;
   // thread num in block
   constexpr int block_thread_num = THREADS;
 
@@ -176,7 +176,7 @@ __global__ void __launch_bounds__(THREADS)
   __shared__ int block_lds_count;
   __shared__ int block_offset_count;
   __shared__ idtype_t block_last_id;
-  __shared__ int block_scan_reduce[THREADS / WF_SIZE];
+  __shared__ int block_scan_reduce[THREADS / __WF_SIZE__];
 
   // each block process a row
   for (int row = global_block_id; row < m; row += global_block_num) {
@@ -210,30 +210,30 @@ __global__ void __launch_bounds__(THREADS)
       }
       // ScanThenFan
       // wf scan
-      for (int i = 1; i < WF_SIZE; i <<= 1) {
-        int tmp = __shfl_up(idx_offset, i, WF_SIZE);
+      for (int i = 1; i < __WF_SIZE__; i <<= 1) {
+        int tmp = __shfl_up(idx_offset, i, __WF_SIZE__);
         if (wf_thread_id >= i) {
           idx_offset += tmp;
         }
       }
-      if (wf_thread_id == WF_SIZE - 1) {
+      if (wf_thread_id == __WF_SIZE__ - 1) {
         block_scan_reduce[block_wf_id] = idx_offset;
       }
       __syncthreads();
       // block scan
       if (block_wf_id == 0) {
         int sum = 0;
-        for (int i = wf_thread_id; i < THREADS / WF_SIZE; i += wf_thread_num) {
+        for (int i = wf_thread_id; i < THREADS / __WF_SIZE__; i += wf_thread_num) {
           sum += block_scan_reduce[i];
         }
         // wf scan
-        for (int i = 1; i < WF_SIZE; i <<= 1) {
-          int tmp = __shfl_up(sum, i, WF_SIZE);
+        for (int i = 1; i < __WF_SIZE__; i <<= 1) {
+          int tmp = __shfl_up(sum, i, __WF_SIZE__);
           if (wf_thread_id >= i) {
             sum += tmp;
           }
         }
-        if (wf_thread_id < THREADS / WF_SIZE) {
+        if (wf_thread_id < THREADS / __WF_SIZE__) {
           block_scan_reduce[wf_thread_id] = sum;
         }
       }

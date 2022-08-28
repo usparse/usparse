@@ -15,14 +15,13 @@ template <typename T> size_t max_num_buffer_size(const size_t len) {
 template <typename T> void max_num_in_array(const size_t len, const T *array, T *max_num, T *temp_buffer) {
   constexpr size_t THREADS = 256;
   constexpr size_t VEC_SIZE = 32;
-  constexpr size_t WF_SIZE = 64;
   constexpr size_t R = 4;
   constexpr size_t WF_VEC_NUM = THREADS / VEC_SIZE;
   if (len < THREADS * R) {
-    (max_num_vector_kernel<T, VEC_SIZE, R, THREADS, WF_SIZE>)<<<1, THREADS>>>(len, array, max_num);
+    (max_num_vector_kernel<T, VEC_SIZE, R, THREADS>)<<<1, THREADS>>>(len, array, max_num);
   } else {
     const size_t BLOCKS = len / (THREADS * R) + (len % (THREADS * R) == 0 ? 0 : 1);
-    (max_num_vector_kernel<T, VEC_SIZE, R, THREADS, WF_SIZE>)<<<BLOCKS, THREADS>>>(len, array, temp_buffer);
+    (max_num_vector_kernel<T, VEC_SIZE, R, THREADS>)<<<BLOCKS, THREADS>>>(len, array, temp_buffer);
     max_num_in_array(BLOCKS, temp_buffer, max_num, temp_buffer + BLOCKS);
   }
 }
