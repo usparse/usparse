@@ -12,10 +12,11 @@
  * matrix_b: input, bitmap format matrix of B
  * max_row_num: intput, max row num of csr format matrix C
  * matrix_c: output, csr format matrix of C
- * is_sorted: output, is matrix C have benn sorted
+ * temp_buffer: buffer
+ * temp_buffer_size: buffer_size
  **/
 template <typename T, typename I>
 void spgemm_numeric(const I alpha, const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b,
-                    const I max_row_num, CsrMatrix<T, I> &matrix_c, bool &is_sorted);
+                    const I max_row_num, CsrMatrix<T, I> &matrix_c, I *temp_buffer, const size_t temp_buffer_size);
 
 #endif // SPGEMM_KOKKOS_SPGEMM_NUMERIC_H

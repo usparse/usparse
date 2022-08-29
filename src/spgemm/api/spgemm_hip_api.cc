@@ -24,9 +24,9 @@ void sparse_gemm_hip(const hip_sparse_operation transA, const hip_sparse_operati
     // HIP_CHECK(hipMalloc((void**)&buffer_data, buff_size));
     // // HIP_CHECK(hipMemset(buffer_data,0, buff_size));
 
-    // dense_spgemm(transA, transB, alpha, m,n,k,nnzA, pOffsetA, pColIndexA, pValueA,nnzB, pOffsetB, pColIndexB, pValueB,pNnzC, pOffsetC, ppColIndexC, ppValueC,buffer_data);
+    // // dense_spgemm(transA, transB, alpha, m,n,k,nnzA, pOffsetA, pColIndexA, pValueA,nnzB, pOffsetB, pColIndexB, pValueB,pNnzC, pOffsetC, ppColIndexC, ppValueC,buffer_data);
 
-    // HIP_CHECK(hipFree(buffer_data));
+    // // HIP_CHECK(hipFree(buffer_data));
 }
 
 // template instantiation

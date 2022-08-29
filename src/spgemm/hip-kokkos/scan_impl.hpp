@@ -1,8 +1,8 @@
 #ifndef SPGEMM_HIP_KOKKOS_SCAN_IMPL_HPP
 #define SPGEMM_HIP_KOKKOS_SCAN_IMPL_HPP
 
-#include "error_macro.hpp"
 #include "common/scan_kernel.hpp"
+#include "error_macro.hpp"
 
 template <typename T> size_t scan_in_place_buffer_size(const size_t len) {
   constexpr size_t THREADS = 256;

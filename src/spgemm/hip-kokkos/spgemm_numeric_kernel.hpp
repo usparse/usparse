@@ -6,6 +6,83 @@
 #include <cstddef>
 #include <hip/hip_runtime.h>
 
+template <typename I, size_t CHUNK_SIZE>
+__global__ void create_bp_thread_per_row_kernel(const size_t m, const I *row_ptr, const I *col_idx_ptr, I *bp,
+                                                const size_t BPS_PER_ROW) {
+  // thread id in global
+  const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
+  // thread num in global
+  const int global_thread_num = gridDim.x * blockDim.x;
+  // each thread process a row
+  for (int row = global_thread_id; row < m; row += global_thread_num) {
+    I *row_bp_ptr = &bp[BPS_PER_ROW * row];
+    I base_bp = CHUNK_SIZE;
+    int bp_idx = 0;
+    const I row_idx_begin = row_ptr[row];
+    const I row_idx_end = row_ptr[row + 1];
+
+    row_bp_ptr[bp_idx++] = row_idx_begin;
+    for (int idx = row_idx_begin; idx < row_idx_end; idx++) {
+      const I col = col_idx_ptr[idx];
+      if (col >= base_bp) {
+        row_bp_ptr[bp_idx++] = idx;
+        base_bp += CHUNK_SIZE;
+      }
+    }
+    row_bp_ptr[bp_idx++] = row_idx_end;
+  }
+}
+
+template <typename I, size_t CHUNK_SIZE, size_t WF_SIZE>
+__global__ void create_bp_wf_per_row_kernel(const size_t m, const I *row_ptr, const I *col_idx_ptr, I *bp,
+                                            const size_t BPS_PER_ROW) {
+  // thread id in global
+  const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
+  // thread num in global
+  const int global_thread_num = gridDim.x * blockDim.x;
+  // wf id in global
+  const int global_wf_id = global_thread_id / WF_SIZE;
+  // wf num in global
+  const int global_wf_num = global_thread_num / WF_SIZE;
+  // thread id in wf
+  const int wf_thread_id = global_thread_id % WF_SIZE;
+  // thread num in wf
+  const int wf_thread_num = WF_SIZE;
+  // each vector process a row
+  for (int row = global_wf_id; row < m; row += global_wf_num) {
+    I *row_bp_ptr = &bp[BPS_PER_ROW * row];
+    I base_bp = CHUNK_SIZE;
+    int bp_idx = 0;
+    const I row_idx_begin = row_ptr[row];
+    const I row_idx_end = row_ptr[row + 1];
+
+    if (wf_thread_id == 0) {
+      row_bp_ptr[bp_idx++] = row_idx_begin;
+    }
+
+    for (int idx = row_idx_begin + wf_thread_id; idx < row_idx_end; idx += wf_thread_num) {
+      const I col = col_idx_ptr[idx];
+      bool flag = col >= base_bp;
+      if (__any(flag)) {
+        do {
+          I tmp_idx = flag ? idx : row_idx_end;
+          for (int i = WF_SIZE >> 1; i > 0; i >>= 1) {
+            tmp_idx = min(__shfl_down(tmp_idx, i), tmp_idx);
+          }
+          if (wf_thread_id == 0) {
+            row_bp_ptr[bp_idx++] = tmp_idx;
+          }
+          base_bp += CHUNK_SIZE;
+          flag = col >= base_bp;
+        } while (__any(flag));
+      }
+    }
+    if (wf_thread_id == 0) {
+      row_bp_ptr[bp_idx++] = row_idx_end;
+    }
+  }
+}
+
 // group [16, 32, 64, 512, 1024, 2048]
 template <typename I> __global__ void row_split_groups_kernel(const size_t m, const I *row_ptr_c, bool *row_group_ptr) {
   // thread id in global
@@ -1035,6 +1112,108 @@ __global__ void __launch_bounds__(THREADS)
     if (vec_thread_id == 0) {
       *vec_lds_use_size = 0;
     }
+  }
+}
+
+template <typename T, typename I, size_t CHUNK_SIZE, size_t THREADS, size_t VEC_SIZE, size_t WF_SIZE>
+__global__ void __launch_bounds__(THREADS)
+    spgemm_numeric_block_per_row_sorted_bp_kernel(const T alpha, const size_t m, const size_t n, const I *row_ptr_a,
+                                                  const I *col_idx_ptr_a, const T *values_ptr_a, const I *row_ptr_b,
+                                                  const I *col_idx_ptr_b, const T *values_ptr_b, const I *row_ptr_c,
+                                                  I *ids, T *values, I *bp, const size_t BPS_PER_ROW) {
+  // block id in global
+  const int global_block_id = blockIdx.x;
+  // block num in global
+  const int global_block_num = gridDim.x;
+  // thread id in block
+  const int block_thread_id = threadIdx.x;
+  // thread num in block
+  constexpr int block_thread_num = THREADS;
+  // vec id in block
+  const int block_vec_id = threadIdx.x / VEC_SIZE;
+  // vec num in block
+  constexpr int block_vec_num = THREADS / VEC_SIZE;
+  // thread id in vec
+  const int vec_thread_id = block_thread_id % VEC_SIZE;
+  // thread num in vec
+  constexpr int vec_thread_num = VEC_SIZE;
+  // chunks
+  __shared__ bool table[CHUNK_SIZE];
+  __shared__ T data[CHUNK_SIZE];
+
+  // block processes a row
+  const int row_a = global_block_id;
+
+  if (row_a >= m) {
+    return;
+  }
+
+  const I row_idx_begin = row_ptr_a[row_a];
+  const I row_idx_end = row_ptr_a[row_a + 1];
+  I row_begin_c = row_ptr_c[row_a];
+
+  for (int r = 0; r < BPS_PER_ROW; r++) {
+    const int bp_idx = r;
+    const int chunk_begin = bp_idx * CHUNK_SIZE;
+    // init
+    for (int i = block_thread_id; i < CHUNK_SIZE; i += block_thread_num) {
+      table[i] = 0;
+      data[i] = static_cast<T>(0);
+    }
+    __syncthreads();
+
+    for (I idx_a = row_idx_begin + block_vec_id; idx_a < row_idx_end; idx_a += block_vec_num) {
+      const I col_a = col_idx_ptr_a[idx_a];
+      const I row_b = col_a;
+      const T val_A = values_ptr_a[idx_a];
+
+      I idx_begin_b = bp[row_b * BPS_PER_ROW + bp_idx];
+      I idx_end_b = bp[row_b * BPS_PER_ROW + bp_idx + 1];
+
+      for (I idx_b = idx_begin_b + vec_thread_id; idx_b < idx_end_b; idx_b += vec_thread_num) {
+        const I col_b = col_idx_ptr_b[idx_b];
+        table[col_b - chunk_begin] = 1;
+        atomicAdd(data + col_b - chunk_begin, val_A * values_ptr_b[idx_b]);
+      }
+    }
+    __syncthreads();
+    // re-use shared memory
+    int *scan_offsets = reinterpret_cast<int *>(data);
+    // compress
+    for (int i = block_thread_id; i < CHUNK_SIZE; i += block_thread_num) {
+      bool has_nnz = table[i];
+      T value = data[i];
+
+      unsigned long long mask = __ballot(has_nnz);
+      int nnz = __popcll(mask);
+
+      unsigned long long lanemask_le = UINT64_MAX >> (sizeof(unsigned long long) * CHAR_BIT - (__lane_id() + 1));
+
+      int offset = __popcll(lanemask_le & mask);
+      __syncthreads();
+
+      scan_offsets[block_thread_id / WF_SIZE] = nnz;
+      __syncthreads();
+
+      for (unsigned int j = 1; j < block_thread_num / WF_SIZE; ++j) {
+        if (block_thread_id >= j * WF_SIZE) {
+          offset += scan_offsets[j - 1];
+        }
+      }
+      I idx = row_begin_c + offset - 1;
+
+      if (has_nnz) {
+        ids[idx] = chunk_begin + i;
+        values[idx] = alpha * value;
+      }
+
+      if (block_thread_id == block_thread_num - 1) {
+        scan_offsets[block_thread_num / WF_SIZE - 1] = offset;
+      }
+      __syncthreads();
+      row_begin_c += scan_offsets[block_thread_num / WF_SIZE - 1];
+    }
+    __syncthreads();
   }
 }
 
