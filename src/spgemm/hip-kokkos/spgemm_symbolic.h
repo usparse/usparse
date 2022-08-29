@@ -12,9 +12,11 @@
  * row_ptr_c: output, row ptr of csr format matrix C
  * nnz_c: output, nonzero number count of csr format matrix C
  * max_row_num: output, max row num of csr format matrix C
+ * temp_buffer: buffer
+ * temp_buffer_size: buffer_size
  **/
 template <typename T, typename I>
 void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b, I *row_ptr_c, size_t *nnz_c,
-                     I *max_row_num, I *bp);
+                     I *max_row_num, I *temp_buffer, const size_t temp_buffer_size);
 
 #endif // SPGEMM_KOKKOS_SPGEMM_SYMBOLIC_H

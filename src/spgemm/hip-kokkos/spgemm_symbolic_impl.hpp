@@ -16,7 +16,7 @@
 
 template <typename T, typename I>
 void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b, I *row_ptr_c, size_t *nnz_c,
-                     I *max_row_num, I *bp) {
+                     I *max_row_num, I *temp_buffer, const size_t temp_buffer_size) {
   // compress matrix B
   CompressMatrix<I> compress_matrix_b = spgemm_compress<T, I>(matrix_b);
   constexpr size_t WF_SIZE = 64;
@@ -26,14 +26,22 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
       matrix_b.cols / CompressMatrix<I>::BitsLen + (matrix_b.cols % CompressMatrix<I>::BitsLen == 0 ? 0 : 1);
 
   // buffer for scan
-  I *scan_temp_buffer = reinterpret_cast<I *>(bp);
-  // const size_t scan_temp_buffer_size =
-  //     scan_in_place_buffer_size<I>(matrix_a.rows + 1);
-  // KOKKOS_HIP_CHECK(hipMalloc((void **)&scan_temp_buffer, scan_temp_buffer_size))
+  I *scan_temp_buffer = nullptr;
+  const size_t scan_temp_buffer_size = scan_in_place_buffer_size<I>(matrix_a.rows + 1);
+  if (temp_buffer_size >= scan_temp_buffer_size) {
+    scan_temp_buffer = reinterpret_cast<I *>(temp_buffer);
+  } else {
+    KOKKOS_HIP_CHECK(hipMalloc((void **)&scan_temp_buffer, scan_temp_buffer_size))
+  }
   // buffer for max
-  I *max_temp_buffer = reinterpret_cast<I *>(bp);
-  // const size_t max_temp_buffer_size = max_num_buffer_size<I>(matrix_a.rows + 1);
-  // KOKKOS_HIP_CHECK(hipMalloc((void **)&max_temp_buffer, max_temp_buffer_size))
+  I *max_temp_buffer = nullptr;
+
+  const size_t max_temp_buffer_size = max_num_buffer_size<I>(matrix_a.rows + 1);
+  if (temp_buffer_size >= max_temp_buffer_size) {
+    max_temp_buffer = reinterpret_cast<I *>(temp_buffer);
+  } else {
+    KOKKOS_HIP_CHECK(hipMalloc((void **)&max_temp_buffer, max_temp_buffer_size))
+  }
 
 #ifdef DEBUG_MODE
   std::cout << "max_bits_num: " << max_bits_num << std::endl;
@@ -250,8 +258,12 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
   // set nnz of matrix c
   KOKKOS_HIP_CHECK(hipMemcpy(nnz_c, row_ptr_c + matrix_a.rows, sizeof(I), hipMemcpyDeviceToHost))
 
-  // KOKKOS_HIP_CHECK(hipFree(max_temp_buffer))
-  // KOKKOS_HIP_CHECK(hipFree(scan_temp_buffer))
+  if (temp_buffer_size < scan_temp_buffer_size) {
+    KOKKOS_HIP_CHECK(hipFree(max_temp_buffer))
+  }
+  if (temp_buffer_size < max_temp_buffer_size) {
+    KOKKOS_HIP_CHECK(hipFree(scan_temp_buffer))
+  }
 }
 
 #endif // SPGEMM_KOKKOS_SPGEMM_SYMBOLIC_IMPL_HPP
