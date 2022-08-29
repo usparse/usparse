@@ -30,7 +30,8 @@ CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, cons
   // Numeric Phase
   bool is_sorted = false;
   CsrMatrix<T, I> matrix_c(matrix_a.rows, matrix_b.cols, nnz_c, row_ptr_c, nullptr, nullptr);
-  create_bp_kernel<I, CHUNK_SIZE><<<512, 256>>>(matrix_b.rows, matrix_b.row_ptr, matrix_b.col_idx_ptr, bp, BPS_PER_ROW);
+  create_bp_wf_per_row_kernel<I, CHUNK_SIZE, 64>
+      <<<512, 256>>>(matrix_b.rows, matrix_b.row_ptr, matrix_b.col_idx_ptr, bp, BPS_PER_ROW);
   KOKKOS_HIP_CHECK(hipMalloc((void **)&matrix_c.col_idx_ptr, nnz_c * sizeof(I)))
   KOKKOS_HIP_CHECK(hipMalloc((void **)&matrix_c.values_ptr, nnz_c * sizeof(T)))
   spgemm_numeric(alpha, matrix_a, matrix_b, max_row_num, matrix_c, bp, is_sorted);

@@ -7,8 +7,8 @@
 #include <hip/hip_runtime.h>
 
 template <typename I, size_t CHUNK_SIZE>
-__global__ void create_bp_kernel(const size_t m, const I *row_ptr, const I *col_idx_ptr, I *bp,
-                                 const size_t BPS_PER_ROW) {
+__global__ void create_bp_thread_per_row_kernel(const size_t m, const I *row_ptr, const I *col_idx_ptr, I *bp,
+                                                const size_t BPS_PER_ROW) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
@@ -30,6 +30,56 @@ __global__ void create_bp_kernel(const size_t m, const I *row_ptr, const I *col_
       }
     }
     row_bp_ptr[bp_idx++] = row_idx_end;
+  }
+}
+
+template <typename I, size_t CHUNK_SIZE, size_t WF_SIZE>
+__global__ void create_bp_wf_per_row_kernel(const size_t m, const I *row_ptr, const I *col_idx_ptr, I *bp,
+                                            const size_t BPS_PER_ROW) {
+  // thread id in global
+  const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
+  // thread num in global
+  const int global_thread_num = gridDim.x * blockDim.x;
+  // wf id in global
+  const int global_wf_id = global_thread_id / WF_SIZE;
+  // wf num in global
+  const int global_wf_num = global_thread_num / WF_SIZE;
+  // thread id in wf
+  const int wf_thread_id = global_thread_id % WF_SIZE;
+  // thread num in wf
+  const int wf_thread_num = WF_SIZE;
+  // each vector process a row
+  for (int row = global_wf_id; row < m; row += global_wf_num) {
+    I *row_bp_ptr = &bp[BPS_PER_ROW * row];
+    I base_bp = CHUNK_SIZE;
+    int bp_idx = 0;
+    const I row_idx_begin = row_ptr[row];
+    const I row_idx_end = row_ptr[row + 1];
+
+    if (wf_thread_id == 0) {
+      row_bp_ptr[bp_idx++] = row_idx_begin;
+    }
+
+    for (int idx = row_idx_begin + wf_thread_id; idx < row_idx_end; idx += wf_thread_num) {
+      const I col = col_idx_ptr[idx];
+      bool flag = col >= base_bp;
+      if (__any(flag)) {
+        do {
+          I tmp_idx = flag ? idx : row_idx_end;
+          for (int i = WF_SIZE >> 1; i > 0; i >>= 1) {
+            tmp_idx = min(__shfl_down(tmp_idx, i), tmp_idx);
+          }
+          if (wf_thread_id == 0) {
+            row_bp_ptr[bp_idx++] = tmp_idx;
+          }
+          base_bp += CHUNK_SIZE;
+          flag = col >= base_bp;
+        } while (__any(flag));
+      }
+    }
+    if (wf_thread_id == 0) {
+      row_bp_ptr[bp_idx++] = row_idx_end;
+    }
   }
 }
 
