@@ -116,7 +116,6 @@ __global__ void __launch_bounds__(THREADS)
   __shared__ bittype_t shared_values[BLOCK_LDS_SIZE];
   __shared__ I shared_nnz_count[block_wf_num];
 
-  idtype_t *block_lds_ids = shared_ids;
   bittype_t *block_lds_values = shared_values;
   // init lds hashmap
   for (int i = block_thread_id; i < BLOCK_LDS_SIZE; i += block_thread_num) {
