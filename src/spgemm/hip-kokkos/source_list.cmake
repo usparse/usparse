@@ -28,7 +28,4 @@ set(ACC_HEADER_FILES ${ACC_HEADER_FILES}
         ${CURRENT_ACC_HIP_SOURCE_DIR}/max_num.h
         ${CURRENT_ACC_HIP_SOURCE_DIR}/max_num_impl.hpp
         ${CURRENT_ACC_HIP_SOURCE_DIR}/max_num_kernel.hpp
-        ${CURRENT_ACC_HIP_SOURCE_DIR}/csr_sort.h
-        ${CURRENT_ACC_HIP_SOURCE_DIR}/csr_sort_impl.hpp
-        ${CURRENT_ACC_HIP_SOURCE_DIR}/csr_sort_kernel.hpp
         )
