@@ -252,10 +252,10 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
   KOKKOS_HIP_CHECK(hipMemcpy(nnz_c, row_ptr_c + matrix_a.rows, sizeof(I), hipMemcpyDeviceToHost))
 
   if (temp_buffer_size < scan_temp_buffer_size) {
-    KOKKOS_HIP_CHECK(hipFree(max_temp_buffer))
+    KOKKOS_HIP_CHECK(hipFree(scan_temp_buffer))
   }
   if (temp_buffer_size < max_temp_buffer_size) {
-    KOKKOS_HIP_CHECK(hipFree(scan_temp_buffer))
+    KOKKOS_HIP_CHECK(hipFree(max_temp_buffer))
   }
 }
 
