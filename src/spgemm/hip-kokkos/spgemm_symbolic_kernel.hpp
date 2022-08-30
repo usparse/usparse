@@ -28,7 +28,7 @@ __global__ void row_nnz_kernel(const I m, const I *map_row_ptr, const BitType *m
     const I idx_end = idx_begin + use_count[row];
     I non_zero_count = 0;
     for (int idx = idx_begin + vector_thread_id; idx < idx_end; idx += vector_thread_num) {
-      non_zero_count += __builtin_popcount(map_values[idx]);
+      non_zero_count += __popcll(map_values[idx]);
     }
     // reduce
     for (int i = VEC_SIZE >> 1; i > 0; i >>= 1) {
@@ -109,21 +109,16 @@ __global__ void __launch_bounds__(THREADS)
   const int wf_thread_num = __WF_SIZE__;
   // hashmap in LDS
   constexpr size_t LDS_MAP_CAP = THREADS * N;
-  // hash mask
-  constexpr size_t LDS_HASH_MASK = LDS_MAP_CAP - 1;
 
   // hashmap in LDS
   constexpr int BLOCK_LDS_SIZE = LDS_MAP_CAP;
 
-  __shared__ idtype_t shared_ids[BLOCK_LDS_SIZE];
   __shared__ bittype_t shared_values[BLOCK_LDS_SIZE];
   __shared__ I shared_nnz_count[block_wf_num];
 
-  idtype_t *block_lds_ids = shared_ids;
   bittype_t *block_lds_values = shared_values;
   // init lds hashmap
   for (int i = block_thread_id; i < BLOCK_LDS_SIZE; i += block_thread_num) {
-    shared_ids[i] = HashMap<T, I>::NullValue;
     shared_values[i] = 0;
   }
   for (int i = block_thread_id; i < block_wf_num; i += block_thread_num) {
@@ -148,16 +143,13 @@ __global__ void __launch_bounds__(THREADS)
     const bittype_t *block_mem_col_b = col_idx_ptr_b + idx_begin_b;
     const int b_count = use_count[row_b];
     for (int idx_b = wf_thread_id; idx_b < b_count; idx_b += wf_thread_num) {
-      open_address_hashmap_vector_insert_or<bittype_t, idtype_t, LDS_HASH_MASK>(
-          block_lds_ids, block_lds_values, block_mem_id_b[idx_b], block_mem_col_b[idx_b]);
+      atomicOr(block_lds_values + block_mem_id_b[idx_b], block_mem_col_b[idx_b]);
     }
   }
   __syncthreads();
   I nnz_count = 0;
   for (int idx = block_thread_id; idx < LDS_MAP_CAP; idx += block_thread_num) {
-    if (block_lds_ids[idx] != HashMap<T, I>::NullValue) {
-      nnz_count += __builtin_popcount(block_lds_values[idx]);
-    }
+    nnz_count += __popcll(block_lds_values[idx]);
   }
   __syncthreads();
   // wf reduce
@@ -253,7 +245,7 @@ __global__ void __launch_bounds__(THREADS)
   }
   I nnz_count = 0;
   for (int idx = vec_thread_id; idx < LDS_MAP_CAP; idx += vec_thread_num) {
-    nnz_count += __builtin_popcount(vec_lds_values[idx]);
+    nnz_count += __popcll(vec_lds_values[idx]);
   }
   // vec reduce
   for (int i = VEC_SIZE >> 1; i > 0; i >>= 1) {
@@ -334,7 +326,7 @@ __global__ void __launch_bounds__(THREADS) spgemm_symbolic_open_address_hashmap_
   }
   I local_use_count = static_cast<I>(0);
   for (int i = vec_thread_id; i < LDS_MAP_CAP; i += vec_thread_num) {
-    local_use_count += __builtin_popcount(vec_lds_values[i]);
+    local_use_count += __popcll(vec_lds_values[i]);
   }
   // sum
   for (int i = VEC_SIZE >> 1; i > 0; i >>= 1) {
@@ -419,7 +411,7 @@ __global__ void __launch_bounds__(THREADS) spgemm_symbolic_open_address_hashmap_
   __syncthreads();
   I local_use_count = static_cast<I>(0);
   for (int i = block_thread_id; i < BLOCK_LDS_SIZE; i += block_thread_num) {
-    local_use_count += __builtin_popcount(block_lds_values[i]);
+    local_use_count += __popcll(block_lds_values[i]);
   }
   __syncthreads();
   // block sum
@@ -796,7 +788,7 @@ __global__ void __launch_bounds__(THREADS) spgemm_symbolic_linear_chain_hashmap_
   const int end_offset = *vec_lds_use_size;
   I local_use_count = static_cast<I>(0);
   for (int i = vec_thread_id; i < end_offset; i += vec_thread_num) {
-    local_use_count += __builtin_popcount(vec_lds_values[i]);
+    local_use_count += __popcll(vec_lds_values[i]);
   }
   // reduce sum
   for (int i = VEC_SIZE >> 1; i > 0; i >>= 1) {
@@ -902,7 +894,7 @@ __global__ void __launch_bounds__(THREADS) spgemm_symbolic_linear_chain_hashmap_
   const int end_offset = block_lds_use_size;
   I local_use_count = static_cast<I>(0);
   for (int i = block_thread_id; i < end_offset; i += block_thread_num) {
-    local_use_count += __builtin_popcount(block_lds_values[i]);
+    local_use_count += __popcll(block_lds_values[i]);
   }
   __syncthreads();
   // block sum
