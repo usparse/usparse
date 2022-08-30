@@ -27,31 +27,37 @@ template <typename T, typename I> CompressMatrix<I> spgemm_compress(const CsrMat
         compress_matrix.use_count);
   } else if (nnz_per_row < 16) {
     constexpr size_t VEC_SIZE = 16 / N;
-    (compress_matrix_vector_per_row_kernel<I, CompressMatrix<I>::BitsLen, BLOCK_THREAD_NUM, VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+    (compress_matrix_vector_per_row_kernel<I, CompressMatrix<I>::BitsLen, BLOCK_THREAD_NUM,
+                                           VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
         matrix.rows, matrix.row_ptr, matrix.col_idx_ptr, compress_matrix.ids_ptr, compress_matrix.col_idx_ptr,
         compress_matrix.use_count);
   } else if (nnz_per_row < 32) {
     constexpr size_t VEC_SIZE = 32 / N;
-    (compress_matrix_vector_per_row_kernel<I, CompressMatrix<I>::BitsLen, BLOCK_THREAD_NUM, VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+    (compress_matrix_vector_per_row_kernel<I, CompressMatrix<I>::BitsLen, BLOCK_THREAD_NUM,
+                                           VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
         matrix.rows, matrix.row_ptr, matrix.col_idx_ptr, compress_matrix.ids_ptr, compress_matrix.col_idx_ptr,
         compress_matrix.use_count);
   } else if (nnz_per_row < 64) {
     constexpr size_t VEC_SIZE = 64 / N;
-    (compress_matrix_vector_per_row_kernel<I, CompressMatrix<I>::BitsLen, BLOCK_THREAD_NUM, VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+    (compress_matrix_vector_per_row_kernel<I, CompressMatrix<I>::BitsLen, BLOCK_THREAD_NUM,
+                                           VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
         matrix.rows, matrix.row_ptr, matrix.col_idx_ptr, compress_matrix.ids_ptr, compress_matrix.col_idx_ptr,
         compress_matrix.use_count);
   } else if (nnz_per_row < 128) {
     constexpr size_t VEC_SIZE = 128 / N;
-    (compress_matrix_vector_per_row_kernel<I, CompressMatrix<I>::BitsLen, BLOCK_THREAD_NUM, VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+    (compress_matrix_vector_per_row_kernel<I, CompressMatrix<I>::BitsLen, BLOCK_THREAD_NUM,
+                                           VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
         matrix.rows, matrix.row_ptr, matrix.col_idx_ptr, compress_matrix.ids_ptr, compress_matrix.col_idx_ptr,
         compress_matrix.use_count);
   } else if (nnz_per_row < 256) {
     constexpr size_t VEC_SIZE = 256 / N;
-    (compress_matrix_vector_per_row_kernel<I, CompressMatrix<I>::BitsLen, BLOCK_THREAD_NUM, VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+    (compress_matrix_vector_per_row_kernel<I, CompressMatrix<I>::BitsLen, BLOCK_THREAD_NUM,
+                                           VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
         matrix.rows, matrix.row_ptr, matrix.col_idx_ptr, compress_matrix.ids_ptr, compress_matrix.col_idx_ptr,
         compress_matrix.use_count);
   } else {
-    (compress_matrix_block_per_row_kernel<I, CompressMatrix<I>::BitsLen, BLOCK_THREAD_NUM>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+    (compress_matrix_block_per_row_kernel<I, CompressMatrix<I>::BitsLen,
+                                          BLOCK_THREAD_NUM>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
         matrix.rows, matrix.row_ptr, matrix.col_idx_ptr, compress_matrix.ids_ptr, compress_matrix.col_idx_ptr,
         compress_matrix.use_count);
   }

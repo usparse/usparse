@@ -8,14 +8,14 @@
 
 template <typename I, size_t CHUNK_SIZE>
 __global__ void create_bp_thread_per_row_kernel(const size_t m, const I *row_ptr, const I *col_idx_ptr, I *bp,
-                                                const size_t BPS_PER_ROW) {
+                                                const size_t BP_IDX_PER_ROW) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
   const int global_thread_num = gridDim.x * blockDim.x;
   // each thread process a row
   for (int row = global_thread_id; row < m; row += global_thread_num) {
-    I *row_bp_ptr = &bp[BPS_PER_ROW * row];
+    I *row_bp_ptr = &bp[BP_IDX_PER_ROW * row];
     I base_bp = CHUNK_SIZE;
     int bp_idx = 0;
     const I row_idx_begin = row_ptr[row];
@@ -24,7 +24,7 @@ __global__ void create_bp_thread_per_row_kernel(const size_t m, const I *row_ptr
     row_bp_ptr[bp_idx++] = row_idx_begin;
     for (int idx = row_idx_begin; idx < row_idx_end; idx++) {
       const I col = col_idx_ptr[idx];
-      if (col >= base_bp) {
+      while (col >= base_bp) {
         row_bp_ptr[bp_idx++] = idx;
         base_bp += CHUNK_SIZE;
       }
@@ -35,7 +35,7 @@ __global__ void create_bp_thread_per_row_kernel(const size_t m, const I *row_ptr
 
 template <typename I, size_t CHUNK_SIZE, size_t WF_SIZE>
 __global__ void create_bp_wf_per_row_kernel(const size_t m, const I *row_ptr, const I *col_idx_ptr, I *bp,
-                                            const size_t BPS_PER_ROW) {
+                                            const size_t BP_IDX_PER_ROW) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
@@ -50,7 +50,7 @@ __global__ void create_bp_wf_per_row_kernel(const size_t m, const I *row_ptr, co
   const int wf_thread_num = WF_SIZE;
   // each vector process a row
   for (int row = global_wf_id; row < m; row += global_wf_num) {
-    I *row_bp_ptr = &bp[BPS_PER_ROW * row];
+    I *row_bp_ptr = &bp[BP_IDX_PER_ROW * row];
     I base_bp = CHUNK_SIZE;
     int bp_idx = 0;
     const I row_idx_begin = row_ptr[row];
@@ -79,6 +79,66 @@ __global__ void create_bp_wf_per_row_kernel(const size_t m, const I *row_ptr, co
     }
     if (wf_thread_id == 0) {
       row_bp_ptr[bp_idx++] = row_idx_end;
+    }
+  }
+}
+
+template <typename I, size_t CHUNK_SIZE, size_t BUFFER_SIZE, size_t WF_SIZE>
+__global__ void create_bp_wf_per_row_kernel(const size_t m, const I *row_ptr, const I *col_idx_ptr, I *bp,
+                                            const size_t BP_IDX_PER_ROW) {
+  // thread id in global
+  const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
+  // thread num in global
+  const int global_thread_num = gridDim.x * blockDim.x;
+  // wf id in global
+  const int global_wf_id = global_thread_id / WF_SIZE;
+  // wf num in global
+  const int global_wf_num = global_thread_num / WF_SIZE;
+  // thread id in wf
+  const int wf_thread_id = global_thread_id % WF_SIZE;
+  // thread num in wf
+  const int wf_thread_num = WF_SIZE;
+
+  I local_bp[BUFFER_SIZE];
+  // each vector process a row
+  for (int row = global_wf_id; row < m; row += global_wf_num) {
+    I *row_bp_ptr = &bp[BP_IDX_PER_ROW * row];
+    I base_bp = CHUNK_SIZE;
+    int bp_idx = 1;
+    const I row_idx_begin = row_ptr[row];
+    const I row_idx_end = row_ptr[row + 1];
+
+    if (wf_thread_id == 0) {
+      row_bp_ptr[0] = row_idx_begin;
+    }
+    // init local bp
+    for (int i = 0; i < BUFFER_SIZE; i++) {
+      local_bp[i] = row_idx_end;
+    }
+    for (int idx = row_idx_begin + wf_thread_id; idx < row_idx_end; idx += wf_thread_num) {
+      const I col = col_idx_ptr[idx];
+      while (col >= base_bp) {
+        local_bp[bp_idx++] = idx;
+        base_bp += CHUNK_SIZE;
+      }
+    }
+    int max_bp_idx = bp_idx;
+    for (int i = WF_SIZE >> 1; i > 0; i >>= 1) {
+      max_bp_idx = max(__shfl_down(max_bp_idx, i), max_bp_idx);
+    }
+    max_bp_idx = __shfl(max_bp_idx, 0);
+
+    for (int i = 1; i < max_bp_idx; i++) {
+      I bp_val = local_bp[i];
+      for (int j = WF_SIZE >> 1; j > 0; j >>= 1) {
+        bp_val = min(__shfl_down(bp_val, j), bp_val);
+      }
+      if (wf_thread_id == 0) {
+        row_bp_ptr[i] = bp_val;
+      }
+    }
+    if (wf_thread_id == 0) {
+      row_bp_ptr[max_bp_idx] = row_idx_end;
     }
   }
 }
@@ -290,7 +350,7 @@ __global__ void __launch_bounds__(THREADS)
                                                          const I *row_ptr_a, const I *col_idx_ptr_a,
                                                          const T *values_ptr_a, const I *row_ptr_b,
                                                          const I *col_idx_ptr_b, const T *values_ptr_b,
-                                                         const I *row_ptr_c, I *ids, T *values,I* workspace_b) {
+                                                         const I *row_ptr_c, I *ids, T *values, I *workspace_b) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
@@ -1120,7 +1180,8 @@ __global__ void __launch_bounds__(THREADS)
     spgemm_numeric_block_per_row_sorted_bp_kernel(const T alpha, const size_t m, const size_t n, const I *row_ptr_a,
                                                   const I *col_idx_ptr_a, const T *values_ptr_a, const I *row_ptr_b,
                                                   const I *col_idx_ptr_b, const T *values_ptr_b, const I *row_ptr_c,
-                                                  I *ids, T *values, I *bp, const size_t BPS_PER_ROW) {
+                                                  I *ids, T *values, I *bp, const size_t BPS_PER_ROW,
+                                                  const size_t BP_IDX_PER_ROW) {
   // block id in global
   const int global_block_id = blockIdx.x;
   // block num in global
@@ -1167,8 +1228,8 @@ __global__ void __launch_bounds__(THREADS)
       const I row_b = col_a;
       const T val_A = values_ptr_a[idx_a];
 
-      I idx_begin_b = bp[row_b * BPS_PER_ROW + bp_idx];
-      I idx_end_b = bp[row_b * BPS_PER_ROW + bp_idx + 1];
+      I idx_begin_b = bp[row_b * BP_IDX_PER_ROW + bp_idx];
+      I idx_end_b = bp[row_b * BP_IDX_PER_ROW + bp_idx + 1];
 
       for (I idx_b = idx_begin_b + vec_thread_id; idx_b < idx_end_b; idx_b += vec_thread_num) {
         const I col_b = col_idx_ptr_b[idx_b];
