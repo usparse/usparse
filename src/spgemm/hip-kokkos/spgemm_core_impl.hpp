@@ -2,7 +2,6 @@
 #define SPGEMM_KOKKOS_SPGEMM_CORE_IMPL_HPP
 
 #include "build_flag.h"
-#include "csr_sort.h"
 #include "error_macro.hpp"
 #include "spgemm_numeric.h"
 #include "spgemm_symbolic.h"
