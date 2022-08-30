@@ -124,13 +124,13 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
     KOKKOS_HIP_CHECK(hipMemset(bp, 0, bp_temp_buffer_size))
 
     if (BP_IDX_PER_ROW < 8) {
-      create_bp_wf_per_row_kernel<I, CHUNK_SIZE, 8, __WF_SIZE__>
+      create_bp_wf_per_row_kernel<I, CHUNK_SIZE, 8>
           <<<512, 256>>>(matrix_b.rows, matrix_b.row_ptr, matrix_b.col_idx_ptr, bp, BP_IDX_PER_ROW);
     } else if (BP_IDX_PER_ROW < 16) {
-      create_bp_wf_per_row_kernel<I, CHUNK_SIZE, 16, __WF_SIZE__>
+      create_bp_wf_per_row_kernel<I, CHUNK_SIZE, 16>
           <<<512, 256>>>(matrix_b.rows, matrix_b.row_ptr, matrix_b.col_idx_ptr, bp, BP_IDX_PER_ROW);
     } else {
-      create_bp_wf_per_row_kernel<I, CHUNK_SIZE, __WF_SIZE__>
+      create_bp_wf_per_row_kernel<I, CHUNK_SIZE>
           <<<512, 256>>>(matrix_b.rows, matrix_b.row_ptr, matrix_b.col_idx_ptr, bp, BP_IDX_PER_ROW);
     }
 
@@ -138,15 +138,13 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
 
     if (sparseness_c < 0.2) {
       constexpr int VEC_SIZE = 16;
-      (spgemm_numeric_block_per_row_sorted_bp_kernel<T, I, CHUNK_SIZE, BLOCK_THREAD_NUM, VEC_SIZE,
-                                                     __WF_SIZE__>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+      (spgemm_numeric_block_per_row_sorted_bp_kernel<T, I, CHUNK_SIZE, BLOCK_THREAD_NUM, VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
           alpha, matrix_c.rows, matrix_c.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
           matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
           matrix_c.values_ptr, bp, BPS_PER_ROW, BP_IDX_PER_ROW);
     } else {
       constexpr int VEC_SIZE = 64;
-      (spgemm_numeric_block_per_row_sorted_bp_kernel<T, I, CHUNK_SIZE, BLOCK_THREAD_NUM, VEC_SIZE,
-                                                     __WF_SIZE__>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+      (spgemm_numeric_block_per_row_sorted_bp_kernel<T, I, CHUNK_SIZE, BLOCK_THREAD_NUM, VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
           alpha, matrix_c.rows, matrix_c.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
           matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
           matrix_c.values_ptr, bp, BPS_PER_ROW, BP_IDX_PER_ROW);

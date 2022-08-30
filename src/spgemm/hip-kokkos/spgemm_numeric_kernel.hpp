@@ -33,7 +33,7 @@ __global__ void create_bp_thread_per_row_kernel(const size_t m, const I *row_ptr
   }
 }
 
-template <typename I, size_t CHUNK_SIZE, size_t WF_SIZE>
+template <typename I, size_t CHUNK_SIZE>
 __global__ void create_bp_wf_per_row_kernel(const size_t m, const I *row_ptr, const I *col_idx_ptr, I *bp,
                                             const size_t BP_IDX_PER_ROW) {
   // thread id in global
@@ -41,13 +41,13 @@ __global__ void create_bp_wf_per_row_kernel(const size_t m, const I *row_ptr, co
   // thread num in global
   const int global_thread_num = gridDim.x * blockDim.x;
   // wf id in global
-  const int global_wf_id = global_thread_id / WF_SIZE;
+  const int global_wf_id = global_thread_id / __WF_SIZE__;
   // wf num in global
-  const int global_wf_num = global_thread_num / WF_SIZE;
+  const int global_wf_num = global_thread_num / __WF_SIZE__;
   // thread id in wf
-  const int wf_thread_id = global_thread_id % WF_SIZE;
+  const int wf_thread_id = global_thread_id % __WF_SIZE__;
   // thread num in wf
-  const int wf_thread_num = WF_SIZE;
+  const int wf_thread_num = __WF_SIZE__;
   // each vector process a row
   for (int row = global_wf_id; row < m; row += global_wf_num) {
     I *row_bp_ptr = &bp[BP_IDX_PER_ROW * row];
@@ -66,7 +66,7 @@ __global__ void create_bp_wf_per_row_kernel(const size_t m, const I *row_ptr, co
       if (__any(flag)) {
         do {
           I tmp_idx = flag ? idx : row_idx_end;
-          for (int i = WF_SIZE >> 1; i > 0; i >>= 1) {
+          for (int i = __WF_SIZE__ >> 1; i > 0; i >>= 1) {
             tmp_idx = min(__shfl_down(tmp_idx, i), tmp_idx);
           }
           if (wf_thread_id == 0) {
@@ -83,7 +83,7 @@ __global__ void create_bp_wf_per_row_kernel(const size_t m, const I *row_ptr, co
   }
 }
 
-template <typename I, size_t CHUNK_SIZE, size_t BUFFER_SIZE, size_t WF_SIZE>
+template <typename I, size_t CHUNK_SIZE, size_t BUFFER_SIZE>
 __global__ void create_bp_wf_per_row_kernel(const size_t m, const I *row_ptr, const I *col_idx_ptr, I *bp,
                                             const size_t BP_IDX_PER_ROW) {
   // thread id in global
@@ -91,13 +91,13 @@ __global__ void create_bp_wf_per_row_kernel(const size_t m, const I *row_ptr, co
   // thread num in global
   const int global_thread_num = gridDim.x * blockDim.x;
   // wf id in global
-  const int global_wf_id = global_thread_id / WF_SIZE;
+  const int global_wf_id = global_thread_id / __WF_SIZE__;
   // wf num in global
-  const int global_wf_num = global_thread_num / WF_SIZE;
+  const int global_wf_num = global_thread_num / __WF_SIZE__;
   // thread id in wf
-  const int wf_thread_id = global_thread_id % WF_SIZE;
+  const int wf_thread_id = global_thread_id % __WF_SIZE__;
   // thread num in wf
-  const int wf_thread_num = WF_SIZE;
+  const int wf_thread_num = __WF_SIZE__;
 
   I local_bp[BUFFER_SIZE];
   // each vector process a row
@@ -123,14 +123,14 @@ __global__ void create_bp_wf_per_row_kernel(const size_t m, const I *row_ptr, co
       }
     }
     int max_bp_idx = bp_idx;
-    for (int i = WF_SIZE >> 1; i > 0; i >>= 1) {
+    for (int i = __WF_SIZE__ >> 1; i > 0; i >>= 1) {
       max_bp_idx = max(__shfl_down(max_bp_idx, i), max_bp_idx);
     }
     max_bp_idx = __shfl(max_bp_idx, 0);
 
     for (int i = 1; i < max_bp_idx; i++) {
       I bp_val = local_bp[i];
-      for (int j = WF_SIZE >> 1; j > 0; j >>= 1) {
+      for (int j = __WF_SIZE__ >> 1; j > 0; j >>= 1) {
         bp_val = min(__shfl_down(bp_val, j), bp_val);
       }
       if (wf_thread_id == 0) {
@@ -1175,7 +1175,7 @@ __global__ void __launch_bounds__(THREADS)
   }
 }
 
-template <typename T, typename I, size_t CHUNK_SIZE, size_t THREADS, size_t VEC_SIZE, size_t WF_SIZE>
+template <typename T, typename I, size_t CHUNK_SIZE, size_t THREADS, size_t VEC_SIZE>
 __global__ void __launch_bounds__(THREADS)
     spgemm_numeric_block_per_row_sorted_bp_kernel(const T alpha, const size_t m, const size_t n, const I *row_ptr_a,
                                                   const I *col_idx_ptr_a, const T *values_ptr_a, const I *row_ptr_b,
@@ -1253,11 +1253,11 @@ __global__ void __launch_bounds__(THREADS)
       int offset = __popcll(lanemask_le & mask);
       __syncthreads();
 
-      scan_offsets[block_thread_id / WF_SIZE] = nnz;
+      scan_offsets[block_thread_id / __WF_SIZE__] = nnz;
       __syncthreads();
 
-      for (unsigned int j = 1; j < block_thread_num / WF_SIZE; ++j) {
-        if (block_thread_id >= j * WF_SIZE) {
+      for (unsigned int j = 1; j < block_thread_num / __WF_SIZE__; ++j) {
+        if (block_thread_id >= j * __WF_SIZE__) {
           offset += scan_offsets[j - 1];
         }
       }
@@ -1269,10 +1269,10 @@ __global__ void __launch_bounds__(THREADS)
       }
 
       if (block_thread_id == block_thread_num - 1) {
-        scan_offsets[block_thread_num / WF_SIZE - 1] = offset;
+        scan_offsets[block_thread_num / __WF_SIZE__ - 1] = offset;
       }
       __syncthreads();
-      row_begin_c += scan_offsets[block_thread_num / WF_SIZE - 1];
+      row_begin_c += scan_offsets[block_thread_num / __WF_SIZE__ - 1];
     }
     __syncthreads();
   }
