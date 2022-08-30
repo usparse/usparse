@@ -17,9 +17,10 @@ CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, cons
                             I *row_ptr_c) {
   constexpr size_t CHUNK_SIZE = 2048;
   const int BPS_PER_ROW = matrix_b.cols / CHUNK_SIZE + (matrix_b.cols % CHUNK_SIZE == 0 ? 0 : 1);
+  const int BP_IDX_PER_ROW = BPS_PER_ROW + 1;
 
   I *temp_buffer = nullptr;
-  const size_t temp_buffer_size = sizeof(I) * matrix_b.rows * BPS_PER_ROW;
+  const size_t temp_buffer_size = sizeof(I) * matrix_b.rows * BP_IDX_PER_ROW;
   KOKKOS_HIP_CHECK(hipMalloc((void **)&temp_buffer, temp_buffer_size))
   // Symbolic Phase
   size_t nnz_c = 0;

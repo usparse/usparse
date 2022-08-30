@@ -1,10 +1,10 @@
 #ifndef SPGEMM_KOKKOS_SPGEMM_SYMBOLIC_KERNEL_HPP
 #define SPGEMM_KOKKOS_SPGEMM_SYMBOLIC_KERNEL_HPP
 
+#include "building_config.h"
 #include "compress_matrix.h"
 #include "hash_map.h"
 #include "hash_map_insert.hpp"
-#include "building_config.h"
 #include <hip/hip_runtime.h>
 
 template <typename I, typename BitType, size_t VEC_SIZE>
