@@ -143,36 +143,12 @@ __global__ void create_bp_wf_per_row_kernel(const size_t m, const I *row_ptr, co
   }
 }
 
-// group [16, 32, 64, 512, 1024, 2048]
-template <typename I> __global__ void row_split_groups_kernel(const size_t m, const I *row_ptr_c, bool *row_group_ptr) {
-  // thread id in global
-  const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
-  // thread num in global
-  const int global_thread_num = gridDim.x * blockDim.x;
-
-  constexpr size_t GROUPS_NUM = 6;
-  constexpr I GROUPS_THRESHOLDS[GROUPS_NUM] = {16, 32, 64, 512, 1024, 2048};
-
-  for (int row = global_thread_id; row < m; row += global_thread_num) {
-    I row_nnz = row_ptr_c[row + 1] - row_ptr_c[row];
-    if (row_nnz > 0) {
-#pragma unroll
-      for (int i = 0; i < GROUPS_NUM; ++i) {
-        if (row_nnz < GROUPS_THRESHOLDS[i]) {
-          row_group_ptr[i * m + row] = true;
-          break;
-        }
-      }
-    }
-  }
-}
-
 // please make sure GLOBAL_BLOCK_NUM = ROW_TO_PROCESS
 template <typename T, typename I, size_t N, size_t THREADS, size_t VEC_SIZE>
 __global__ void __launch_bounds__(THREADS) spgemm_numeric_open_address_hashmap_vector_per_row_sorted_one_pass_kernel(
     const T alpha, const size_t m, const size_t n, const I *row_ptr_a, const I *col_idx_ptr_a, const T *values_ptr_a,
-    const I *row_ptr_b, const I *col_idx_ptr_b, const T *values_ptr_b, const bool *row_group_ptr, const I *row_ptr_c,
-    I *ids, T *values) {
+    const I *row_ptr_b, const I *col_idx_ptr_b, const T *values_ptr_b, const I *group_row_ptr, const int group_row_num,
+    const I *row_ptr_c, I *ids, T *values) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
@@ -202,11 +178,10 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_open_address_hashmap_v
 
   constexpr int BLOCK_LDS_SIZE = LDS_MAP_CAP * block_vec_num;
 
-  int row_a = global_vec_id;
-
-  if (row_a >= m || !row_group_ptr[row_a]) {
+  if (global_vec_id >= group_row_num) {
     return;
   }
+  const int row_a = group_row_ptr[global_vec_id];
 
   __shared__ I shared_ids[BLOCK_LDS_SIZE];
   __shared__ T shared_values[BLOCK_LDS_SIZE];
@@ -259,8 +234,8 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_open_address_hashmap_v
 template <typename T, typename I, size_t N, size_t THREADS>
 __global__ void __launch_bounds__(THREADS) spgemm_numeric_open_address_hashmap_block_per_row_sorted_one_pass_kernel(
     const T alpha, const size_t m, const size_t n, const I *row_ptr_a, const I *col_idx_ptr_a, const T *values_ptr_a,
-    const I *row_ptr_b, const I *col_idx_ptr_b, const T *values_ptr_b, const bool *row_group_ptr, const I *row_ptr_c,
-    I *ids, T *values) {
+    const I *row_ptr_b, const I *col_idx_ptr_b, const T *values_ptr_b, const I *group_row_ptr, const int group_row_num,
+    const I *row_ptr_c, I *ids, T *values) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
@@ -302,11 +277,10 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_open_address_hashmap_b
   __syncthreads();
 
   // each block process one row
-  int row_a = global_block_id;
-
-  if (row_a >= m || !row_group_ptr[row_a]) {
+  if (global_block_id >= group_row_num) {
     return;
   }
+  const int row_a = group_row_ptr[global_block_id];
 
   const I row_idx_begin = row_ptr_a[row_a];
   const I row_idx_end = row_ptr_a[row_a + 1];
@@ -850,8 +824,8 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_b
 template <typename T, typename I, size_t N, size_t THREADS>
 __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_block_per_row_sorted_one_pass_kernel(
     const T alpha, const size_t m, const size_t n, const I *row_ptr_a, const I *col_idx_ptr_a, const T *values_ptr_a,
-    const I *row_ptr_b, const I *col_idx_ptr_b, const T *values_ptr_b, const bool *row_group_ptr, const I *row_ptr_c,
-    I *ids, T *values) {
+    const I *row_ptr_b, const I *col_idx_ptr_b, const T *values_ptr_b, const I *group_row_ptr, const int group_row_num,
+    const I *row_ptr_c, I *ids, T *values) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
@@ -874,11 +848,12 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_b
   constexpr int NEXTS_SIZE_PER_BLOCK = BLOCK_PROCESS_ONCE * N;
   constexpr int LDS_NEXTS_SIZE = NEXTS_SIZE_PER_BLOCK;
   // each block process one row
-  int row_a = global_block_id;
-
-  if (row_a >= m || !row_group_ptr[row_a]) {
+  if (global_block_id >= group_row_num) {
     return;
   }
+
+  const int row_a = group_row_ptr[global_block_id];
+
   __shared__ int shared_begins[LDS_BEGINS_SIZE];
   __shared__ int shared_nexts[LDS_NEXTS_SIZE];
   __shared__ I shared_ids[LDS_NEXTS_SIZE];
@@ -947,8 +922,8 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_b
 template <typename T, typename I, size_t N, size_t THREADS, size_t VEC_SIZE>
 __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_vector_per_row_sorted_one_pass_kernel(
     const T alpha, const size_t m, const size_t n, const I *row_ptr_a, const I *col_idx_ptr_a, const T *values_ptr_a,
-    const I *row_ptr_b, const I *col_idx_ptr_b, const T *values_ptr_b, const bool *row_group_ptr, const I *row_ptr_c,
-    I *ids, T *values) {
+    const I *row_ptr_b, const I *col_idx_ptr_b, const T *values_ptr_b, const I *group_row_ptr, const int group_row_num,
+    const I *row_ptr_c, I *ids, T *values) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
@@ -972,11 +947,11 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_v
   // thread num in vec
   constexpr int vec_thread_num = VEC_SIZE;
 
-  int row_a = global_vec_id;
-
-  if (row_a >= m || !row_group_ptr[row_a]) {
+  if (global_vec_id >= group_row_num) {
     return;
   }
+  const int row_a = group_row_ptr[global_vec_id];
+
   // hashmap in LDS
   constexpr size_t LDS_MAP_CAP = VEC_SIZE * N;
   // hash mask

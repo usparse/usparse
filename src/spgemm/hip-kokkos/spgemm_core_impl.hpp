@@ -14,12 +14,17 @@
 template <typename T, typename I>
 CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b,
                             I *row_ptr_c) {
-  constexpr size_t CHUNK_SIZE = 2048;
-  const int BPS_PER_ROW = matrix_b.cols / CHUNK_SIZE + (matrix_b.cols % CHUNK_SIZE == 0 ? 0 : 1);
-  const int BP_IDX_PER_ROW = BPS_PER_ROW + 1;
+  const double sparseness_b = static_cast<double>(matrix_b.nnz) / static_cast<double>(matrix_b.rows * matrix_b.cols);
 
   I *temp_buffer = nullptr;
-  const size_t temp_buffer_size = sizeof(I) * matrix_b.rows * BP_IDX_PER_ROW;
+  size_t temp_buffer_size = sizeof(I) * matrix_b.rows;
+  if (sparseness_b > 0.005) {
+    // create break points
+    constexpr size_t CHUNK_SIZE = 2048;
+    const int BPS_PER_ROW = matrix_b.cols / CHUNK_SIZE + (matrix_b.cols % CHUNK_SIZE == 0 ? 0 : 1);
+    const int BP_IDX_PER_ROW = BPS_PER_ROW + 1;
+    temp_buffer_size = sizeof(I) * matrix_b.rows * BP_IDX_PER_ROW;
+  }
   KOKKOS_HIP_CHECK(hipMalloc((void **)&temp_buffer, temp_buffer_size))
   // Symbolic Phase
   size_t nnz_c = 0;

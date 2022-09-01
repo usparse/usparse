@@ -25,6 +25,10 @@ set(ACC_HEADER_FILES ${ACC_HEADER_FILES}
         ${CURRENT_ACC_HIP_SOURCE_DIR}/scan.h
         ${CURRENT_ACC_HIP_SOURCE_DIR}/scan_impl.hpp
         # ${CURRENT_ACC_HIP_SOURCE_DIR}/scan_kernel.hpp
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/split_config.h
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/split_group.h
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/split_group_impl.hpp
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/split_group_kernel.hpp
         ${CURRENT_ACC_HIP_SOURCE_DIR}/max_num.h
         ${CURRENT_ACC_HIP_SOURCE_DIR}/max_num_impl.hpp
         ${CURRENT_ACC_HIP_SOURCE_DIR}/max_num_kernel.hpp
