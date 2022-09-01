@@ -28,7 +28,7 @@ __global__ void row_nnz_kernel(const I m, const I *map_row_ptr, const BitType *m
     const I idx_end = idx_begin + use_count[row];
     I non_zero_count = 0;
     for (int idx = idx_begin + vector_thread_id; idx < idx_end; idx += vector_thread_num) {
-      non_zero_count += __popcll(map_values[idx]);
+      non_zero_count += __popc(map_values[idx]);
     }
     // reduce
     for (int i = VEC_SIZE >> 1; i > 0; i >>= 1) {
@@ -149,7 +149,7 @@ __global__ void __launch_bounds__(THREADS)
   __syncthreads();
   I nnz_count = 0;
   for (int idx = block_thread_id; idx < LDS_MAP_CAP; idx += block_thread_num) {
-    nnz_count += __popcll(block_lds_values[idx]);
+    nnz_count += __popc(block_lds_values[idx]);
   }
   __syncthreads();
   // wf reduce
@@ -245,7 +245,7 @@ __global__ void __launch_bounds__(THREADS)
   }
   I nnz_count = 0;
   for (int idx = vec_thread_id; idx < LDS_MAP_CAP; idx += vec_thread_num) {
-    nnz_count += __popcll(vec_lds_values[idx]);
+    nnz_count += __popc(vec_lds_values[idx]);
   }
   // vec reduce
   for (int i = VEC_SIZE >> 1; i > 0; i >>= 1) {
@@ -326,7 +326,7 @@ __global__ void __launch_bounds__(THREADS) spgemm_symbolic_open_address_hashmap_
   }
   I local_use_count = static_cast<I>(0);
   for (int i = vec_thread_id; i < LDS_MAP_CAP; i += vec_thread_num) {
-    local_use_count += __popcll(vec_lds_values[i]);
+    local_use_count += __popc(vec_lds_values[i]);
   }
   // sum
   for (int i = VEC_SIZE >> 1; i > 0; i >>= 1) {
@@ -411,7 +411,7 @@ __global__ void __launch_bounds__(THREADS) spgemm_symbolic_open_address_hashmap_
   __syncthreads();
   I local_use_count = static_cast<I>(0);
   for (int i = block_thread_id; i < BLOCK_LDS_SIZE; i += block_thread_num) {
-    local_use_count += __popcll(block_lds_values[i]);
+    local_use_count += __popc(block_lds_values[i]);
   }
   __syncthreads();
   // block sum
@@ -788,7 +788,7 @@ __global__ void __launch_bounds__(THREADS) spgemm_symbolic_linear_chain_hashmap_
   const int end_offset = *vec_lds_use_size;
   I local_use_count = static_cast<I>(0);
   for (int i = vec_thread_id; i < end_offset; i += vec_thread_num) {
-    local_use_count += __popcll(vec_lds_values[i]);
+    local_use_count += __popc(vec_lds_values[i]);
   }
   // reduce sum
   for (int i = VEC_SIZE >> 1; i > 0; i >>= 1) {
@@ -894,7 +894,7 @@ __global__ void __launch_bounds__(THREADS) spgemm_symbolic_linear_chain_hashmap_
   const int end_offset = block_lds_use_size;
   I local_use_count = static_cast<I>(0);
   for (int i = block_thread_id; i < end_offset; i += block_thread_num) {
-    local_use_count += __popcll(block_lds_values[i]);
+    local_use_count += __popc(block_lds_values[i]);
   }
   __syncthreads();
   // block sum
