@@ -1,15 +1,10 @@
 #ifndef SPGEMM_KOKKOS_SPGEMM_CORE_IMPL_HPP
 #define SPGEMM_KOKKOS_SPGEMM_CORE_IMPL_HPP
 
-#include "build_flag.h"
 #include "error_macro.hpp"
-#include "spgemm_numeric.h"
-#include "spgemm_symbolic.h"
+#include "spgemm_numeric_impl.hpp"
+#include "spgemm_symbolic_impl.hpp"
 
-#ifdef TIME_MODE
-#include "timer.h"
-#include <iostream>
-#endif
 
 template <typename T, typename I>
 CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b,

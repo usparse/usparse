@@ -3,7 +3,7 @@
 
 #include "api/spgemm_hip_types.h"
 #include "error_macro.hpp"
-#include "spgemm_core.h"
+#include "spgemm_core_impl.hpp"
 
 template <typename T, typename I>
 void kokkos_spgemm(const T alpha, const size_t m, const size_t n, const size_t k, const size_t nnzA, const I *pOffsetA,

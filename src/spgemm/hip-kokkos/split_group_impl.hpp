@@ -2,7 +2,7 @@
 #define SPGEMM_HIP_KOKKOS_SPLIT_GROUP_IMPL_HPP
 
 #include "error_macro.hpp"
-#include "scan.h"
+#include "scan_impl.hpp"
 #include "split_config.h"
 #include "split_group_kernel.hpp"
 #include <iostream>

@@ -1,19 +1,16 @@
 #ifndef SPGEMM_KOKKOS_SPGEMM_SYMBOLIC_IMPL_HPP
 #define SPGEMM_KOKKOS_SPGEMM_SYMBOLIC_IMPL_HPP
 
-#include "building_config.h"
 #include "compress_matrix.h"
 #include "csr_matrix.h"
 #include "error_macro.hpp"
-#include "max_num.h"
-#include "scan.h"
-#include "spgemm_compress.h"
+#include "max_num_impl.hpp"
+#include "scan_impl.hpp"
+#include "spgemm_compress_impl.hpp"
 #include "spgemm_symbolic_kernel.hpp"
 #include <cstddef>
 #include <hip/hip_runtime.h>
-#ifdef DEBUG_MODE
-#include <iostream>
-#endif
+
 
 template <typename T, typename I>
 void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b, I *row_ptr_c, size_t *nnz_c,
@@ -42,24 +39,6 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
   } else {
     KOKKOS_HIP_CHECK(hipMalloc((void **)&max_temp_buffer, max_temp_buffer_size))
   }
-
-#ifdef DEBUG_MODE
-  std::cout << "max_bits_num: " << max_bits_num << std::endl;
-#endif
-
-#ifdef SYMBOLIC_LINEAR_CHAIN_HASHMAP
-#define SYMBOLIC_VECTOR_PER_ROW_ONE_PASS_METHOD                                                                        \
-  spgemm_symbolic_linear_chain_hashmap_vector_per_row_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, VEC_SIZE>
-#define SYMBOLIC_BLOCK_PER_ROW_ONE_PASS_METHOD                                                                         \
-  spgemm_symbolic_linear_chain_hashmap_block_per_row_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>
-#endif
-
-#ifndef SYMBOLIC_LINEAR_CHAIN_HASHMAP
-#define SYMBOLIC_VECTOR_PER_ROW_ONE_PASS_METHOD                                                                        \
-  spgemm_symbolic_open_address_hashmap_vector_per_row_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, VEC_SIZE>
-#define SYMBOLIC_BLOCK_PER_ROW_ONE_PASS_METHOD                                                                         \
-  spgemm_symbolic_open_address_hashmap_block_per_row_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>
-#endif
 
   if (max_bits_num < 16) {
     constexpr size_t N = 2;
@@ -125,7 +104,7 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
     // calc size of trunk
     I *dchunk_num_ptr = nullptr;
     KOKKOS_HIP_CHECK(hipMalloc((void **)(&dchunk_num_ptr), (matrix_a.rows + 1) * sizeof(I)))
-    KOKKOS_HIP_CHECK(hipMemset(dchunk_num_ptr, 0, sizeof(I)))
+    // KOKKOS_HIP_CHECK(hipMemset(dchunk_num_ptr, 0, sizeof(I)))
     (trunk_nums_kernel<I, 32>)<<<512, 256>>>(matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr,
                                              compress_matrix_b.use_count, dchunk_num_ptr);
     I max_chunk_num = static_cast<I>(0);
@@ -135,9 +114,7 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
     max_num_in_array<I>(matrix_a.rows + 1, dchunk_num_ptr, dmax_chunk_num_ptr, max_temp_buffer);
     KOKKOS_HIP_CHECK(hipMemcpy(&max_chunk_num, dmax_chunk_num_ptr, sizeof(I), hipMemcpyDeviceToHost))
     KOKKOS_HIP_CHECK(hipFree(dmax_chunk_num_ptr))
-#ifdef DEBUG_MODE
-    std::cout << "max_chunk_num: " << max_chunk_num << std::endl;
-#endif
+
     max_chunk_num = matrix_b.cols < max_chunk_num ? matrix_b.cols : max_chunk_num;
     if (max_chunk_num < 16) {
       constexpr size_t N = 2;
@@ -146,7 +123,7 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
       constexpr size_t BLOCK_VEC_NUM = BLOCK_THREAD_NUM / VEC_SIZE;
       const size_t GLOBAL_BLOCK_NUM = matrix_a.rows / BLOCK_VEC_NUM + (matrix_a.rows % BLOCK_VEC_NUM == 0 ? 0 : 1);
 
-      (SYMBOLIC_VECTOR_PER_ROW_ONE_PASS_METHOD)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+      spgemm_symbolic_open_address_hashmap_vector_per_row_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, VEC_SIZE><<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
           matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
           compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_ptr_c);
     } else if (max_chunk_num < 32) {
@@ -156,7 +133,7 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
       constexpr size_t BLOCK_VEC_NUM = BLOCK_THREAD_NUM / VEC_SIZE;
       const size_t GLOBAL_BLOCK_NUM = matrix_a.rows / BLOCK_VEC_NUM + (matrix_a.rows % BLOCK_VEC_NUM == 0 ? 0 : 1);
 
-      (SYMBOLIC_VECTOR_PER_ROW_ONE_PASS_METHOD)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+      spgemm_symbolic_open_address_hashmap_vector_per_row_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, VEC_SIZE><<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
           matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
           compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_ptr_c);
 
@@ -167,7 +144,7 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
       constexpr size_t BLOCK_VEC_NUM = BLOCK_THREAD_NUM / VEC_SIZE;
       const size_t GLOBAL_BLOCK_NUM = matrix_a.rows / BLOCK_VEC_NUM + (matrix_a.rows % BLOCK_VEC_NUM == 0 ? 0 : 1);
 
-      (SYMBOLIC_VECTOR_PER_ROW_ONE_PASS_METHOD)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+      spgemm_symbolic_open_address_hashmap_vector_per_row_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, VEC_SIZE><<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
           matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
           compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_ptr_c);
 
@@ -178,7 +155,7 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
       constexpr size_t BLOCK_VEC_NUM = BLOCK_THREAD_NUM / VEC_SIZE;
       const size_t GLOBAL_BLOCK_NUM = matrix_a.rows / BLOCK_VEC_NUM + (matrix_a.rows % BLOCK_VEC_NUM == 0 ? 0 : 1);
 
-      (SYMBOLIC_VECTOR_PER_ROW_ONE_PASS_METHOD)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+      spgemm_symbolic_open_address_hashmap_vector_per_row_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, VEC_SIZE><<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
           matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
           compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_ptr_c);
 
@@ -186,21 +163,21 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
       constexpr size_t N = 2;
       constexpr size_t BLOCK_THREAD_NUM = 512 / N;
       const size_t GLOBAL_BLOCK_NUM = matrix_a.rows;
-      (SYMBOLIC_BLOCK_PER_ROW_ONE_PASS_METHOD)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+      spgemm_symbolic_open_address_hashmap_block_per_row_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM><<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
           matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
           compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_ptr_c);
     } else if (max_chunk_num < 1024) {
       constexpr size_t N = 2;
       constexpr size_t BLOCK_THREAD_NUM = 1024 / N;
       const size_t GLOBAL_BLOCK_NUM = matrix_a.rows;
-      (SYMBOLIC_BLOCK_PER_ROW_ONE_PASS_METHOD)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+      spgemm_symbolic_open_address_hashmap_block_per_row_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM><<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
           matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
           compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_ptr_c);
     } else if (max_chunk_num < 2048) {
       constexpr size_t N = 2;
       constexpr size_t BLOCK_THREAD_NUM = 2048 / N;
       const size_t GLOBAL_BLOCK_NUM = matrix_a.rows;
-      (SYMBOLIC_BLOCK_PER_ROW_ONE_PASS_METHOD)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+      spgemm_symbolic_open_address_hashmap_block_per_row_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM><<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
           matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
           compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_ptr_c);
     } else {

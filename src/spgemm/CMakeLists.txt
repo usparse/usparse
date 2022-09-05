@@ -1,7 +1,6 @@
 # all enabled strategies
 set(ENABLED_STRATEGIES
     kokkos
-    dense
     )
 
 # find HIP

@@ -2,8 +2,6 @@
 #define SPGEMM_KOKKOS_HASH_MAP_KERNEL_HPP
 
 #include <hip/hip_runtime.h>
-
-#include "hash.h"
 #include "hash_map.h"
 
 // ** insert to hashmap (open addressing) **
