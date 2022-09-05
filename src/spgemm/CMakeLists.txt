@@ -34,6 +34,13 @@ set(ACC_HIP_HEADER_FILES ${ACC_HEADER_FILES}
         api/spgemm_hip_types.h
         common/reduction_kernel.hpp
         common/scan_kernel.hpp
+        common/check/hip_check.hpp
+        common/scan/scan.h
+        common/scan/scan_impl.hpp
+        common/scan/scan_in_device.hpp
+        common/scan/reduce_then_scan.hpp
+        common/scan/lookback_scan.hpp
+        common/scan/single_block_scan.hpp
         )
 
 set(ACC_HIP_SOURCE_FILES ${ACC_SOURCE_FILES}
