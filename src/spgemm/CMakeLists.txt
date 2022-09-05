@@ -41,6 +41,9 @@ set(ACC_HIP_HEADER_FILES ${ACC_HEADER_FILES}
         common/scan/reduce_then_scan.hpp
         common/scan/lookback_scan.hpp
         common/scan/single_block_scan.hpp
+        common/max/max.h
+        common/max/max_impl.hpp
+        common/max/block_reduce_max.hpp
         )
 
 set(ACC_HIP_SOURCE_FILES ${ACC_SOURCE_FILES}

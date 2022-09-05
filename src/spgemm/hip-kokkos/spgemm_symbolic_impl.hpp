@@ -1,12 +1,12 @@
 #ifndef SPGEMM_KOKKOS_SPGEMM_SYMBOLIC_IMPL_HPP
 #define SPGEMM_KOKKOS_SPGEMM_SYMBOLIC_IMPL_HPP
 
+#include "../common/max/max.h"
 #include "../common/scan/scan.h"
 #include "building_config.h"
 #include "compress_matrix.h"
 #include "csr_matrix.h"
 #include "error_macro.hpp"
-#include "max_num.h"
 #include "spgemm_compress.h"
 #include "spgemm_symbolic_kernel.hpp"
 #include <cstddef>
@@ -34,11 +34,11 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
     KOKKOS_HIP_CHECK(hipMalloc((void **)&scan_temp_buffer, scan_temp_buffer_size))
   }
   // buffer for max
-  I *max_temp_buffer = nullptr;
+  void *max_temp_buffer = nullptr;
 
-  const size_t max_temp_buffer_size = max_num_buffer_size<I>(matrix_a.rows + 1);
+  const size_t max_temp_buffer_size = max_buffer_size<I>(matrix_a.rows + 1);
   if (temp_buffer_size >= max_temp_buffer_size) {
-    max_temp_buffer = reinterpret_cast<I *>(temp_buffer);
+    max_temp_buffer = reinterpret_cast<void *>(temp_buffer);
   } else {
     KOKKOS_HIP_CHECK(hipMalloc((void **)&max_temp_buffer, max_temp_buffer_size))
   }
@@ -132,7 +132,7 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
     // max num in row_ptr
     I *dmax_chunk_num_ptr = nullptr;
     KOKKOS_HIP_CHECK(hipMalloc((void **)(&dmax_chunk_num_ptr), sizeof(I)));
-    max_num_in_array<I>(matrix_a.rows + 1, dchunk_num_ptr, dmax_chunk_num_ptr, max_temp_buffer);
+    max<I>(matrix_a.rows + 1, dchunk_num_ptr, dmax_chunk_num_ptr, max_temp_buffer);
     KOKKOS_HIP_CHECK(hipMemcpy(&max_chunk_num, dmax_chunk_num_ptr, sizeof(I), hipMemcpyDeviceToHost))
     KOKKOS_HIP_CHECK(hipFree(dmax_chunk_num_ptr))
 #ifdef DEBUG_MODE
@@ -247,7 +247,7 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
   // max num in row_ptr
   I *device_max_row_num = nullptr;
   KOKKOS_HIP_CHECK(hipMalloc((void **)(&device_max_row_num), sizeof(I)));
-  max_num_in_array<I>(matrix_a.rows + 1, row_ptr_c, device_max_row_num, max_temp_buffer);
+  max<I>(matrix_a.rows + 1, row_ptr_c, device_max_row_num, max_temp_buffer);
   KOKKOS_HIP_CHECK(hipMemcpy(max_row_num, device_max_row_num, sizeof(I), hipMemcpyDeviceToHost))
   KOKKOS_HIP_CHECK(hipFree(device_max_row_num))
   // reduce than fan
