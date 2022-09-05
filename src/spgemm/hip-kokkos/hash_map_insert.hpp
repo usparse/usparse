@@ -48,7 +48,6 @@ __device__ __forceinline__ void open_address_hashmap_vector_insert_add(I *ids, T
 }
 
 // ** insert to hashmap (linear chaining) **
-// one thread simultaneously insert to hashmap
 template <typename T, typename I, size_t HashMask>
 __device__ __forceinline__ void linear_chain_hashmap_thread_insert_add(int *begins, int *nexts, I *ids, T *values,
                                                                        const I insert_id, const T insert_value,
