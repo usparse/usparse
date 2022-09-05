@@ -175,10 +175,10 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
       HIP_CHECK(hipMemset(bp, 0, alloc_size))
     }
 
-    if (BP_IDX_PER_ROW < 8) {
+    if (BP_IDX_PER_ROW <= 8) {
       create_bp_wf_per_row_kernel<I, CHUNK_SIZE, 8>
           <<<512, 256>>>(matrix_b.rows, matrix_b.row_ptr, matrix_b.col_idx_ptr, bp, BP_IDX_PER_ROW);
-    } else if (BP_IDX_PER_ROW < 16) {
+    } else if (BP_IDX_PER_ROW <= 16) {
       create_bp_wf_per_row_kernel<I, CHUNK_SIZE, 16>
           <<<512, 256>>>(matrix_b.rows, matrix_b.row_ptr, matrix_b.col_idx_ptr, bp, BP_IDX_PER_ROW);
     } else {
