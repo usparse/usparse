@@ -46,18 +46,10 @@ set(ACC_HIP_SOURCE_FILES ${ACC_SOURCE_FILES}
 # hip_add_library(${SPGEMM_KERNEL_LIB_NAME} STATIC ${ACC_HIP_SOURCE_FILES} ${ACC_HIP_HEADER_FILES} HIPCC_OPTIONS ${SPGEMM_HIPCC_OPTIONS})
 
 # build static library
-MESSAGE(STATUS "sort source dir is ${SORT_SOURCE_DIR}")
 add_library(${SPGEMM_KERNEL_LIB_NAME} STATIC ${ACC_HIP_SOURCE_FILES} ${ACC_HIP_HEADER_FILES})
 target_include_directories(
         ${SPGEMM_KERNEL_LIB_NAME}
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}$<SEMICOLON>${PROJECT_BINARY_DIR}/generated>
         $<INSTALL_INTERFACE:include>
-        PRIVATE
-        ${SORT_KERNEL_SOURCE_DIR}
-)
-target_link_libraries(
-        ${SPGEMM_KERNEL_LIB_NAME}
-        PRIVATE
-        ${SORT_KERNEL_LIB_NAME}
 )
