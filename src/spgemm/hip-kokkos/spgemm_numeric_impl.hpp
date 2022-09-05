@@ -1,9 +1,9 @@
 #ifndef SPGEMM_KOKKOS_SPGEMM_NUMERIC_IMPL_H
 #define SPGEMM_KOKKOS_SPGEMM_NUMERIC_IMPL_H
 
+#include "../common/check/hip_check.hpp"
 #include "build_flag.h"
 #include "csr_matrix.h"
-#include "error_macro.hpp"
 #include "spgemm_numeric_kernel.hpp"
 #include "split_config.h"
 #include "split_group.h"
@@ -40,16 +40,16 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
   if (max_row_num < 2048) {
     I *group_row_ptr = nullptr;
     const size_t group_row_buffer_size = split_group_row_size<I>(matrix_c.rows);
-    KOKKOS_HIP_CHECK(hipMalloc((void **)(&group_row_ptr), group_row_buffer_size))
+    HIP_CHECK(hipMalloc((void **)(&group_row_ptr), group_row_buffer_size))
 
     I *split_group_temp_buffer = nullptr;
     const size_t split_group_temp_buffer_size = split_group_buffer_size<I>(matrix_c.rows);
-    KOKKOS_HIP_CHECK(hipMalloc((void **)(&split_group_temp_buffer), split_group_temp_buffer_size))
+    HIP_CHECK(hipMalloc((void **)(&split_group_temp_buffer), split_group_temp_buffer_size))
 
     int hgroup_num[GROUP_NUM];
     split_group<I>(matrix_c.rows, matrix_c.row_ptr, group_row_ptr, reinterpret_cast<int *>(hgroup_num),
                    split_group_temp_buffer);
-    KOKKOS_HIP_CHECK(hipFree(split_group_temp_buffer))
+    HIP_CHECK(hipFree(split_group_temp_buffer))
 
     if (hgroup_num[0] > 0) {
       constexpr size_t N = 2;
@@ -129,9 +129,9 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
     if (temp_buffer_size >= bp_temp_buffer_size) {
       bp = reinterpret_cast<I *>(temp_buffer);
     } else {
-      KOKKOS_HIP_CHECK(hipMalloc((void **)&bp, bp_temp_buffer_size))
+      HIP_CHECK(hipMalloc((void **)&bp, bp_temp_buffer_size))
     }
-    KOKKOS_HIP_CHECK(hipMemset(bp, 0, bp_temp_buffer_size))
+    HIP_CHECK(hipMemset(bp, 0, bp_temp_buffer_size))
 
     if (BP_IDX_PER_ROW < 8) {
       create_bp_wf_per_row_kernel<I, CHUNK_SIZE, 8>
@@ -163,7 +163,7 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
     }
 
     if (temp_buffer_size < bp_temp_buffer_size) {
-      KOKKOS_HIP_CHECK(hipFree(bp))
+      HIP_CHECK(hipFree(bp))
     }
   }
 }

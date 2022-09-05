@@ -1,9 +1,10 @@
-#ifndef SPGEMM_KOKKOS_ERROR_MACRO_HPP
-#define SPGEMM_KOKKOS_ERROR_MACRO_HPP
+#ifndef COMMON_HIP_CHECK_HPP
+#define COMMON_HIP_CHECK_HPP
 
+#include <hip/hip_runtime.h>
 #include <iostream>
 
-#define KOKKOS_HIP_CHECK(stat)                                                                                         \
+#define HIP_CHECK(stat)                                                                                                \
   {                                                                                                                    \
     if (stat != hipSuccess) {                                                                                          \
       std::cerr << "Error: " << std::endl;                                                                             \
@@ -16,14 +17,4 @@
     }                                                                                                                  \
   }
 
-#ifdef UNDEF // note, ROCSPARSE_CHECK macro is not used, we remove it.
-#define ROCSPARSE_CHECK(stat)                                                                                          \
-  {                                                                                                                    \
-    if (stat != rocsparse_status_success) {                                                                            \
-      std::cerr << "Error: rocsparse error " << stat << " in line " << __LINE__ << std::endl;                          \
-      exit(-1);                                                                                                        \
-    }                                                                                                                  \
-  }
-#endif
-
-#endif // SPGEMM_KOKKOS_ERROR_MACRO_HPP
+#endif // COMMON_HIP_CHECK_HPP

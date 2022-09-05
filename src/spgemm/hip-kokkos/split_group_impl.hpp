@@ -1,8 +1,8 @@
 #ifndef SPGEMM_HIP_KOKKOS_SPLIT_GROUP_IMPL_HPP
 #define SPGEMM_HIP_KOKKOS_SPLIT_GROUP_IMPL_HPP
 
-#include "error_macro.hpp"
-#include "scan.h"
+#include "../common/check/hip_check.hpp"
+#include "../common/scan/scan.h"
 #include "split_config.h"
 #include "split_group_kernel.hpp"
 #include <iostream>
@@ -29,18 +29,17 @@ void split_group(const size_t rows, const I *row_ptr, I *group_row_ptr, int *hgr
                                                                                              temp_buffer);
   // scan
   I *scan_temp_buffer = nullptr;
-  const size_t scan_temp_buffer_size = scan_in_place_buffer_size<I>(BLOCKS);
-  KOKKOS_HIP_CHECK(hipMalloc((void **)&scan_temp_buffer, scan_temp_buffer_size))
+  const size_t scan_temp_buffer_size = common::scan_buffer_size<I>(BLOCKS);
+  HIP_CHECK(hipMalloc((void **)&scan_temp_buffer, scan_temp_buffer_size))
 
 #pragma unroll GROUP_NUM
   for (int i = 0; i < GROUP_NUM; i++) {
-    scan_in_place(BLOCKS, &temp_buffer[BLOCKS * i], scan_temp_buffer);
+    common::scan<I>(BLOCKS, &temp_buffer[BLOCKS * i], scan_temp_buffer);
   }
-  KOKKOS_HIP_CHECK(hipFree(scan_temp_buffer))
+  HIP_CHECK(hipFree(scan_temp_buffer))
 
   for (int i = 0; i < GROUP_NUM; i++) {
-    KOKKOS_HIP_CHECK(
-        hipMemcpy(&hgroup_num_ptr[i], &temp_buffer[BLOCKS * i + BLOCKS - 1], sizeof(int), hipMemcpyDeviceToHost))
+    HIP_CHECK(hipMemcpy(&hgroup_num_ptr[i], &temp_buffer[BLOCKS * i + BLOCKS - 1], sizeof(int), hipMemcpyDeviceToHost))
   }
 
   // part 2

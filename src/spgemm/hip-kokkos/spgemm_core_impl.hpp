@@ -1,15 +1,10 @@
 #ifndef SPGEMM_KOKKOS_SPGEMM_CORE_IMPL_HPP
 #define SPGEMM_KOKKOS_SPGEMM_CORE_IMPL_HPP
 
+#include "../common/check/hip_check.hpp"
 #include "build_flag.h"
-#include "error_macro.hpp"
 #include "spgemm_numeric.h"
 #include "spgemm_symbolic.h"
-
-#ifdef TIME_MODE
-#include "timer.h"
-#include <iostream>
-#endif
 
 template <typename T, typename I>
 CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b,
@@ -25,18 +20,18 @@ CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, cons
     const int BP_IDX_PER_ROW = BPS_PER_ROW + 1;
     temp_buffer_size = sizeof(I) * matrix_b.rows * BP_IDX_PER_ROW;
   }
-  KOKKOS_HIP_CHECK(hipMalloc((void **)&temp_buffer, temp_buffer_size))
+  HIP_CHECK(hipMalloc((void **)&temp_buffer, temp_buffer_size))
   // Symbolic Phase
   size_t nnz_c = 0;
   I max_row_num = 0;
   spgemm_symbolic<T, I>(matrix_a, matrix_b, row_ptr_c, &nnz_c, &max_row_num, temp_buffer, temp_buffer_size);
   // Numeric Phase
   CsrMatrix<T, I> matrix_c(matrix_a.rows, matrix_b.cols, nnz_c, row_ptr_c, nullptr, nullptr);
-  KOKKOS_HIP_CHECK(hipMalloc((void **)&matrix_c.col_idx_ptr, nnz_c * sizeof(I)))
-  KOKKOS_HIP_CHECK(hipMalloc((void **)&matrix_c.values_ptr, nnz_c * sizeof(T)))
+  HIP_CHECK(hipMalloc((void **)&matrix_c.col_idx_ptr, nnz_c * sizeof(I)))
+  HIP_CHECK(hipMalloc((void **)&matrix_c.values_ptr, nnz_c * sizeof(T)))
   spgemm_numeric(alpha, matrix_a, matrix_b, max_row_num, matrix_c, temp_buffer, temp_buffer_size);
 
-  KOKKOS_HIP_CHECK(hipFree(temp_buffer));
+  HIP_CHECK(hipFree(temp_buffer));
   return matrix_c;
 }
 
