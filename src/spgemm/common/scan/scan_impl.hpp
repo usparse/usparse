@@ -6,6 +6,7 @@
 #include "reduce_then_scan.hpp"
 #include "single_block_scan.hpp"
 
+namespace common {
 template <typename T> size_t scan_buffer_size(const size_t input_size) {
   if (input_size <= single_block_scan::THREADS) {
     return single_block_scan::single_block_scan_buffer_size<T>(input_size);
@@ -29,5 +30,5 @@ template <typename T> void scan(const size_t input_size, const T *input, T *outp
     lookback_scan::decoupled_look_back_scan_impl<T>(input_size, input, output, temp_buffer);
   }
 }
-
+} // namespace common
 #endif // COMMON_SCAN_IMPL_HPP

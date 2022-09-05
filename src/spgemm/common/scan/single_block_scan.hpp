@@ -5,6 +5,7 @@
 #include "scan_in_device.hpp"
 #include <hip/hip_runtime.h>
 
+namespace common {
 namespace single_block_scan {
 constexpr size_t BLOCKS = 1;
 constexpr size_t THREADS = 1024;
@@ -73,4 +74,5 @@ template <typename T> void single_block_scan_wrapper(const size_t input_size, co
 }
 } // namespace single_block_scan
 
+} // namespace common
 #endif // COMMON_SINGLE_BLOCK_SCAN_HPP

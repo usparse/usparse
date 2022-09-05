@@ -4,6 +4,7 @@
 #include "../check/hip_check.hpp"
 #include <hip/hip_runtime.h>
 
+namespace common {
 namespace lookback_scan {
 
 constexpr int X = 0;
@@ -242,5 +243,5 @@ template <typename T> void decoupled_look_back_scan_wrapper(const size_t input_s
   HIP_CHECK(hipFree(temp_buffer))
 }
 } // namespace lookback_scan
-
+} // namespace common
 #endif // LOOKBACK_SCAN_HPP

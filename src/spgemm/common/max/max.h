@@ -3,10 +3,12 @@
 
 #include "max_impl.hpp"
 
+namespace common {
 template <typename T> size_t max_buffer_size(const size_t input_size);
 
 template <typename T> void max(const size_t input_size, const T *input, T *max_num, void *temp_buffer);
 
 template <typename T> void max(const size_t input_size, const T *input, T *max_num);
+} // namespace common
 
 #endif // COMMON_MAX_H

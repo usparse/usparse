@@ -5,6 +5,7 @@
 #include <hip/hip_runtime.h>
 #include <limits>
 
+namespace common {
 template <typename T> size_t block_reduce_max_buffer_size(const size_t input_size) {
   constexpr size_t THREADS = 256;
   constexpr size_t ITEMS_PER_THREAD = 4;
@@ -104,5 +105,5 @@ template <typename T> void block_reduce_max_wrapper(const size_t input_size, con
 
   HIP_CHECK(hipFree(temp_buffer))
 }
-
+} // namespace common
 #endif // BLOCK_REDUCE_MAX_KERNEL_HPP

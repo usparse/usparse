@@ -32,6 +32,7 @@ endforeach ()
 set(ACC_HIP_HEADER_FILES ${ACC_HEADER_FILES}
         api/spgemm_hip_api.h
         api/spgemm_hip_types.h
+        common/common.h
         common/reduction_kernel.hpp
         common/scan_kernel.hpp
         common/check/hip_check.hpp

@@ -6,6 +6,7 @@
 #include "single_block_scan.hpp"
 #include <hip/hip_runtime.h>
 
+namespace common {
 namespace reduce_then_scan {
 constexpr size_t THREADS = 1024;
 constexpr size_t VEC_SIZE = 64;
@@ -142,5 +143,5 @@ template <typename T> void reduce_then_scan_wrapper(const size_t input_size, con
   HIP_CHECK(hipFree(temp_buffer))
 }
 } // namespace reduce_then_scan
-
+} // namespace common
 #endif // REDUCE_THEN_SCAN_HPP

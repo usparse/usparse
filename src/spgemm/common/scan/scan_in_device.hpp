@@ -4,6 +4,7 @@
 #include "../check/hip_check.hpp"
 #include <hip/hip_runtime.h>
 
+namespace common {
 template <typename T, size_t VEC_SIZE> __device__ void scan_in_vector_device(T *num) {
   static_assert(VEC_SIZE <= __WF_SIZE__, "vector size must less equal then wrap size");
   // thread id in vector
@@ -16,5 +17,5 @@ template <typename T, size_t VEC_SIZE> __device__ void scan_in_vector_device(T *
     }
   }
 }
-
+} // namespace common
 #endif // COMMON_SCAN_IN_DEVICE_HPP

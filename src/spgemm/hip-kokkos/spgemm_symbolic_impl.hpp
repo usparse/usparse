@@ -27,7 +27,7 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
 
   // buffer for scan
   void *scan_temp_buffer = nullptr;
-  const size_t scan_temp_buffer_size = scan_buffer_size<I>(matrix_a.rows + 1);
+  const size_t scan_temp_buffer_size = common::scan_buffer_size<I>(matrix_a.rows + 1);
   if (temp_buffer_size >= scan_temp_buffer_size) {
     scan_temp_buffer = reinterpret_cast<void *>(temp_buffer);
   } else {
@@ -36,7 +36,7 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
   // buffer for max
   void *max_temp_buffer = nullptr;
 
-  const size_t max_temp_buffer_size = max_buffer_size<I>(matrix_a.rows + 1);
+  const size_t max_temp_buffer_size = common::max_buffer_size<I>(matrix_a.rows + 1);
   if (temp_buffer_size >= max_temp_buffer_size) {
     max_temp_buffer = reinterpret_cast<void *>(temp_buffer);
   } else {
@@ -132,7 +132,7 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
     // max num in row_ptr
     I *dmax_chunk_num_ptr = nullptr;
     HIP_CHECK(hipMalloc((void **)(&dmax_chunk_num_ptr), sizeof(I)));
-    max<I>(matrix_a.rows + 1, dchunk_num_ptr, dmax_chunk_num_ptr, max_temp_buffer);
+    common::max<I>(matrix_a.rows + 1, dchunk_num_ptr, dmax_chunk_num_ptr, max_temp_buffer);
     HIP_CHECK(hipMemcpy(&max_chunk_num, dmax_chunk_num_ptr, sizeof(I), hipMemcpyDeviceToHost))
     HIP_CHECK(hipFree(dmax_chunk_num_ptr))
 #ifdef DEBUG_MODE
@@ -206,7 +206,7 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
     } else {
       using idType = typename CompressMatrix<I>::IdType;
       using bitType = typename CompressMatrix<I>::BitSetEleType;
-      scan<I>(matrix_a.rows + 1, dchunk_num_ptr, scan_temp_buffer);
+      common::scan<I>(matrix_a.rows + 1, dchunk_num_ptr, scan_temp_buffer);
 
       I chunk_num_c = 0;
       HIP_CHECK(hipMemcpy(&chunk_num_c, dchunk_num_ptr + matrix_a.rows, sizeof(I), hipMemcpyDeviceToHost))
@@ -247,11 +247,11 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
   // max num in row_ptr
   I *device_max_row_num = nullptr;
   HIP_CHECK(hipMalloc((void **)(&device_max_row_num), sizeof(I)));
-  max<I>(matrix_a.rows + 1, row_ptr_c, device_max_row_num, max_temp_buffer);
+  common::max<I>(matrix_a.rows + 1, row_ptr_c, device_max_row_num, max_temp_buffer);
   HIP_CHECK(hipMemcpy(max_row_num, device_max_row_num, sizeof(I), hipMemcpyDeviceToHost))
   HIP_CHECK(hipFree(device_max_row_num))
   // reduce than fan
-  scan<I>(matrix_a.rows + 1, row_ptr_c, scan_temp_buffer);
+  common::scan<I>(matrix_a.rows + 1, row_ptr_c, scan_temp_buffer);
 
   // set nnz of matrix c
   HIP_CHECK(hipMemcpy(nnz_c, row_ptr_c + matrix_a.rows, sizeof(I), hipMemcpyDeviceToHost))

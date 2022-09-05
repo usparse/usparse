@@ -29,12 +29,12 @@ void split_group(const size_t rows, const I *row_ptr, I *group_row_ptr, int *hgr
                                                                                              temp_buffer);
   // scan
   I *scan_temp_buffer = nullptr;
-  const size_t scan_temp_buffer_size = scan_buffer_size<I>(BLOCKS);
+  const size_t scan_temp_buffer_size = common::scan_buffer_size<I>(BLOCKS);
   HIP_CHECK(hipMalloc((void **)&scan_temp_buffer, scan_temp_buffer_size))
 
 #pragma unroll GROUP_NUM
   for (int i = 0; i < GROUP_NUM; i++) {
-    scan<I>(BLOCKS, &temp_buffer[BLOCKS * i], scan_temp_buffer);
+    common::scan<I>(BLOCKS, &temp_buffer[BLOCKS * i], scan_temp_buffer);
   }
   HIP_CHECK(hipFree(scan_temp_buffer))
 
