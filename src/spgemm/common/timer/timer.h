@@ -1,5 +1,5 @@
-#ifndef SPGEMM_HIP_KOKKOS_TIMER_H
-#define SPGEMM_HIP_KOKKOS_TIMER_H
+#ifndef COMMON_TIMER_H
+#define COMMON_TIMER_H
 
 #include <chrono>
 
@@ -16,4 +16,4 @@ struct Timer {
   }
 };
 
-#endif // SPGEMM_HIP_KOKKOS_TIMER_H
+#endif // COMMON_TIMER_H

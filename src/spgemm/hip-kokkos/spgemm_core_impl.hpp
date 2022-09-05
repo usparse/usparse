@@ -6,11 +6,6 @@
 #include "spgemm_numeric.h"
 #include "spgemm_symbolic.h"
 
-#ifdef TIME_MODE
-#include "timer.h"
-#include <iostream>
-#endif
-
 template <typename T, typename I>
 CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b,
                             I *row_ptr_c) {

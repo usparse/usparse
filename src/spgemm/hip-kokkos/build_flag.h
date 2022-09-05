@@ -1,10 +1,6 @@
 #ifndef SPGEMM_KOKKOS_BUILD_FLAG_H
 #define SPGEMM_KOKKOS_BUILD_FLAG_H
 
-#ifndef TIME_MODE
-// #define TIME_MODE
-#endif
-
 #ifndef DEBUG_MODE
 // #define DEBUG_MODE
 #endif

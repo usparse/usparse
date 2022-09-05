@@ -44,6 +44,7 @@ set(ACC_HIP_HEADER_FILES ${ACC_HEADER_FILES}
         common/max/max.h
         common/max/max_impl.hpp
         common/max/block_reduce_max.hpp
+        common/timer/timer.h
         )
 
 set(ACC_HIP_SOURCE_FILES ${ACC_SOURCE_FILES}

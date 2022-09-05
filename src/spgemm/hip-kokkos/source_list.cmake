@@ -5,7 +5,6 @@ set(ACC_HEADER_FILES ${ACC_HEADER_FILES}
         ${CURRENT_ACC_HIP_SOURCE_DIR}/compress_matrix.h
         ${CURRENT_ACC_HIP_SOURCE_DIR}/build_flag.h
         ${CURRENT_ACC_HIP_SOURCE_DIR}/csr_matrix.h
-        ${CURRENT_ACC_HIP_SOURCE_DIR}/timer.h
         ${CURRENT_ACC_HIP_SOURCE_DIR}/hash.h
         ${CURRENT_ACC_HIP_SOURCE_DIR}/hash_map.h
         ${CURRENT_ACC_HIP_SOURCE_DIR}/hash_map_insert.hpp

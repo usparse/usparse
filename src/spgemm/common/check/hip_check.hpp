@@ -4,7 +4,7 @@
 #include <hip/hip_runtime.h>
 #include <iostream>
 
-#define HIP_CHECK(stat)                                                                                         \
+#define HIP_CHECK(stat)                                                                                                \
   {                                                                                                                    \
     if (stat != hipSuccess) {                                                                                          \
       std::cerr << "Error: " << std::endl;                                                                             \
