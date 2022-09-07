@@ -21,9 +21,7 @@ include_directories(
 # set variable ACC_FILES for architecture source files.
 # set variable ACC_LIBS to link if some architecture is enabled.
 set(SPGEMM_KERNEL_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/spgemm)
-set(SORT_KERNEL_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/sort)
 add_subdirectory(spgemm)
-add_subdirectory(sort)
 
 # make lib
 add_executable(${SPGEMM_BIN_NAME} ${HEADER_FILES} ${SOURCE_FILES})

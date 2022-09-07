@@ -4,7 +4,7 @@ set(CURRENT_ACC_HIP_SOURCE_DIR ${ACC_SRC_PATH})
 set(ACC_HEADER_FILES ${ACC_HEADER_FILES}
         ${CURRENT_ACC_HIP_SOURCE_DIR}/compress_matrix.h
         ${CURRENT_ACC_HIP_SOURCE_DIR}/csr_matrix.h
-        ${CURRENT_ACC_HIP_SOURCE_DIR}/error_macro.hpp
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/align.h
         ${CURRENT_ACC_HIP_SOURCE_DIR}/hash_map.h
         ${CURRENT_ACC_HIP_SOURCE_DIR}/hash_map_insert.hpp
         ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm.h
@@ -15,10 +15,7 @@ set(ACC_HEADER_FILES ${ACC_HEADER_FILES}
         ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm_symbolic_kernel.hpp
         ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm_compress_impl.hpp
         ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm_compress_kernel.hpp
-        ${CURRENT_ACC_HIP_SOURCE_DIR}/scan_impl.hpp
         ${CURRENT_ACC_HIP_SOURCE_DIR}/split_config.h
         ${CURRENT_ACC_HIP_SOURCE_DIR}/split_group_impl.hpp
         ${CURRENT_ACC_HIP_SOURCE_DIR}/split_group_kernel.hpp
-        ${CURRENT_ACC_HIP_SOURCE_DIR}/max_num_impl.hpp
-        ${CURRENT_ACC_HIP_SOURCE_DIR}/max_num_kernel.hpp
         )
