@@ -33,6 +33,4 @@ template <typename T, typename I> struct HashMap {
   }
 };
 
-#define HASH(T, I, n, mask) (n & mask)
-
 #endif // SPGEMM_KOKKOS_HASH_MAP_H

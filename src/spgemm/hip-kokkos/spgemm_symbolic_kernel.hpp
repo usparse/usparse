@@ -41,8 +41,8 @@ __global__ void row_nnz_kernel(const I m, const I *map_row_ptr, const BitType *m
 }
 
 template <typename I, size_t VEC_SIZE>
-__global__ void trunk_nums_kernel(const size_t m, const I *row_ptr_a, const I *col_idx_ptr_a, const int *use_count,
-                                  I *row_trunks_ptr) {
+__global__ void trunk_nums_compress_kernel(const size_t m, const I *row_ptr_a, const I *col_idx_ptr_a,
+                                           const int *use_count, I *row_trunks_ptr) {
   using idtype_t = typename CompressMatrix<I>::IdType;
   using bittype_t = typename CompressMatrix<I>::BitSetEleType;
   // thread id in global
@@ -67,6 +67,43 @@ __global__ void trunk_nums_kernel(const size_t m, const I *row_ptr_a, const I *c
     for (int idx_a = row_idx_begin_a + vector_thread_id; idx_a < row_idx_end_a; idx_a += vector_thread_num) {
       const I row_b = col_idx_ptr_a[idx_a];
       trunk_count += use_count[row_b];
+    }
+    // reduce
+    for (int i = VEC_SIZE >> 1; i > 0; i >>= 1) {
+      trunk_count += __shfl_down(trunk_count, i, VEC_SIZE);
+    }
+    if (vector_thread_id == 0) {
+      row_trunks_ptr[row_a + 1] = trunk_count;
+    }
+  }
+}
+
+template <typename I, size_t VEC_SIZE>
+__global__ void trunk_nums_kernel(const size_t m, const I *row_ptr_a, const I *col_idx_ptr_a, const I *row_ptr_b,
+                                  I *row_trunks_ptr) {
+  // thread id in global
+  const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
+  // thread num in global
+  const int global_thread_num = gridDim.x * blockDim.x;
+  // vector id in global
+  const int global_vector_id = global_thread_id / VEC_SIZE;
+  // vector num in global
+  const int global_vector_num = global_thread_num / VEC_SIZE;
+  // thread id in vector
+  const int vector_thread_id = global_thread_id % VEC_SIZE;
+  // thread num in vector
+  const int vector_thread_num = VEC_SIZE;
+
+  // each vector process a row
+  for (int row_a = global_vector_id; row_a < m; row_a += global_vector_num) {
+    const I row_idx_begin_a = row_ptr_a[row_a];
+    const I row_idx_end_a = row_ptr_a[row_a + 1];
+
+    I trunk_count = 0;
+    for (int idx_a = row_idx_begin_a + vector_thread_id; idx_a < row_idx_end_a; idx_a += vector_thread_num) {
+      const I row_b = col_idx_ptr_a[idx_a];
+      const I nnz_b = row_ptr_b[row_b + 1] - row_ptr_b[row_b];
+      trunk_count += nnz_b;
     }
     // reduce
     for (int i = VEC_SIZE >> 1; i > 0; i >>= 1) {
@@ -337,6 +374,81 @@ __global__ void __launch_bounds__(THREADS) spgemm_symbolic_open_address_hashmap_
   }
 }
 
+template <typename T, typename I, size_t N, size_t THREADS, size_t VEC_SIZE>
+__global__ void __launch_bounds__(THREADS)
+    spgemm_symbolic_open_address_hashmap_vector_per_row_one_pass_kernel(const size_t m, const I *row_ptr_a,
+                                                                        const I *col_idx_ptr_a, const I *row_ptr_b,
+                                                                        const I *col_idx_ptr_b, I *row_ptr_c) {
+  // thread id in global
+  const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
+  // thread num in global
+  const int global_thread_num = gridDim.x * blockDim.x;
+  // vec id in global
+  const int global_vec_id = global_thread_id / VEC_SIZE;
+  // vec num in global
+  const int global_vec_num = global_thread_num / VEC_SIZE;
+  // block id in global
+  const int global_block_id = blockIdx.x;
+  // thread id in block
+  const int block_thread_id = threadIdx.x;
+  // thread num in block
+  constexpr int block_thread_num = THREADS;
+  // vec id in block
+  const int block_vec_id = threadIdx.x / VEC_SIZE;
+  // vec num in block
+  constexpr int block_vec_num = THREADS / VEC_SIZE;
+  // thread id in vec
+  const int vec_thread_id = global_thread_id % VEC_SIZE;
+  // thread num in vec
+  constexpr int vec_thread_num = VEC_SIZE;
+  // hashmap in LDS
+  constexpr size_t LDS_MAP_CAP = VEC_SIZE * N;
+  // hash mask
+  constexpr size_t LDS_HASH_MASK = LDS_MAP_CAP - 1;
+
+  constexpr int BLOCK_LDS_SIZE = LDS_MAP_CAP * block_vec_num;
+
+  const int row_a = global_vec_id;
+  if (row_a >= m) {
+    return;
+  }
+
+  __shared__ I shared_ids[BLOCK_LDS_SIZE];
+
+  I *vec_lds_ids = shared_ids + LDS_MAP_CAP * block_vec_id;
+
+  // init lds hashmap
+  for (int i = vec_thread_id; i < LDS_MAP_CAP; i += vec_thread_num) {
+    vec_lds_ids[i] = HashMap<T, I>::NullValue;
+  }
+  const I row_idx_begin_a = row_ptr_a[row_a];
+  const I row_idx_end_a = row_ptr_a[row_a + 1];
+
+  for (int idx_a = row_idx_begin_a; idx_a < row_idx_end_a; ++idx_a) {
+    const I col_a = col_idx_ptr_a[idx_a];
+    const I row_b = col_a;
+    const I row_idx_begin_b = row_ptr_b[row_b];
+    const I row_idx_end_b = row_ptr_b[row_b + 1];
+
+    for (int idx_b = row_idx_begin_b + vec_thread_id; idx_b < row_idx_end_b; idx_b += vec_thread_num) {
+      open_address_hashset_vector_insert<T, I, LDS_HASH_MASK>(vec_lds_ids, col_idx_ptr_b[idx_b]);
+    }
+  }
+  I local_use_count = static_cast<I>(0);
+  for (int i = vec_thread_id; i < LDS_MAP_CAP; i += vec_thread_num) {
+    if (vec_lds_ids[i] != HashMap<T, I>::NullValue) {
+      local_use_count++;
+    }
+  }
+  // sum
+  for (int i = VEC_SIZE >> 1; i > 0; i >>= 1) {
+    local_use_count += __shfl_down(local_use_count, i, VEC_SIZE);
+  }
+  if (vec_thread_id == 0) {
+    row_ptr_c[row_a + 1] = local_use_count;
+  }
+}
+
 template <typename T, typename I, size_t N, size_t THREADS>
 __global__ void __launch_bounds__(THREADS) spgemm_symbolic_open_address_hashmap_block_per_row_one_pass_kernel(
     const size_t m, const I *row_ptr_a, const I *col_idx_ptr_a, const I *row_ptr_b,
@@ -412,6 +524,100 @@ __global__ void __launch_bounds__(THREADS) spgemm_symbolic_open_address_hashmap_
   I local_use_count = static_cast<I>(0);
   for (int i = block_thread_id; i < BLOCK_LDS_SIZE; i += block_thread_num) {
     local_use_count += __popc(block_lds_values[i]);
+  }
+  __syncthreads();
+  // block sum
+  for (int i = __WF_SIZE__ >> 1; i > 0; i >>= 1) {
+    local_use_count += __shfl_down(local_use_count, i, __WF_SIZE__);
+  }
+  if (wf_thread_id == 0) {
+    shared_sum[block_wf_id] += local_use_count;
+  }
+  __syncthreads();
+  if (block_wf_id == 0) {
+    local_use_count = static_cast<I>(0);
+    for (int i = wf_thread_id; i < THREADS / __WF_SIZE__; i += wf_thread_num) {
+      local_use_count += shared_sum[i];
+    }
+    for (int i = __WF_SIZE__ >> 1; i > 0; i >>= 1) {
+      local_use_count += __shfl_down(local_use_count, i, __WF_SIZE__);
+    }
+    if (wf_thread_id == 0) {
+      row_ptr_c[row_a + 1] = local_use_count;
+    }
+  }
+}
+
+template <typename T, typename I, size_t N, size_t THREADS>
+__global__ void __launch_bounds__(THREADS)
+    spgemm_symbolic_open_address_hashmap_block_per_row_one_pass_kernel(const size_t m, const I *row_ptr_a,
+                                                                       const I *col_idx_ptr_a, const I *row_ptr_b,
+                                                                       const I *col_idx_ptr_b, I *row_ptr_c) {
+  // thread id in global
+  const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
+  // thread num in global
+  const int global_thread_num = gridDim.x * blockDim.x;
+  // block id in global
+  const int global_block_id = blockIdx.x;
+  // block num in global
+  const int global_block_num = gridDim.x;
+  // thread id in block
+  const int block_thread_id = threadIdx.x;
+  // thread num in block
+  constexpr int block_thread_num = THREADS;
+  // wavefront id in block
+  const int block_wf_id = block_thread_id / __WF_SIZE__;
+  // wavefront num in block
+  constexpr int block_wf_num = THREADS / __WF_SIZE__;
+  // thread id in wavefront
+  const int wf_thread_id = block_thread_id % __WF_SIZE__;
+  // thread num in wavefront
+  const int wf_thread_num = __WF_SIZE__;
+  // hashmap in LDS
+  constexpr size_t LDS_MAP_CAP = THREADS * N;
+  // hash mask
+  constexpr size_t LDS_HASH_MASK = LDS_MAP_CAP - 1;
+
+  constexpr int BLOCK_LDS_SIZE = LDS_MAP_CAP;
+
+  __shared__ I shared_ids[BLOCK_LDS_SIZE];
+  __shared__ I shared_sum[THREADS / __WF_SIZE__];
+
+  I *block_lds_ids = shared_ids;
+
+  // init lds hashmap
+  for (int i = block_thread_id; i < BLOCK_LDS_SIZE; i += block_thread_num) {
+    shared_ids[i] = HashMap<T, I>::NullValue;
+  }
+  for (int i = block_thread_id; i < THREADS / __WF_SIZE__; i += block_thread_num) {
+    shared_sum[i] = static_cast<I>(0);
+  }
+  __syncthreads();
+
+  const int row_a = global_block_id;
+  if (row_a >= m) {
+    return;
+  }
+  const I row_idx_begin_a = row_ptr_a[row_a];
+  const I row_idx_end_a = row_ptr_a[row_a + 1];
+
+  for (int idx_a = row_idx_begin_a + block_wf_id; idx_a < row_idx_end_a; idx_a += block_wf_num) {
+    const I col_a = col_idx_ptr_a[idx_a];
+    const I row_b = col_a;
+    const I row_idx_begin_b = row_ptr_b[row_b];
+    const I row_idx_end_b = row_ptr_b[row_b + 1];
+
+    for (int idx_b = row_idx_begin_b + wf_thread_id; idx_b < row_idx_end_b; idx_b += wf_thread_num) {
+      // insert to lds hashmap
+      open_address_hashset_vector_insert<T, I, LDS_HASH_MASK>(block_lds_ids, col_idx_ptr_b[idx_b]);
+    }
+  }
+  __syncthreads();
+  I local_use_count = static_cast<I>(0);
+  for (int i = block_thread_id; i < BLOCK_LDS_SIZE; i += block_thread_num) {
+    if (block_lds_ids[i] != HashMap<T, I>::NullValue) {
+      local_use_count++;
+    }
   }
   __syncthreads();
   // block sum

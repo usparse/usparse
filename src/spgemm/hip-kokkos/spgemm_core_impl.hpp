@@ -7,6 +7,10 @@
 #include "spgemm_numeric.h"
 #include "spgemm_symbolic.h"
 
+#ifdef DEBUG_MODE
+#include <iostream>
+#endif
+
 template <typename T, typename I>
 CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b,
                             I *row_ptr_c) {
@@ -25,7 +29,17 @@ CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, cons
   // Symbolic Phase
   size_t nnz_c = 0;
   I row_nnz_max = 0;
-  spgemm_symbolic<T, I>(matrix_a, matrix_b, row_ptr_c, &nnz_c, &row_nnz_max, temp_buffer, temp_buffer_size);
+  if (sparseness_b > 0.005) {
+#ifdef DEBUG_MODE
+    std::cout << "compress mode symbolic phase!" << std::endl;
+#endif
+    spgemm_symbolic_compress<T, I>(matrix_a, matrix_b, row_ptr_c, &nnz_c, &row_nnz_max, temp_buffer, temp_buffer_size);
+  } else {
+#ifdef DEBUG_MODE
+    std::cout << "normal mode symbolic phase!" << std::endl;
+#endif
+    spgemm_symbolic<T, I>(matrix_a, matrix_b, row_ptr_c, &nnz_c, &row_nnz_max, temp_buffer, temp_buffer_size);
+  }
   // Numeric Phase
   CsrMatrix<T, I> matrix_c(matrix_a.rows, matrix_b.cols, nnz_c, row_ptr_c, nullptr, nullptr);
   HIP_CHECK(hipMalloc((void **)&matrix_c.col_idx_ptr, nnz_c * sizeof(I)))

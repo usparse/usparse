@@ -16,6 +16,10 @@
  * temp_buffer_size: buffer_size
  **/
 template <typename T, typename I>
+void spgemm_symbolic_compress(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b, I *row_ptr_c,
+                              size_t *nnz_c, I *row_nnz_max, I *temp_buffer, const size_t temp_buffer_size);
+
+template <typename T, typename I>
 void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b, I *row_ptr_c, size_t *nnz_c,
                      I *row_nnz_max, I *temp_buffer, const size_t temp_buffer_size);
 
