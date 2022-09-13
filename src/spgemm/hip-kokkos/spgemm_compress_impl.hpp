@@ -4,16 +4,12 @@
 #include "spgemm_compress_kernel.hpp"
 #include <hip/hip_runtime.h>
 
-
 template <typename T, typename I> CompressMatrix<I> spgemm_compress(const CsrMatrix<T, I> &matrix) {
   using idType = typename CompressMatrix<I>::IdType;
   using bitType = typename CompressMatrix<I>::BitSetEleType;
   CompressMatrix<I> compress_matrix(matrix.rows, matrix.cols, matrix.nnz, matrix.row_ptr);
   const I nnz_per_row = matrix.nnz / matrix.rows;
 
-#ifdef DEBUG_MODE
-  std::cout << "nnz_per_row: " << nnz_per_row << std::endl;
-#endif
   constexpr size_t N = 4;
   const size_t GLOBAL_BLOCK_NUM = 512;
   constexpr size_t BLOCK_THREAD_NUM = 256;

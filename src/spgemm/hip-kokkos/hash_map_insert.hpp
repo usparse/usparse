@@ -1,8 +1,8 @@
 #ifndef SPGEMM_KOKKOS_HASH_MAP_KERNEL_HPP
 #define SPGEMM_KOKKOS_HASH_MAP_KERNEL_HPP
 
-#include <hip/hip_runtime.h>
 #include "hash_map.h"
+#include <hip/hip_runtime.h>
 
 // ** insert to hashset (open addressing) **
 template <typename T, typename I, size_t HashMask>
