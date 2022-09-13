@@ -4,7 +4,6 @@
 #include "spgemm_compress_kernel.hpp"
 #include <hip/hip_runtime.h>
 
-
 template <typename T, typename I> CompressMatrix<I> spgemm_compress(const CsrMatrix<T, I> &matrix) {
   using idType = typename CompressMatrix<I>::IdType;
   using bitType = typename CompressMatrix<I>::BitSetEleType;
