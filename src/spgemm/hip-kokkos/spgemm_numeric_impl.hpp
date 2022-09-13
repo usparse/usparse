@@ -10,45 +10,48 @@
 #include <cstddef>
 #include <hip/hip_runtime.h>
 
+template <typename T, typename I, size_t CHUNK_SIZE> size_t bp_buffer_size(const CsrMatrix<T, I> &matrix) {
+  const int BPS_PER_ROW = matrix.cols / CHUNK_SIZE + (matrix.cols % CHUNK_SIZE == 0 ? 0 : 1);
+  const int BP_IDX_PER_ROW = BPS_PER_ROW + 1;
+  const size_t buffer_size = sizeof(I) * matrix.rows * BP_IDX_PER_ROW;
+  return buffer_size;
+}
+
+template <typename T, typename I, bool use_bp>
+size_t spgemm_numeric_buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b) {
+  constexpr size_t CHUNK_SIZE = 2048;
+  size_t buffer_size = 0;
+  size_t alloc_size = 0;
+  if constexpr (use_bp) {
+    alloc_size = bp_buffer_size<T, I, CHUNK_SIZE>(matrix_b);
+    buffer_size += ALIGN_256_BYTES(alloc_size);
+  } else {
+    alloc_size = split_group_row_size<I>(matrix_a.rows);
+    buffer_size += ALIGN_256_BYTES(alloc_size);
+
+    alloc_size = split_group_buffer_size<I>(matrix_a.rows);
+    buffer_size += ALIGN_256_BYTES(alloc_size);
+  }
+  return buffer_size;
+}
+
 template <typename T, typename I>
 void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b,
-                    const I row_nnz_max, CsrMatrix<T, I> &matrix_c, void *temp_buffer, const size_t temp_buffer_size) {
-
-  bool is_bp_alloc = false;
-  bool is_split_row_num_alloc = false;
-  bool is_split_buffer_alloc = false;
-
+                    const I row_nnz_max, CsrMatrix<T, I> &matrix_c, void *temp_buffer) {
   char *ptr = reinterpret_cast<char *>(temp_buffer);
-  size_t remain_buffer_size = temp_buffer_size;
+  size_t alloc_size = 0;
+  size_t align_size = 0;
 
   if (row_nnz_max <= 2048) {
-    I *group_row_num_ptr = nullptr;
-    {
-      const size_t alloc_size = split_group_row_size<I>(matrix_c.rows);
-      const size_t align_size = ALIGN_256_BYTES(alloc_size);
-      if (remain_buffer_size >= align_size) {
-        group_row_num_ptr = reinterpret_cast<I *>(ptr);
-        ptr += align_size;
-        remain_buffer_size -= align_size;
-      } else {
-        HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&group_row_num_ptr), alloc_size))
-        is_split_row_num_alloc = true;
-      }
-    }
+    I *group_row_num_ptr = reinterpret_cast<I *>(ptr);
+    alloc_size = split_group_row_size<I>(matrix_a.rows);
+    align_size = ALIGN_256_BYTES(alloc_size);
+    ptr += align_size;
 
-    I *split_group_temp_buffer = nullptr;
-    {
-      const size_t alloc_size = split_group_buffer_size<I>(matrix_c.rows);
-      const size_t align_size = ALIGN_256_BYTES(alloc_size);
-      if (remain_buffer_size >= align_size) {
-        split_group_temp_buffer = reinterpret_cast<I *>(ptr);
-        ptr += align_size;
-        remain_buffer_size -= align_size;
-      } else {
-        HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&split_group_temp_buffer), alloc_size))
-        is_split_buffer_alloc = true;
-      }
-    }
+    I *split_group_temp_buffer = reinterpret_cast<I *>(ptr);
+    alloc_size = split_group_buffer_size<I>(matrix_c.rows);
+    align_size = ALIGN_256_BYTES(alloc_size);
+    ptr += align_size;
 
     int hgroup_num[GROUP_NUM];
     split_group<I>(matrix_c.rows, matrix_c.row_ptr, group_row_num_ptr, reinterpret_cast<int *>(hgroup_num),
@@ -126,14 +129,6 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
               matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 5,
               hgroup_num[5], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr);
     }
-
-    if (is_split_buffer_alloc) {
-      HIP_CHECK(hipFree(split_group_temp_buffer))
-    }
-
-    if (is_split_row_num_alloc) {
-      HIP_CHECK(hipFree(group_row_num_ptr))
-    }
   } else {
     constexpr int CHUNK_SIZE = 2048;
     constexpr int BLOCK_THREAD_NUM = 512;
@@ -142,20 +137,10 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
     const int BPS_PER_ROW = matrix_b.cols / CHUNK_SIZE + (matrix_b.cols % CHUNK_SIZE == 0 ? 0 : 1);
     const int BP_IDX_PER_ROW = BPS_PER_ROW + 1;
 
-    I *bp = nullptr;
-    {
-      const size_t alloc_size = sizeof(I) * matrix_b.rows * BP_IDX_PER_ROW;
-      const size_t align_size = ALIGN_256_BYTES(alloc_size);
-      if (remain_buffer_size >= align_size) {
-        bp = reinterpret_cast<I *>(ptr);
-        ptr += align_size;
-        remain_buffer_size -= align_size;
-      } else {
-        HIP_CHECK(hipMalloc((void **)&bp, alloc_size))
-        is_bp_alloc = true;
-      }
-      HIP_CHECK(hipMemset(bp, 0, alloc_size))
-    }
+    I *bp = reinterpret_cast<I *>(ptr);
+    alloc_size = bp_buffer_size<T, I, CHUNK_SIZE>(matrix_b);
+    align_size = ALIGN_256_BYTES(alloc_size);
+    ptr += align_size;
 
     if (BP_IDX_PER_ROW <= 8) {
       create_bp_wf_per_row_kernel<I, CHUNK_SIZE, 8>
@@ -184,10 +169,6 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
           alpha, matrix_c.rows, matrix_c.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
           matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
           matrix_c.values_ptr, bp, BPS_PER_ROW, BP_IDX_PER_ROW);
-    }
-
-    if (is_bp_alloc) {
-      HIP_CHECK(hipFree(bp))
     }
   }
 }
