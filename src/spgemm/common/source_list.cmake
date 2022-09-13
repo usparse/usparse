@@ -3,8 +3,6 @@ set(CURRENT_COMMON_SOURCE_DIR ${COMMON_SRC_PATH})
 
 set(COMMON_HEADER_FILES ${COMMON_HEADER_FILES}
         ${CURRENT_COMMON_SOURCE_DIR}/common.h
-        ${CURRENT_COMMON_SOURCE_DIR}/reduction_kernel.hpp
-        ${CURRENT_COMMON_SOURCE_DIR}/scan_kernel.hpp
         ${CURRENT_COMMON_SOURCE_DIR}/check/hip_check.hpp
         ${CURRENT_COMMON_SOURCE_DIR}/scan/scan_impl.hpp
         ${CURRENT_COMMON_SOURCE_DIR}/scan/scan_in_device.hpp
