@@ -2,6 +2,7 @@
 #define SPGEMM_HIP_KOKKOS_BITSET_H
 
 #include "../common/check/hip_check.hpp"
+#include "align.h"
 #include <cstddef>
 #include <hip/hip_runtime.h>
 
@@ -19,41 +20,28 @@ template <typename I> struct CompressMatrix {
   IdType *ids_ptr = nullptr;
   BitSetEleType *col_idx_ptr = nullptr;
   int *use_count = nullptr;
-  CompressMatrix(size_t m, size_t n, size_t nnz, I *row_ptr) : rows(m), cols(n), nnz(nnz), row_ptr(row_ptr) {
-    HIP_CHECK(hipMalloc((void **)(&ids_ptr), nnz * sizeof(IdType)))
-    HIP_CHECK(hipMalloc((void **)(&col_idx_ptr), nnz * sizeof(BitSetEleType)))
+  CompressMatrix(size_t m, size_t n, size_t nnz, I *row_ptr, void *temp_buffer)
+      : rows(m), cols(n), nnz(nnz), row_ptr(row_ptr) {
+    char *ptr = reinterpret_cast<char *>(temp_buffer);
+
+    ids_ptr = reinterpret_cast<IdType *>(ptr);
+    ptr += ALIGN_256_BYTES(nnz * sizeof(IdType));
+
+    col_idx_ptr = reinterpret_cast<BitSetEleType *>(ptr);
+    ptr += ALIGN_256_BYTES(nnz * sizeof(BitSetEleType));
+
+    use_count = reinterpret_cast<int *>(ptr);
+    ptr += ALIGN_256_BYTES(rows * sizeof(int));
+
     HIP_CHECK(hipMemset(col_idx_ptr, 0, nnz * sizeof(BitSetEleType)))
-    HIP_CHECK(hipMalloc((void **)(&use_count), rows * sizeof(int)))
   }
 
-  ~CompressMatrix() {
-    if (use_count != nullptr) {
-      HIP_CHECK(hipFree(use_count))
-    }
-    if (col_idx_ptr != nullptr) {
-      HIP_CHECK(hipFree(col_idx_ptr))
-    }
-    if (ids_ptr != nullptr) {
-      HIP_CHECK(hipFree(ids_ptr))
-    }
-    use_count = nullptr;
-    col_idx_ptr = nullptr;
-    ids_ptr = nullptr;
-  }
-
-  void free() {
-    if (use_count != nullptr) {
-      HIP_CHECK(hipFree(use_count))
-    }
-    if (col_idx_ptr != nullptr) {
-      HIP_CHECK(hipFree(col_idx_ptr))
-    }
-    if (ids_ptr != nullptr) {
-      HIP_CHECK(hipFree(ids_ptr))
-    }
-    use_count = nullptr;
-    col_idx_ptr = nullptr;
-    ids_ptr = nullptr;
+  static size_t buffer_size(size_t m, size_t n, size_t nnz) {
+    size_t buffer_size = 0;
+    buffer_size += ALIGN_256_BYTES(nnz * sizeof(IdType));
+    buffer_size += ALIGN_256_BYTES(nnz * sizeof(BitSetEleType));
+    buffer_size += ALIGN_256_BYTES(m * sizeof(int));
+    return buffer_size;
   }
 };
 

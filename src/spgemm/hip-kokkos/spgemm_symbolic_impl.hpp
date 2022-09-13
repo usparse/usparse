@@ -14,50 +14,56 @@
 #include <hip/hip_runtime.h>
 
 template <typename T, typename I>
+size_t spgemm_symbolic_compress_buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b) {
+  size_t buffer_size = 0;
+  size_t alloc_size = 0;
+  alloc_size = spgemm_compress_buffer_size(matrix_b);
+  buffer_size += ALIGN_256_BYTES(alloc_size);
+
+  alloc_size = common::scan_buffer_size<I>(matrix_a.rows + 1);
+  buffer_size += ALIGN_256_BYTES(alloc_size);
+
+  alloc_size = common::max_buffer_size<I>(matrix_a.rows + 1);
+  buffer_size += ALIGN_256_BYTES(alloc_size);
+
+  alloc_size = (matrix_a.rows + 1) * sizeof(I);
+  buffer_size += ALIGN_256_BYTES(alloc_size);
+
+  alloc_size = sizeof(I);
+  buffer_size += ALIGN_256_BYTES(alloc_size);
+
+  alloc_size = sizeof(I);
+  buffer_size += ALIGN_256_BYTES(alloc_size);
+  return buffer_size;
+}
+
+template <typename T, typename I>
 void spgemm_symbolic_compress(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b, I *row_ptr_c,
-                              size_t *hnnz_c, I *hrow_nnz_max, void *temp_buffer, const size_t temp_buffer_size) {
+                              size_t *hnnz_c, I *hrow_nnz_max, void *temp_buffer) {
+  char *ptr = reinterpret_cast<char *>(temp_buffer);
+  size_t alloc_size = 0;
+  size_t align_size = 0;
   // compress matrix B
-  CompressMatrix<I> compress_matrix_b = spgemm_compress<T, I>(matrix_b);
+  CompressMatrix<I> compress_matrix_b = spgemm_compress<T, I>(matrix_b, reinterpret_cast<void *>(ptr));
+
+  alloc_size = spgemm_compress_buffer_size(matrix_b);
+  align_size = ALIGN_256_BYTES(alloc_size);
+  ptr += align_size;
+
   // max num in bits
   I max_bits_num =
       matrix_b.cols / CompressMatrix<I>::BitsLen + (matrix_b.cols % CompressMatrix<I>::BitsLen == 0 ? 0 : 1);
-
-  bool is_scan_alloc = false;
-  bool is_max_alloc = false;
-  bool is_chunk_alloc = false;
-  bool is_chunk_max_alloc = false;
-  bool is_row_nnz_max_alloc = false;
-
-  char *ptr = reinterpret_cast<char *>(temp_buffer);
-  size_t remain_buffer_size = temp_buffer_size;
   // alloc buffer for scan op
-  void *scan_temp_buffer = nullptr;
-  {
-    const size_t alloc_size = common::scan_buffer_size<I>(matrix_a.rows + 1);
-    const size_t align_size = ALIGN_256_BYTES(alloc_size);
-    if (remain_buffer_size >= align_size) {
-      scan_temp_buffer = reinterpret_cast<void *>(ptr);
-      ptr += align_size;
-      remain_buffer_size -= align_size;
-    } else {
-      HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&scan_temp_buffer), alloc_size))
-      is_scan_alloc = true;
-    }
-  }
+  void *scan_temp_buffer = reinterpret_cast<void *>(ptr);
+
+  alloc_size = common::scan_buffer_size<I>(matrix_a.rows + 1);
+  align_size = ALIGN_256_BYTES(alloc_size);
+  ptr += align_size;
   // alloc buffer for max op
-  void *max_temp_buffer = nullptr;
-  {
-    const size_t alloc_size = common::max_buffer_size<I>(matrix_a.rows + 1);
-    const size_t align_size = ALIGN_256_BYTES(alloc_size);
-    if (remain_buffer_size >= align_size) {
-      max_temp_buffer = reinterpret_cast<void *>(ptr);
-      ptr += align_size;
-      remain_buffer_size -= align_size;
-    } else {
-      HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&max_temp_buffer), alloc_size))
-      is_max_alloc = true;
-    }
-  }
+  void *max_temp_buffer = reinterpret_cast<void *>(ptr);
+  alloc_size = common::max_buffer_size<I>(matrix_a.rows + 1);
+  align_size = ALIGN_256_BYTES(alloc_size);
+  ptr += align_size;
 
   if (max_bits_num <= 16) {
     constexpr size_t N = 2;
@@ -121,43 +127,23 @@ void spgemm_symbolic_compress(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T
         compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_ptr_c);
   } else {
     // calc size of trunk
-    I *chunk_num_ptr = nullptr;
-    {
-      const size_t alloc_size = (matrix_a.rows + 1) * sizeof(I);
-      const size_t align_size = ALIGN_256_BYTES(alloc_size);
-      if (remain_buffer_size >= align_size) {
-        chunk_num_ptr = reinterpret_cast<I *>(ptr);
-        ptr += align_size;
-        remain_buffer_size -= align_size;
-      } else {
-        HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&chunk_num_ptr), alloc_size))
-        is_chunk_alloc = true;
-      }
-      HIP_CHECK(hipMemset(chunk_num_ptr, 0, sizeof(I)))
-      (trunk_nums_compress_kernel<I, 64>)<<<512, 256>>>(matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr,
-                                                        compress_matrix_b.use_count, chunk_num_ptr);
-    }
+    I *chunk_num_ptr = reinterpret_cast<I *>(ptr);
+    alloc_size = (matrix_a.rows + 1) * sizeof(I);
+    align_size = ALIGN_256_BYTES(alloc_size);
+    ptr += align_size;
+    HIP_CHECK(hipMemset(chunk_num_ptr, 0, sizeof(I)))
+    (trunk_nums_compress_kernel<I, 64>)<<<512, 256>>>(matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr,
+                                                      compress_matrix_b.use_count, chunk_num_ptr);
 
     // max of trunk num
     I hchunk_num_max = static_cast<I>(0);
     {
-      I *chunk_num_max_ptr = nullptr;
-      const size_t alloc_size = sizeof(I);
-      const size_t align_size = ALIGN_256_BYTES(alloc_size);
-      if (remain_buffer_size >= align_size) {
-        chunk_num_max_ptr = reinterpret_cast<I *>(ptr);
-        ptr += align_size;
-        remain_buffer_size -= align_size;
-      } else {
-        HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&chunk_num_max_ptr), alloc_size));
-        is_chunk_max_alloc = true;
-      }
+      I *chunk_num_max_ptr = reinterpret_cast<I *>(ptr);
+      alloc_size = sizeof(I);
+      align_size = ALIGN_256_BYTES(alloc_size);
+      ptr += align_size;
       common::max<I>(matrix_a.rows + 1, chunk_num_ptr, chunk_num_max_ptr, max_temp_buffer);
       HIP_CHECK(hipMemcpy(&hchunk_num_max, chunk_num_max_ptr, sizeof(I), hipMemcpyDeviceToHost))
-
-      if (is_chunk_max_alloc) {
-        HIP_CHECK(hipFree(chunk_num_max_ptr))
-      }
     }
 
     hchunk_num_max = std::min<I>(matrix_b.cols, hchunk_num_max);
@@ -276,124 +262,71 @@ void spgemm_symbolic_compress(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T
       HIP_CHECK(hipFree(map_values))
       HIP_CHECK(hipFree(map_ids))
     }
-    if (is_chunk_alloc) {
-      HIP_CHECK(hipFree(chunk_num_ptr))
-    }
   }
 
   // max num in row_ptr
   {
-    I *row_nnz_max_ptr = nullptr;
+    I *row_nnz_max_ptr = reinterpret_cast<I *>(ptr);
     const size_t alloc_size = sizeof(I);
     const size_t align_size = ALIGN_256_BYTES(alloc_size);
-    if (remain_buffer_size >= align_size) {
-      row_nnz_max_ptr = reinterpret_cast<I *>(ptr);
-      ptr += align_size;
-      remain_buffer_size -= align_size;
-    } else {
-      HIP_CHECK(hipMalloc((void **)(&row_nnz_max_ptr), alloc_size));
-      is_row_nnz_max_alloc = true;
-    }
+    ptr += align_size;
     common::max<I>(matrix_a.rows + 1, row_ptr_c, row_nnz_max_ptr, max_temp_buffer);
     HIP_CHECK(hipMemcpy(hrow_nnz_max, row_nnz_max_ptr, sizeof(I), hipMemcpyDeviceToHost))
-    if (is_row_nnz_max_alloc) {
-      HIP_CHECK(hipFree(row_nnz_max_ptr))
-    }
   }
   // scan row_ptr
   common::scan<I>(matrix_a.rows + 1, row_ptr_c, scan_temp_buffer);
   // set nnz of matrix c
   HIP_CHECK(hipMemcpy(hnnz_c, row_ptr_c + matrix_a.rows, sizeof(I), hipMemcpyDeviceToHost))
+}
 
-  // free memory
-  if (is_scan_alloc) {
-    HIP_CHECK(hipFree(scan_temp_buffer))
-  }
-  if (is_max_alloc) {
-    HIP_CHECK(hipFree(max_temp_buffer))
-  }
+template <typename T, typename I>
+size_t spgemm_symbolic_buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b) {
+  size_t buffer_size = 0;
+  buffer_size += ALIGN_256_BYTES(common::scan_buffer_size<I>(matrix_a.rows + 1));
+  buffer_size += ALIGN_256_BYTES(common::max_buffer_size<I>(matrix_a.rows + 1));
+  buffer_size += ALIGN_256_BYTES((matrix_a.rows + 1) * sizeof(I));
+  buffer_size += ALIGN_256_BYTES(sizeof(I));
+  buffer_size += ALIGN_256_BYTES(sizeof(I));
+  return buffer_size;
 }
 
 template <typename T, typename I>
 void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b, I *row_ptr_c, size_t *hnnz_c,
-                     I *hrow_nnz_max, void *temp_buffer, const size_t temp_buffer_size) {
-
-  bool is_scan_alloc = false;
-  bool is_max_alloc = false;
-  bool is_chunk_alloc = false;
-  bool is_chunk_max_alloc = false;
-  bool is_row_nnz_max_alloc = false;
-
+                     I *hrow_nnz_max, void *temp_buffer) {
   char *ptr = reinterpret_cast<char *>(temp_buffer);
-  size_t remain_buffer_size = temp_buffer_size;
+  size_t alloc_size = 0;
+  size_t align_size = 0;
 
   // alloc buffer for scan op
-  void *scan_temp_buffer = nullptr;
-  {
-    const size_t alloc_size = common::scan_buffer_size<I>(matrix_a.rows + 1);
-    const size_t align_size = ALIGN_256_BYTES(alloc_size);
-    if (remain_buffer_size >= align_size) {
-      scan_temp_buffer = reinterpret_cast<void *>(ptr);
-      ptr += align_size;
-      remain_buffer_size -= align_size;
-    } else {
-      HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&scan_temp_buffer), alloc_size))
-      is_scan_alloc = true;
-    }
-  }
+  void *scan_temp_buffer = reinterpret_cast<void *>(ptr);
+
+  alloc_size = common::scan_buffer_size<I>(matrix_a.rows + 1);
+  align_size = ALIGN_256_BYTES(alloc_size);
+  ptr += align_size;
   // alloc buffer for max op
-  void *max_temp_buffer = nullptr;
-  {
-    const size_t alloc_size = common::max_buffer_size<I>(matrix_a.rows + 1);
-    const size_t align_size = ALIGN_256_BYTES(alloc_size);
-    if (remain_buffer_size >= align_size) {
-      max_temp_buffer = reinterpret_cast<void *>(ptr);
-      ptr += align_size;
-      remain_buffer_size -= align_size;
-    } else {
-      HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&max_temp_buffer), alloc_size))
-      is_max_alloc = true;
-    }
-  }
+  void *max_temp_buffer = reinterpret_cast<void *>(ptr);
+  alloc_size = common::max_buffer_size<I>(matrix_a.rows + 1);
+  align_size = ALIGN_256_BYTES(alloc_size);
+  ptr += align_size;
 
   // calc size of trunk
-  I *chunk_num_ptr = nullptr;
-  {
-    const size_t alloc_size = (matrix_a.rows + 1) * sizeof(I);
-    const size_t align_size = ALIGN_256_BYTES(alloc_size);
-    if (remain_buffer_size >= align_size) {
-      chunk_num_ptr = reinterpret_cast<I *>(ptr);
-      ptr += align_size;
-      remain_buffer_size -= align_size;
-    } else {
-      HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&chunk_num_ptr), alloc_size))
-      is_chunk_alloc = true;
-    }
-    HIP_CHECK(hipMemset(chunk_num_ptr, 0, sizeof(I)))
-    (trunk_nums_kernel<I, 64>)<<<512, 256>>>(matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr,
-                                             chunk_num_ptr);
-  }
+  I *chunk_num_ptr = reinterpret_cast<I *>(ptr);
+  alloc_size = (matrix_a.rows + 1) * sizeof(I);
+  align_size = ALIGN_256_BYTES(alloc_size);
+  ptr += align_size;
+  HIP_CHECK(hipMemset(chunk_num_ptr, 0, sizeof(I)))
+  (trunk_nums_kernel<I, 64>)<<<512, 256>>>(matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr,
+                                           chunk_num_ptr);
 
   // max of trunk num
   I hchunk_num_max = static_cast<I>(0);
   {
-    I *chunk_num_max_ptr = nullptr;
-    const size_t alloc_size = sizeof(I);
-    const size_t align_size = ALIGN_256_BYTES(alloc_size);
-    if (remain_buffer_size >= align_size) {
-      chunk_num_max_ptr = reinterpret_cast<I *>(ptr);
-      ptr += align_size;
-      remain_buffer_size -= align_size;
-    } else {
-      HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&chunk_num_max_ptr), alloc_size));
-      is_chunk_max_alloc = true;
-    }
+    I *chunk_num_max_ptr = reinterpret_cast<I *>(ptr);
+    alloc_size = sizeof(I);
+    align_size = ALIGN_256_BYTES(alloc_size);
+    ptr += align_size;
     common::max<I>(matrix_a.rows + 1, chunk_num_ptr, chunk_num_max_ptr, max_temp_buffer);
     HIP_CHECK(hipMemcpy(&hchunk_num_max, chunk_num_max_ptr, sizeof(I), hipMemcpyDeviceToHost))
-
-    if (is_chunk_max_alloc) {
-      HIP_CHECK(hipFree(chunk_num_max_ptr))
-    }
   }
 
   hchunk_num_max = std::min<I>(matrix_b.cols, hchunk_num_max);
@@ -481,35 +414,17 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
 
   // max num in row_ptr
   {
-    I *row_nnz_max_ptr = nullptr;
-    const size_t alloc_size = sizeof(I);
-    const size_t align_size = ALIGN_256_BYTES(alloc_size);
-    if (remain_buffer_size >= align_size) {
-      row_nnz_max_ptr = reinterpret_cast<I *>(ptr);
-      ptr += align_size;
-      remain_buffer_size -= align_size;
-    } else {
-      HIP_CHECK(hipMalloc((void **)(&row_nnz_max_ptr), alloc_size));
-      is_row_nnz_max_alloc = true;
-    }
+    I *row_nnz_max_ptr = reinterpret_cast<I *>(ptr);
+    alloc_size = sizeof(I);
+    align_size = ALIGN_256_BYTES(alloc_size);
+    ptr += align_size;
     common::max<I>(matrix_a.rows + 1, row_ptr_c, row_nnz_max_ptr, max_temp_buffer);
     HIP_CHECK(hipMemcpy(hrow_nnz_max, row_nnz_max_ptr, sizeof(I), hipMemcpyDeviceToHost))
-    if (is_row_nnz_max_alloc) {
-      HIP_CHECK(hipFree(row_nnz_max_ptr))
-    }
   }
   // scan row_ptr
   common::scan<I>(matrix_a.rows + 1, row_ptr_c, scan_temp_buffer);
   // set nnz of matrix c
   HIP_CHECK(hipMemcpy(hnnz_c, row_ptr_c + matrix_a.rows, sizeof(I), hipMemcpyDeviceToHost))
-
-  // free memory
-  if (is_scan_alloc) {
-    HIP_CHECK(hipFree(scan_temp_buffer))
-  }
-  if (is_max_alloc) {
-    HIP_CHECK(hipFree(max_temp_buffer))
-  }
 
 #ifdef DEBUG_MODE
   std::cout << "alloc memory: \nscan\tmax\tchunk\tchunk-max\trow-nnz-max\t" << std::endl;
