@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <hip/hip_runtime.h>
+#include <iostream>
 
 template <typename T, typename I>
 size_t spgemm_symbolic_compress_buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b) {
@@ -282,11 +283,23 @@ void spgemm_symbolic_compress(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T
 template <typename T, typename I>
 size_t spgemm_symbolic_buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b) {
   size_t buffer_size = 0;
-  buffer_size += ALIGN_256_BYTES(common::scan_buffer_size<I>(matrix_a.rows + 1));
-  buffer_size += ALIGN_256_BYTES(common::max_buffer_size<I>(matrix_a.rows + 1));
-  buffer_size += ALIGN_256_BYTES((matrix_a.rows + 1) * sizeof(I));
-  buffer_size += ALIGN_256_BYTES(sizeof(I));
-  buffer_size += ALIGN_256_BYTES(sizeof(I));
+  size_t alloc_size = 0;
+
+  alloc_size = common::scan_buffer_size<I>(matrix_a.rows + 1);
+  buffer_size += ALIGN_256_BYTES(alloc_size);
+
+  alloc_size = common::max_buffer_size<I>(matrix_a.rows + 1);
+  buffer_size += ALIGN_256_BYTES(alloc_size);
+
+  alloc_size = (matrix_a.rows + 1) * sizeof(I);
+  buffer_size += ALIGN_256_BYTES(alloc_size);
+
+  alloc_size = sizeof(I);
+  buffer_size += ALIGN_256_BYTES(alloc_size);
+
+  alloc_size = sizeof(I);
+  buffer_size += ALIGN_256_BYTES(alloc_size);
+  return buffer_size;
   return buffer_size;
 }
 
@@ -330,10 +343,6 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
   }
 
   hchunk_num_max = std::min<I>(matrix_b.cols, hchunk_num_max);
-
-#ifdef DEBUG_MODE
-  std::cout << "hchunk_num_max: " << hchunk_num_max << std::endl;
-#endif
   if (hchunk_num_max <= 16) {
     constexpr size_t N = 2;
     constexpr size_t VEC_SIZE = 16 / N;
@@ -425,12 +434,6 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
   common::scan<I>(matrix_a.rows + 1, row_ptr_c, scan_temp_buffer);
   // set nnz of matrix c
   HIP_CHECK(hipMemcpy(hnnz_c, row_ptr_c + matrix_a.rows, sizeof(I), hipMemcpyDeviceToHost))
-
-#ifdef DEBUG_MODE
-  std::cout << "alloc memory: \nscan\tmax\tchunk\tchunk-max\trow-nnz-max\t" << std::endl;
-  std::cout << std::boolalpha << is_scan_alloc << "\t" << is_max_alloc << "\t" << is_chunk_alloc << "\t"
-            << is_chunk_max_alloc << "\t" << is_row_nnz_max_alloc << std::endl;
-#endif
 }
 
 #endif // SPGEMM_KOKKOS_SPGEMM_SYMBOLIC_IMPL_HPP
