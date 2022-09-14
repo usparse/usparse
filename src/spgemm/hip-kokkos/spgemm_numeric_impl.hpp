@@ -35,7 +35,7 @@ size_t spgemm_numeric_buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMatr
   return buffer_size;
 }
 
-template <typename T, typename I>
+template <typename T, typename I, bool use_bp>
 void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b,
                     const I row_nnz_max, CsrMatrix<T, I> &matrix_c, void *temp_buffer) {
   char *ptr = reinterpret_cast<char *>(temp_buffer);
@@ -137,10 +137,15 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
     const int BPS_PER_ROW = matrix_b.cols / CHUNK_SIZE + (matrix_b.cols % CHUNK_SIZE == 0 ? 0 : 1);
     const int BP_IDX_PER_ROW = BPS_PER_ROW + 1;
 
-    I *bp = reinterpret_cast<I *>(ptr);
+    I *bp = nullptr;
     alloc_size = bp_buffer_size<T, I, CHUNK_SIZE>(matrix_b);
-    align_size = ALIGN_256_BYTES(alloc_size);
-    ptr += align_size;
+    if constexpr (use_bp) {
+      bp = reinterpret_cast<I *>(ptr);
+      align_size = ALIGN_256_BYTES(alloc_size);
+      ptr += align_size;
+    } else {
+      HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&bp), alloc_size))
+    }
 
     if (BP_IDX_PER_ROW <= 8) {
       create_bp_wf_per_row_kernel<I, CHUNK_SIZE, 8>
@@ -169,6 +174,10 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
           alpha, matrix_c.rows, matrix_c.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
           matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
           matrix_c.values_ptr, bp, BPS_PER_ROW, BP_IDX_PER_ROW);
+    }
+
+    if constexpr (!use_bp) {
+      HIP_CHECK(hipFree(bp))
     }
   }
 }
