@@ -2,6 +2,6 @@
 #define SPGEMM_HIP_KOKKOS_SPLIT_CONFIG_H
 
 static constexpr size_t GROUP_NUM = 6;
-static constexpr int GROUP_THRESHOLD[GROUP_NUM] = {16, 32, 64, 512, 1024, 2048};
+static constexpr int GROUP_THRESHOLD[GROUP_NUM] = {16, 32, 256, 512, 1024, 2048};
 
 #endif // SPGEMM_HIP_KOKKOS_SPLIT_CONFIG_H

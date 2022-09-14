@@ -132,8 +132,8 @@ void spgemm_symbolic_compress(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T
     alloc_size = (matrix_a.rows + 1) * sizeof(I);
     align_size = ALIGN_256_BYTES(alloc_size);
     ptr += align_size;
-    (trunk_nums_compress_kernel<I, 64>)<<<512, 256>>>(matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr,
-                                                      compress_matrix_b.use_count, chunk_num_ptr);
+    (trunk_nums_compress_kernel<I, 4>)<<<512, 256>>>(matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr,
+                                                     compress_matrix_b.use_count, chunk_num_ptr);
 
     // max of trunk num
     I hchunk_num_max = static_cast<I>(0);
@@ -299,7 +299,6 @@ size_t spgemm_symbolic_buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMat
   alloc_size = sizeof(I);
   buffer_size += ALIGN_256_BYTES(alloc_size);
   return buffer_size;
-  return buffer_size;
 }
 
 template <typename T, typename I>
@@ -326,8 +325,8 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
   alloc_size = (matrix_a.rows + 1) * sizeof(I);
   align_size = ALIGN_256_BYTES(alloc_size);
   ptr += align_size;
-  (trunk_nums_kernel<I, 64>)<<<512, 256>>>(matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr,
-                                           chunk_num_ptr);
+  (trunk_nums_kernel<I, 8>)<<<512, 256>>>(matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr,
+                                          chunk_num_ptr);
 
   // max of trunk num
   I hchunk_num_max = static_cast<I>(0);

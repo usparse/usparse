@@ -85,12 +85,10 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
     }
     if (hgroup_num[2] > 0) {
       constexpr size_t N = 2;
-      constexpr size_t VEC_SIZE = 64 / N;
-      constexpr size_t BLOCK_THREAD_NUM = 256;
-      constexpr size_t BLOCK_VEC_NUM = BLOCK_THREAD_NUM / VEC_SIZE;
-      const size_t GLOBAL_BLOCK_NUM = hgroup_num[2] / BLOCK_VEC_NUM + (hgroup_num[2] % BLOCK_VEC_NUM == 0 ? 0 : 1);
+      constexpr size_t BLOCK_THREAD_NUM = 256 / N;
+      const size_t GLOBAL_BLOCK_NUM = hgroup_num[2];
 
-      spgemm_numeric_linear_chain_hashmap_vector_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, VEC_SIZE>
+      spgemm_numeric_linear_chain_hashmap_block_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>
           <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
               alpha, matrix_a.rows, matrix_a.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
               matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 2,
