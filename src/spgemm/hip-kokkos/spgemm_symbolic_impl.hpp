@@ -126,6 +126,14 @@ void spgemm_symbolic_compress(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T
     (spgemm_symbolic_block_per_row_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
         matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
         compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_ptr_c);
+  } else if (max_bits_num <= 2048) {
+    constexpr size_t N = 2;
+    constexpr size_t BLOCK_THREAD_NUM = 2048 / N;
+    const size_t GLOBAL_BLOCK_NUM = matrix_a.rows;
+
+    (spgemm_symbolic_block_per_row_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+        matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
+        compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_ptr_c);
   } else {
     // calc size of trunk
     I *chunk_num_ptr = reinterpret_cast<I *>(ptr);
