@@ -19,7 +19,7 @@ template <typename I> size_t split_group_buffer_size(const size_t rows) {
 }
 
 template <typename I>
-void split_group(const size_t rows, const I *row_ptr, I *group_row_ptr, int *hgroup_num_ptr, void *temp_buffer) {
+void split_group(const size_t rows, const I *row_ptr, I *group_row_ptr, int *&hgroup_num_ptr, void *temp_buffer) {
   constexpr size_t THREADS = 256;
   constexpr size_t R = 2;
   const size_t BLOCKS = rows / (THREADS * R) + (rows % (THREADS * R) == 0 ? 0 : 1);
@@ -47,7 +47,18 @@ void split_group(const size_t rows, const I *row_ptr, I *group_row_ptr, int *hgr
       (split_group_part2_kernel<I, VEC_SIZE, THREADS>)<<<BLOCKS, THREADS>>>(SCAN_SIZE, STEP_WIDTH, split_buffer,
                                                                             split_num_buffer);
 
-      HIP_CHECK(hipMemcpy(hgroup_num_ptr, split_num_buffer, sizeof(int) * GROUP_NUM, hipMemcpyDeviceToHost))
+      // HIP_CHECK(hipMemcpy(hgroup_num_ptr, split_num_buffer, sizeof(int) * GROUP_NUM, hipMemcpyDeviceToHost))
+      hgroup_num_ptr=split_num_buffer;
+      // hipDeviceSynchronize();
+      // for(int i=0;i<GROUP_NUM;i++){
+      //   hgroup_num_ptr[i]=split_num_buffer[i];
+      // }
+      // hgroup_num_ptr[0]=split_num_buffer[0];
+      // hgroup_num_ptr[1]=split_num_buffer[1];
+      // hgroup_num_ptr[2]=split_num_buffer[2];
+      // hgroup_num_ptr[3]=split_num_buffer[3];
+      // hgroup_num_ptr[4]=split_num_buffer[4];
+      // hgroup_num_ptr[5]=split_num_buffer[5];
     } else {
       I *scan_temp_buffer = nullptr;
       const size_t scan_temp_buffer_size = common::scan_buffer_size<I>(BLOCKS);

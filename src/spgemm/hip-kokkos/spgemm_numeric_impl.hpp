@@ -57,9 +57,11 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
     align_size = ALIGN_256_BYTES(alloc_size);
     ptr += align_size;
 
-    int hgroup_num[GROUP_NUM];
-    split_group<I>(matrix_c.rows, matrix_c.row_ptr, group_row_num_ptr, reinterpret_cast<int *>(hgroup_num),
+    // int hgroup_num[GROUP_NUM];
+    I* hgroup_num;
+    split_group<I>(matrix_c.rows, matrix_c.row_ptr, group_row_num_ptr, hgroup_num,
                    split_group_temp_buffer);
+    hipDeviceSynchronize();
 
     if (hgroup_num[0] > 0) {
       constexpr size_t N = 2;
