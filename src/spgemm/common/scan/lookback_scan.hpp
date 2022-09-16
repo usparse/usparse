@@ -226,7 +226,9 @@ void decoupled_look_back_scan_impl(const size_t input_size, const T *input, T *o
   ptr += ((BLOCKS * sizeof(T)) / 256 + 1) * 256;
 
   int *id_count_ptr = reinterpret_cast<int *>(ptr);
+#ifdef DEVICE_MALLOC_INITILIZE
   HIP_CHECK(hipMemset(id_count_ptr, 0, sizeof(int)))
+#endif
 
   (decoupled_look_back_scan_kernel<T, THREADS, ITEMS_PER_THREAD>)<<<BLOCKS, THREADS>>>(
       input_size, input, output, part_state_array_ptr, prefix_sum_array_ptr, id_count_ptr);

@@ -33,7 +33,7 @@ template <typename I> struct CompressMatrix {
     use_count = reinterpret_cast<int *>(ptr);
     ptr += ALIGN_256_BYTES(rows * sizeof(int));
 
-#ifndef DEVICE_ALLOC_INITILIZE
+#ifdef DEVICE_MALLOC_INITILIZE
     HIP_CHECK(hipMemset(col_idx_ptr, 0, nnz * sizeof(BitSetEleType)))
 #endif
   }

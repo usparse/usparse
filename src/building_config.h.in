@@ -14,6 +14,6 @@ constexpr int __WRAP_SIZE__ = __WF_SIZE__;
 
 #cmakedefine DEVICE_SIDE_VERIFY
 #cmakedefine gpu
-#cmakedefine DEVICE_ALLOC_INITILIZE
+// #cmakedefine DEVICE_MALLOC_INITILIZE
 
 #endif // SPGEMM_BUILDING_CONFIG_H

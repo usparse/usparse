@@ -14,12 +14,14 @@
 #include <hip/hip_runtime.h>
 #include <iostream>
 
-template <typename T, typename I>
-size_t spgemm_symbolic_compress_buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b) {
+template <typename T, typename I,bool use_compress>
+size_t spgemm_symbolic_buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b) {
   size_t buffer_size = 0;
   size_t alloc_size = 0;
-  alloc_size = spgemm_compress_buffer_size(matrix_b);
-  buffer_size += ALIGN_256_BYTES(alloc_size);
+  if(use_compress){
+    alloc_size = spgemm_compress_buffer_size(matrix_b);
+    buffer_size += ALIGN_256_BYTES(alloc_size);
+  }
 
   alloc_size = common::scan_buffer_size<I>(matrix_a.rows + 1);
   buffer_size += ALIGN_256_BYTES(alloc_size);
@@ -277,28 +279,6 @@ void spgemm_symbolic_compress(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T
   common::scan<I>(matrix_a.rows + 1, row_ptr_c, scan_temp_buffer);
   // set nnz of matrix c
   HIP_CHECK(hipMemcpy(hnnz_c, row_ptr_c + matrix_a.rows, sizeof(I), hipMemcpyDeviceToHost))
-}
-
-template <typename T, typename I>
-size_t spgemm_symbolic_buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b) {
-  size_t buffer_size = 0;
-  size_t alloc_size = 0;
-
-  alloc_size = common::scan_buffer_size<I>(matrix_a.rows + 1);
-  buffer_size += ALIGN_256_BYTES(alloc_size);
-
-  alloc_size = common::max_buffer_size<I>(matrix_a.rows + 1);
-  buffer_size += ALIGN_256_BYTES(alloc_size);
-
-  alloc_size = (matrix_a.rows + 1) * sizeof(I);
-  buffer_size += ALIGN_256_BYTES(alloc_size);
-
-  alloc_size = sizeof(I);
-  buffer_size += ALIGN_256_BYTES(alloc_size);
-
-  alloc_size = sizeof(I);
-  buffer_size += ALIGN_256_BYTES(alloc_size);
-  return buffer_size;
 }
 
 template <typename T, typename I>

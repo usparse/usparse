@@ -37,10 +37,14 @@ size_t spgemm_numeric_buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMatr
 
 template <typename T, typename I, bool use_bp>
 void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b,
-                    const I row_nnz_max, CsrMatrix<T, I> &matrix_c, void *temp_buffer) {
+                    const I row_nnz_max, CsrMatrix<T, I> &matrix_c, void *temp_buffer,size_t temp_buffer_size,size_t numeric_buffer_size) {
   char *ptr = reinterpret_cast<char *>(temp_buffer);
   size_t alloc_size = 0;
   size_t align_size = 0;
+  if(ALIGN_256_BYTES(matrix_c.nnz*sizeof(I))<=temp_buffer_size&&(temp_buffer_size-ALIGN_256_BYTES(matrix_c.nnz*sizeof(I)))>=numeric_buffer_size){
+    alloc_size= matrix_c.nnz*sizeof(I);
+    ptr += ALIGN_256_BYTES(alloc_size);
+  }
 
   if (row_nnz_max <= 2048) {
     I *group_row_num_ptr = reinterpret_cast<I *>(ptr);
