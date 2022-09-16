@@ -5,13 +5,16 @@
 #include "align.h"
 #include <cstddef>
 #include <hip/hip_runtime.h>
+#include <type_traits>
 
 template <typename I> struct CompressMatrix {
   using BitSetEleType = unsigned int;
   using IdType = int;
+  static_assert(std::is_same<BitSetEleType, unsigned int>::value ||
+                    std::is_same<BitSetEleType, unsigned long long int>::value,
+                "BitSetEleType in CompressMatrix must be (unsigned int) / (unsigned long long int)");
   static constexpr size_t BitsPerByte = 8;
   static constexpr size_t BitsLen = sizeof(BitSetEleType) * BitsPerByte;
-  static constexpr BitSetEleType NullValue = 0xffffffff;
   const size_t rows;
   const size_t cols;
   const size_t nnz;
@@ -44,6 +47,20 @@ template <typename I> struct CompressMatrix {
     buffer_size += ALIGN_256_BYTES(nnz * sizeof(BitSetEleType));
     buffer_size += ALIGN_256_BYTES(m * sizeof(int));
     return buffer_size;
+  }
+
+  static __device__ __forceinline__ unsigned int pop_count(BitSetEleType bits) {
+    if constexpr (std::is_same<BitSetEleType, unsigned int>::value) {
+      return __popc(bits);
+    } else {
+      return __popcll(bits);
+    }
+  }
+
+  static __device__ __forceinline__ IdType convert_to_id(I col) { return col / BitsLen; }
+
+  static __device__ __forceinline__ BitSetEleType convert_to_bits(I col) {
+    return static_cast<BitSetEleType>(0x1) << (col % BitsLen);
   }
 };
 
