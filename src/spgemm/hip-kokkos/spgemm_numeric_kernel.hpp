@@ -237,7 +237,7 @@ __global__ void __launch_bounds__(THREADS)
   for (int i = block_thread_id; i < end_offset; i += block_thread_num) {
     const I base_id = block_lds_ids[i];
     const T base_values = block_lds_values[i];
-    const I hash_val = base_id / FLASH_SORT_WIDTH;
+    const size_t hash_val = base_id / FLASH_SORT_WIDTH;
     int smaller_count = hash_val > 0 ? flash_bucket_use_size[hash_val - 1] : 0;
     int l = block_lds_begins[hash_val];
     for (; l != HashMap<T, I>::NullValue; l = block_lds_nexts[l]) {
@@ -363,7 +363,7 @@ __global__ void __launch_bounds__(THREADS)
   for (int i = vec_thread_id; i < end_offset; i += vec_thread_num) {
     const I base_id = vec_lds_ids[i];
     const T base_values = vec_lds_values[i];
-    const I hash_val = base_id / FLASH_SORT_WIDTH;
+    const size_t hash_val = base_id / FLASH_SORT_WIDTH;
     int smaller_count = hash_val > 0 ? flash_bucket_use_size[hash_val - 1] : 0;
     int l = vec_lds_begins[hash_val];
     for (; l != HashMap<T, I>::NullValue; l = vec_lds_nexts[l]) {
