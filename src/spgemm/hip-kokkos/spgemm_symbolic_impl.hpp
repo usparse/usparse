@@ -126,6 +126,14 @@ void spgemm_symbolic_compress(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T
     (spgemm_symbolic_block_per_row_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
         matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
         compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_ptr_c);
+  } else if (max_bits_num <= 2048) {
+    constexpr size_t N = 2;
+    constexpr size_t BLOCK_THREAD_NUM = 2048 / N;
+    const size_t GLOBAL_BLOCK_NUM = matrix_a.rows;
+
+    (spgemm_symbolic_block_per_row_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+        matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
+        compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_ptr_c);
   } else {
     // calc size of trunk
     I *chunk_num_ptr = reinterpret_cast<I *>(ptr);
@@ -340,48 +348,16 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
   }
 
   hchunk_num_max = std::min<I>(matrix_b.cols, hchunk_num_max);
-  if (hchunk_num_max <= 16) {
-    constexpr size_t N = 2;
-    constexpr size_t VEC_SIZE = 16 / N;
-    constexpr size_t BLOCK_THREAD_NUM = 256;
-    constexpr size_t BLOCK_VEC_NUM = BLOCK_THREAD_NUM / VEC_SIZE;
-    const size_t GLOBAL_BLOCK_NUM = matrix_a.rows / BLOCK_VEC_NUM + (matrix_a.rows % BLOCK_VEC_NUM == 0 ? 0 : 1);
-
-    (spgemm_symbolic_open_address_hashmap_vector_per_row_one_pass_kernel<
-        T, I, N, BLOCK_THREAD_NUM, VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
-        matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr, matrix_b.col_idx_ptr, row_ptr_c);
-
-  } else if (hchunk_num_max <= 32) {
-    constexpr size_t N = 2;
-    constexpr size_t VEC_SIZE = 32 / N;
-    constexpr size_t BLOCK_THREAD_NUM = 256;
-    constexpr size_t BLOCK_VEC_NUM = BLOCK_THREAD_NUM / VEC_SIZE;
-    const size_t GLOBAL_BLOCK_NUM = matrix_a.rows / BLOCK_VEC_NUM + (matrix_a.rows % BLOCK_VEC_NUM == 0 ? 0 : 1);
-
-    (spgemm_symbolic_open_address_hashmap_vector_per_row_one_pass_kernel<
-        T, I, N, BLOCK_THREAD_NUM, VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
-        matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr, matrix_b.col_idx_ptr, row_ptr_c);
-
-  } else if (hchunk_num_max <= 64) {
-    constexpr size_t N = 2;
-    constexpr size_t VEC_SIZE = 64 / N;
-    constexpr size_t BLOCK_THREAD_NUM = 256;
-    constexpr size_t BLOCK_VEC_NUM = BLOCK_THREAD_NUM / VEC_SIZE;
-    const size_t GLOBAL_BLOCK_NUM = matrix_a.rows / BLOCK_VEC_NUM + (matrix_a.rows % BLOCK_VEC_NUM == 0 ? 0 : 1);
-
-    (spgemm_symbolic_open_address_hashmap_vector_per_row_one_pass_kernel<
-        T, I, N, BLOCK_THREAD_NUM, VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
-        matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr, matrix_b.col_idx_ptr, row_ptr_c);
-
-  } else if (hchunk_num_max <= 128) {
-    constexpr size_t N = 2;
+  if (hchunk_num_max <= 128) {
+    constexpr size_t N = 4;
     constexpr size_t VEC_SIZE = 128 / N;
+    constexpr size_t BT_SIZE = 8;
     constexpr size_t BLOCK_THREAD_NUM = 256;
     constexpr size_t BLOCK_VEC_NUM = BLOCK_THREAD_NUM / VEC_SIZE;
     const size_t GLOBAL_BLOCK_NUM = matrix_a.rows / BLOCK_VEC_NUM + (matrix_a.rows % BLOCK_VEC_NUM == 0 ? 0 : 1);
 
     (spgemm_symbolic_open_address_hashmap_vector_per_row_one_pass_kernel<
-        T, I, N, BLOCK_THREAD_NUM, VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+        T, I, N, BLOCK_THREAD_NUM, VEC_SIZE, BT_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
         matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr, matrix_b.col_idx_ptr, row_ptr_c);
 
   } else if (hchunk_num_max <= 512) {
@@ -394,7 +370,7 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
         matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr, matrix_b.col_idx_ptr, row_ptr_c);
 
   } else if (hchunk_num_max <= 1024) {
-    constexpr size_t N = 2;
+    constexpr size_t N = 4;
     constexpr size_t BLOCK_THREAD_NUM = 1024 / N;
     const size_t GLOBAL_BLOCK_NUM = matrix_a.rows;
 
@@ -403,7 +379,7 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
         matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr, matrix_b.col_idx_ptr, row_ptr_c);
 
   } else if (hchunk_num_max <= 2048) {
-    constexpr size_t N = 2;
+    constexpr size_t N = 8;
     constexpr size_t BLOCK_THREAD_NUM = 2048 / N;
     const size_t GLOBAL_BLOCK_NUM = matrix_a.rows;
 
