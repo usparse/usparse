@@ -25,8 +25,8 @@ __global__ void compress_matrix_thread_per_row_kernel(const size_t m, const I *r
     bittype_t write_bit = static_cast<bittype_t>(0);
     for (int idx = row_idx_begin; idx < row_idx_end; idx++) {
       const I col = col_idx_ptr[idx];
-      const idtype_t my_id = col / BitsLen;
-      const bittype_t my_bit = 0x1 << (col % BitsLen);
+      const idtype_t my_id = CompressMatrix<I>::convert_to_id(col);
+      const bittype_t my_bit = CompressMatrix<I>::convert_to_bits(col);
       if (my_id == write_id) {
         write_bit |= my_bit;
       } else {
@@ -99,8 +99,8 @@ __global__ void __launch_bounds__(THREADS)
       vec_lds_write_bits[vec_thread_id] = static_cast<bittype_t>(0);
       const int idx = row_idx_begin + round * vec_thread_num + vec_thread_id;
       const I col = idx < row_idx_end ? col_idx_ptr[idx] : col_idx_ptr[row_idx_end - 1];
-      idtype_t my_id = col / BitsLen;
-      bittype_t my_bit = idx < row_idx_end ? (0x1 << (col % BitsLen)) : static_cast<bittype_t>(0);
+      idtype_t my_id = CompressMatrix<I>::convert_to_id(col);
+      bittype_t my_bit = idx < row_idx_end ? CompressMatrix<I>::convert_to_bits(col) : static_cast<bittype_t>(0);
 
       vec_lds_ids[vec_thread_id] = my_id;
       __threadfence();
@@ -196,8 +196,8 @@ __global__ void __launch_bounds__(THREADS)
       block_lds_write_bits[block_thread_id] = static_cast<bittype_t>(0);
       const int idx = row_idx_begin + round * block_thread_num + block_thread_id;
       const I col = idx < row_idx_end ? col_idx_ptr[idx] : col_idx_ptr[row_idx_end - 1];
-      idtype_t my_id = col / BitsLen;
-      bittype_t my_bit = idx < row_idx_end ? (0x1 << (col % BitsLen)) : static_cast<bittype_t>(0);
+      idtype_t my_id = CompressMatrix<I>::convert_to_id(col);
+      bittype_t my_bit = idx < row_idx_end ? CompressMatrix<I>::convert_to_bits(col) : static_cast<bittype_t>(0);
 
       block_lds_ids[block_thread_id] = my_id;
       int idx_offset = 0;
