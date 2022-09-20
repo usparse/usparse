@@ -324,7 +324,7 @@ __global__ void __launch_bounds__(THREADS) spgemm_symbolic_open_address_hashmap_
   }
   I local_nnz_count = static_cast<I>(0);
   for (int i = vec_thread_id; i < LDS_MAP_CAP; i += vec_thread_num) {
-    local_use_count += CompressMatrix<I>::pop_count(vec_lds_values[i]);
+    local_nnz_count += CompressMatrix<I>::pop_count(vec_lds_values[i]);
   }
   // sum
   for (int i = VEC_SIZE >> 1; i > 0; i >>= 1) {
@@ -469,7 +469,7 @@ __global__ void __launch_bounds__(THREADS) spgemm_symbolic_open_address_hashmap_
   __syncthreads();
   I local_nnz_count = static_cast<I>(0);
   for (int i = block_thread_id; i < BLOCK_LDS_SIZE; i += block_thread_num) {
-    local_use_count += CompressMatrix<I>::pop_count(block_lds_values[i]);
+    local_nnz_count += CompressMatrix<I>::pop_count(block_lds_values[i]);
   }
   __syncthreads();
   // reduce
