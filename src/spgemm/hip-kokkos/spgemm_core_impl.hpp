@@ -17,7 +17,7 @@ CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, cons
   size_t symbolic_buffer_size = 0;
   size_t numeric_buffer_size = 0;
 
-  bool is_compress = matrix_b.rows < 40000 ? true : false;
+  bool is_compress = (sparseness_b < 0.005 && matrix_b.cols > 30000) ? false : true;
   bool is_use_bp = sparseness_b > 0.005 ? true : false;
 
   if (is_compress) {
