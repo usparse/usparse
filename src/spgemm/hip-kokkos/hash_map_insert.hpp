@@ -145,6 +145,25 @@ __device__ __forceinline__ void linear_chain_hashmap_vector_insert_add(int *begi
   nexts[write_index] = hash_begin;
 }
 
+template <typename T, typename I>
+__device__ __forceinline__ void linear_chain_hashmap_vector_insert_add(int *begins, int *nexts, I *ids, T *values,
+                                                                       const size_t hash_val, const I insert_id,
+                                                                       const T insert_value, int *use_size) {
+  int i;
+  i = begins[hash_val];
+  for (; i != HashMap<T, I>::NullValue; i = nexts[i]) {
+    if (ids[i] == insert_id) {
+      values[i] += insert_value;
+      return;
+    }
+  }
+  int write_index = atomicAdd(use_size, 1);
+  ids[write_index] = insert_id;
+  values[write_index] = insert_value;
+  int hash_begin = atomicExch(begins + hash_val, write_index);
+  nexts[write_index] = hash_begin;
+}
+
 template <typename T, typename I, size_t HashMask>
 __device__ __forceinline__ void linear_chain_hashmap_vector_insert_or(int *begins, int *nexts, I *ids, T *values,
                                                                       const I insert_id, const T insert_value,

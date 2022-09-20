@@ -66,7 +66,7 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
 
       spgemm_numeric_linear_chain_hashmap_vector_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, VEC_SIZE>
           <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
-              alpha, matrix_a.rows, matrix_a.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
+              alpha, matrix_a.rows, matrix_b.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
               matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr, hgroup_num[0],
               matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr);
     }
@@ -79,7 +79,7 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
 
       spgemm_numeric_linear_chain_hashmap_vector_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, VEC_SIZE>
           <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
-              alpha, matrix_a.rows, matrix_a.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
+              alpha, matrix_a.rows, matrix_b.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
               matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows,
               hgroup_num[1], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr);
     }
@@ -88,9 +88,9 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
       constexpr size_t BLOCK_THREAD_NUM = 256 / N;
       const size_t GLOBAL_BLOCK_NUM = hgroup_num[2];
 
-      spgemm_numeric_linear_chain_hashmap_block_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>
+      spgemm_numeric_block_per_row_flash_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>
           <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
-              alpha, matrix_a.rows, matrix_a.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
+              alpha, matrix_a.rows, matrix_b.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
               matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 2,
               hgroup_num[2], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr);
     }
@@ -99,9 +99,9 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
       constexpr size_t BLOCK_THREAD_NUM = 512 / N;
       const size_t GLOBAL_BLOCK_NUM = hgroup_num[3];
 
-      spgemm_numeric_linear_chain_hashmap_block_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>
+      spgemm_numeric_block_per_row_flash_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>
           <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
-              alpha, matrix_a.rows, matrix_a.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
+              alpha, matrix_a.rows, matrix_b.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
               matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 3,
               hgroup_num[3], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr);
     }
@@ -110,9 +110,9 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
       constexpr size_t BLOCK_THREAD_NUM = 1024 / N;
       const size_t GLOBAL_BLOCK_NUM = hgroup_num[4];
 
-      spgemm_numeric_linear_chain_hashmap_block_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>
+      spgemm_numeric_block_per_row_flash_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>
           <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
-              alpha, matrix_a.rows, matrix_a.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
+              alpha, matrix_a.rows, matrix_b.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
               matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 4,
               hgroup_num[4], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr);
     }
@@ -121,9 +121,9 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
       constexpr size_t BLOCK_THREAD_NUM = 2048 / N;
       const size_t GLOBAL_BLOCK_NUM = hgroup_num[5];
 
-      spgemm_numeric_linear_chain_hashmap_block_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>
+      spgemm_numeric_block_per_row_flash_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>
           <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
-              alpha, matrix_a.rows, matrix_a.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
+              alpha, matrix_a.rows, matrix_b.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
               matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 5,
               hgroup_num[5], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr);
     }
