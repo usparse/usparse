@@ -6,33 +6,15 @@
 
 // ** insert to hashset (open addressing) **
 template <typename T, typename I, size_t HashMask>
-__device__ __forceinline__ void open_address_hashset_vector_insert(I *ids, const I insert_id) {
+__device__ __forceinline__ int open_address_hashset_vector_insert(I *ids, const I insert_id) {
   size_t hash_val = HASH(insert_id, HashMask);
 
   while (true) {
     if (ids[hash_val] == insert_id) {
-      break;
+      return 0;
     } else if (ids[hash_val] == HashMap<T, I>::NullValue) {
       if (atomicCAS(ids + hash_val, HashMap<T, I>::NullValue, insert_id) == HashMap<T, I>::NullValue) {
-        break;
-      }
-    } else {
-      hash_val = HASH(hash_val + 1, HashMask);
-    }
-  }
-}
-
-template <typename T, typename I, size_t HashMask>
-__device__ __forceinline__ void open_address_hashset_vector_insert(I *ids, const I insert_id, int *use_count) {
-  size_t hash_val = HASH(insert_id, HashMask);
-
-  while (true) {
-    if (ids[hash_val] == insert_id) {
-      break;
-    } else if (ids[hash_val] == HashMap<T, I>::NullValue) {
-      if (atomicCAS(ids + hash_val, HashMap<T, I>::NullValue, insert_id) == HashMap<T, I>::NullValue) {
-        atomicAdd(use_count, 1);
-        break;
+        return 1;
       }
     } else {
       hash_val = HASH(hash_val + 1, HashMask);
