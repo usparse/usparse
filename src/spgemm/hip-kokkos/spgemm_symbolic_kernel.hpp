@@ -743,7 +743,7 @@ __global__ void __launch_bounds__(THREADS)
 
     for (int idx_b = row_idx_begin_b + vec_thread_id; idx_b < row_idx_end_b; idx_b += vec_thread_num) {
       I col_b = col_idx_ptr_b[idx_b];
-      unsigned long long mask = 0x1 << (col_b % BitsLen);
+      unsigned long long mask = static_cast<unsigned long long>(0x1) << (col_b % BitsLen);
       atomicOr(vec_lds_ids+col_b/BitsLen,mask);
     }
   }
