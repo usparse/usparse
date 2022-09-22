@@ -688,12 +688,11 @@ __global__ void __launch_bounds__(THREADS) spgemm_symbolic_linear_chain_hashmap_
   }
 }
 
-//without hash
+// without hash
 template <typename T, typename I, size_t N, size_t THREADS, size_t VEC_SIZE>
 __global__ void __launch_bounds__(THREADS)
-    spgemm_symbolic_bit_map_vector_per_row_one_pass_kernel(const size_t m, const I *row_ptr_a,
-                                                                        const I *col_idx_ptr_a, const I *row_ptr_b,
-                                                                        const I *col_idx_ptr_b, I *row_ptr_c) {
+    spgemm_symbolic_bit_map_vector_per_row_one_pass_kernel(const size_t m, const I *row_ptr_a, const I *col_idx_ptr_a,
+                                                           const I *row_ptr_b, const I *col_idx_ptr_b, I *row_ptr_c) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global
@@ -724,9 +723,9 @@ __global__ void __launch_bounds__(THREADS)
 
   extern __shared__ unsigned long long int shared_bit_map[];
 
-  constexpr size_t BitsLen=sizeof(unsigned long long int)*8;
-  const size_t VEC_LDS_NUM=m/BitsLen+(m%BitsLen==0?0:1);
-  unsigned long long int* vec_lds_ids = shared_bit_map + VEC_LDS_NUM*block_vec_id;
+  constexpr size_t BitsLen = sizeof(unsigned long long int) * 8;
+  const size_t VEC_LDS_NUM = m / BitsLen + (m % BitsLen == 0 ? 0 : 1);
+  unsigned long long int *vec_lds_ids = shared_bit_map + VEC_LDS_NUM * block_vec_id;
 
   // init lds hashmap
   for (int i = vec_thread_id; i < VEC_LDS_NUM; i += vec_thread_num) {
@@ -744,13 +743,13 @@ __global__ void __launch_bounds__(THREADS)
     for (int idx_b = row_idx_begin_b + vec_thread_id; idx_b < row_idx_end_b; idx_b += vec_thread_num) {
       I col_b = col_idx_ptr_b[idx_b];
       unsigned long long mask = static_cast<unsigned long long>(0x1) << (col_b % BitsLen);
-      atomicOr(vec_lds_ids+col_b/BitsLen,mask);
+      atomicOr(vec_lds_ids + col_b / BitsLen, mask);
     }
   }
 
-  int local_use_count=static_cast<int>(0);
-  for(int i=vec_thread_id;i<VEC_LDS_NUM;i+=vec_thread_num){
-    local_use_count+=__popcll(vec_lds_ids[i]);
+  int local_use_count = static_cast<int>(0);
+  for (int i = vec_thread_id; i < VEC_LDS_NUM; i += vec_thread_num) {
+    local_use_count += __popcll(vec_lds_ids[i]);
   }
 
   for (int i = VEC_SIZE >> 1; i > 0; i >>= 1) {
