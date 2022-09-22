@@ -26,7 +26,7 @@ size_t spgemm_symbolic_buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMat
   alloc_size = common::scan_buffer_size<I>(matrix_a.rows + 1);
   buffer_size += ALIGN_256_BYTES(alloc_size);
 
-  alloc_size = common::max_buffer_size<I>(matrix_a.rows);
+  alloc_size = common::max_buffer_size<I>(matrix_a.rows + 1);
   buffer_size += ALIGN_256_BYTES(alloc_size);
 
   alloc_size = (matrix_a.rows + 1) * sizeof(I);
