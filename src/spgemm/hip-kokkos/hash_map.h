@@ -18,9 +18,11 @@ template <typename T, typename I> struct HashMap {
 
   HashMap(I *col_idx_ptr, T *values_ptr, size_t rows, size_t nnz) : ids(col_idx_ptr), values(values_ptr) {
     HIP_CHECK(hipMalloc((void **)&begins, sizeof(int) * HashMap::Capacity * rows))
-    HIP_CHECK(hipMemset(begins, HashMap::NullValue, sizeof(int) * HashMap::Capacity * rows))
     HIP_CHECK(hipMalloc((void **)&nexts, sizeof(int) * nnz))
-    HIP_CHECK(hipMemset(nexts, HashMap::NullValue, sizeof(int) * nnz))
+    #ifdef DEVICE_MALLOC_INITILIZE
+      HIP_CHECK(hipMemset(begins, HashMap::NullValue, sizeof(int) * HashMap::Capacity * rows))
+      HIP_CHECK(hipMemset(nexts, HashMap::NullValue, sizeof(int) * nnz))
+    #endif
   }
 
   ~HashMap() {

@@ -9,7 +9,11 @@ endif ()
 if (DEVICE_SIDE_VERIFY_FLAG)
     set(DEVICE_SIDE_VERIFY ON)
     MESSAGE(STATUS "verify in device side")
-#     set(gpu ON)
+endif ()
+
+if (DEVICE_MALLOC_INITILIZE_FLAG)
+    set(DEVICE_MALLOC_INITILIZE ON)
+    MESSAGE(STATUS "device side malloc initialization")
 endif ()
 
 set(__WF_SIZE__ ${WAVEFRONT_SIZE})
