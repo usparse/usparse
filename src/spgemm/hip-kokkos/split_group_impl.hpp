@@ -48,7 +48,7 @@ void split_group(const size_t rows, const I *row_ptr, I *group_row_ptr, int *&hg
                                                                             split_num_buffer);
 
       // HIP_CHECK(hipMemcpy(hgroup_num_ptr, split_num_buffer, sizeof(int) * GROUP_NUM, hipMemcpyDeviceToHost))
-      hgroup_num_ptr=split_num_buffer;
+      hgroup_num_ptr = split_num_buffer;
     } else {
       I *scan_temp_buffer = nullptr;
       const size_t scan_temp_buffer_size = common::scan_buffer_size<I>(BLOCKS);
