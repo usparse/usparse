@@ -26,7 +26,7 @@ size_t spgemm_symbolic_buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMat
   alloc_size = common::scan_buffer_size<I>(matrix_a.rows + 1);
   buffer_size += ALIGN_256_BYTES(alloc_size);
 
-  alloc_size = common::max_buffer_size<I>(matrix_a.rows + 1);
+  alloc_size = common::max_buffer_size<I>(matrix_a.rows);
   buffer_size += ALIGN_256_BYTES(alloc_size);
 
   alloc_size = (matrix_a.rows + 1) * sizeof(I);
@@ -152,7 +152,7 @@ void spgemm_symbolic_compress(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T
       alloc_size = sizeof(I);
       align_size = ALIGN_256_BYTES(alloc_size);
       ptr += align_size;
-      common::max<I>(matrix_a.rows + 1, chunk_num_ptr, chunk_num_max_ptr, max_temp_buffer);
+      common::max<I>(matrix_a.rows, chunk_num_ptr + 1, chunk_num_max_ptr, max_temp_buffer);
       // HIP_CHECK(hipMemcpy(&hchunk_num_max, chunk_num_max_ptr, sizeof(I), hipMemcpyDeviceToHost))
       hipDeviceSynchronize();
       hchunk_num_max=*chunk_num_max_ptr;
@@ -332,12 +332,12 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
     alloc_size = sizeof(I);
     align_size = ALIGN_256_BYTES(alloc_size);
     ptr += align_size;
-    common::max<I>(matrix_a.rows + 1, chunk_num_ptr, chunk_num_max_ptr, max_temp_buffer);
+    common::max<I>(matrix_a.rows, chunk_num_ptr + 1, chunk_num_max_ptr, max_temp_buffer);
     // HIP_CHECK(hipMemcpy(&hchunk_num_max, chunk_num_max_ptr, sizeof(I), hipMemcpyDeviceToHost))
     hipDeviceSynchronize();
     hchunk_num_max=*chunk_num_max_ptr;
   }
-
+  
   hchunk_num_max = std::min<I>(matrix_b.cols, hchunk_num_max);
   if (hchunk_num_max <= 128) {
     constexpr size_t N = 4;
