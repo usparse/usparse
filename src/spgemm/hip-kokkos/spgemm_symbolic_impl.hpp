@@ -143,7 +143,7 @@ void spgemm_symbolic_compress(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T
     align_size = ALIGN_256_BYTES(alloc_size);
     ptr += align_size;
     (chunk_nnz_compress_kernel<I, 4>)<<<512, 256>>>(matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr,
-                                                     compress_matrix_b.use_count, chunk_num_ptr);
+                                                    compress_matrix_b.use_count, chunk_num_ptr);
 
     // max of trunk num
     I hchunk_nnz_max = static_cast<I>(0);
@@ -323,7 +323,7 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
   align_size = ALIGN_256_BYTES(alloc_size);
   ptr += align_size;
   (chunk_nnz_kernel<I, 8>)<<<512, 256>>>(matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr,
-                                          chunk_num_ptr);
+                                         chunk_num_ptr);
 
   // max of trunk num
   I hchunk_nnz_max = static_cast<I>(0);
