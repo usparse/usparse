@@ -14,12 +14,22 @@
 #include <hip/hip_runtime.h>
 #include <iostream>
 
-template <typename T, typename I, bool use_compress>
+enum SymbolicPolicy { PRECISE_NORMAL_METHOD, PRECISE_COMPRESS_METHOD, UPPER_BOUND_METHOD };
+
+template <typename T, typename I, SymbolicPolicy policy>
 size_t spgemm_symbolic_buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b) {
   size_t buffer_size = 0;
   size_t alloc_size = 0;
-  if (use_compress) {
+  if constexpr (policy == SymbolicPolicy::PRECISE_COMPRESS_METHOD) {
     alloc_size = spgemm_compress_buffer_size(matrix_b);
+    buffer_size += ALIGN_256_BYTES(alloc_size);
+  }
+
+  if constexpr (policy == SymbolicPolicy::PRECISE_NORMAL_METHOD || policy == SymbolicPolicy::PRECISE_COMPRESS_METHOD) {
+    alloc_size = (matrix_a.rows + 1) * sizeof(I);
+    buffer_size += ALIGN_256_BYTES(alloc_size);
+
+    alloc_size = sizeof(I);
     buffer_size += ALIGN_256_BYTES(alloc_size);
   }
 
@@ -27,12 +37,6 @@ size_t spgemm_symbolic_buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMat
   buffer_size += ALIGN_256_BYTES(alloc_size);
 
   alloc_size = common::max_buffer_size<I>(matrix_a.rows + 1);
-  buffer_size += ALIGN_256_BYTES(alloc_size);
-
-  alloc_size = (matrix_a.rows + 1) * sizeof(I);
-  buffer_size += ALIGN_256_BYTES(alloc_size);
-
-  alloc_size = sizeof(I);
   buffer_size += ALIGN_256_BYTES(alloc_size);
 
   alloc_size = sizeof(I);
@@ -279,28 +283,24 @@ void spgemm_symbolic_compress(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T
   }
 
   // max num in row_ptr
-  {
-    I *row_nnz_max_ptr = reinterpret_cast<I *>(ptr);
-    const size_t alloc_size = sizeof(I);
-    const size_t align_size = ALIGN_256_BYTES(alloc_size);
-    ptr += align_size;
-    common::max<I>(matrix_a.rows + 1, row_ptr_c, row_nnz_max_ptr, max_temp_buffer);
-    // HIP_CHECK(hipMemcpy(hrow_nnz_max, row_nnz_max_ptr, sizeof(I), hipMemcpyDeviceToHost))
-  }
+  I *row_nnz_max_ptr = reinterpret_cast<I *>(ptr);
+  alloc_size = sizeof(I);
+  align_size = ALIGN_256_BYTES(alloc_size);
+  ptr += align_size;
+  common::max<I>(matrix_a.rows + 1, row_ptr_c, row_nnz_max_ptr, max_temp_buffer);
+  // HIP_CHECK(hipMemcpy(hrow_nnz_max, row_nnz_max_ptr, sizeof(I), hipMemcpyDeviceToHost))
   // scan row_ptr
   common::scan<I>(matrix_a.rows + 1, row_ptr_c, scan_temp_buffer);
   // set nnz of matrix c
   // HIP_CHECK(hipMemcpy(hnnz_c, row_ptr_c + matrix_a.rows, sizeof(I), hipMemcpyDeviceToHost))
-  alloc_size = sizeof(I);
-  align_size = ALIGN_256_BYTES(alloc_size);
   hipDeviceSynchronize();
-  *hrow_nnz_max = *(reinterpret_cast<I *>(ptr - align_size));
+  *hrow_nnz_max = *row_nnz_max_ptr;
   *hnnz_c = row_ptr_c[matrix_a.rows];
 }
 
 template <typename T, typename I>
-void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b, I *row_ptr_c, size_t *hnnz_c,
-                     I *hrow_nnz_max, void *temp_buffer) {
+void spgemm_symbolic_normal(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b, I *row_ptr_c,
+                            size_t *hnnz_c, I *hrow_nnz_max, void *temp_buffer) {
   char *ptr = reinterpret_cast<char *>(temp_buffer);
   size_t alloc_size = 0;
   size_t align_size = 0;
@@ -386,23 +386,68 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
   }
 
   // max num in row_ptr
-  {
-    I *row_nnz_max_ptr = reinterpret_cast<I *>(ptr);
-    alloc_size = sizeof(I);
-    align_size = ALIGN_256_BYTES(alloc_size);
-    ptr += align_size;
-    common::max<I>(matrix_a.rows + 1, row_ptr_c, row_nnz_max_ptr, max_temp_buffer);
-    // HIP_CHECK(hipMemcpy(hrow_nnz_max, row_nnz_max_ptr, sizeof(I), hipMemcpyDeviceToHost))
-  }
+  I *row_nnz_max_ptr = reinterpret_cast<I *>(ptr);
+  alloc_size = sizeof(I);
+  align_size = ALIGN_256_BYTES(alloc_size);
+  ptr += align_size;
+  common::max<I>(matrix_a.rows + 1, row_ptr_c, row_nnz_max_ptr, max_temp_buffer);
+  // HIP_CHECK(hipMemcpy(hrow_nnz_max, row_nnz_max_ptr, sizeof(I), hipMemcpyDeviceToHost))
   // scan row_ptr
   common::scan<I>(matrix_a.rows + 1, row_ptr_c, scan_temp_buffer);
   // set nnz of matrix c
   // HIP_CHECK(hipMemcpy(hnnz_c, row_ptr_c + matrix_a.rows, sizeof(I), hipMemcpyDeviceToHost))
+  *hrow_nnz_max = *row_nnz_max_ptr;
+  *hnnz_c = row_ptr_c[matrix_a.rows];
+}
+
+template <typename T, typename I>
+void spgemm_symbolic_upper_bound(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b, I *row_ptr_c,
+                                 size_t *hnnz_c, I *hrow_nnz_max, void *temp_buffer) {
+  char *ptr = reinterpret_cast<char *>(temp_buffer);
+  size_t alloc_size = 0;
+  size_t align_size = 0;
+
+  // alloc buffer for scan op
+  void *scan_temp_buffer = reinterpret_cast<void *>(ptr);
+  alloc_size = common::scan_buffer_size<I>(matrix_a.rows + 1);
+  align_size = ALIGN_256_BYTES(alloc_size);
+  ptr += align_size;
+  // alloc buffer for max op
+  void *max_temp_buffer = reinterpret_cast<void *>(ptr);
+  alloc_size = common::max_buffer_size<I>(matrix_a.rows + 1);
+  align_size = ALIGN_256_BYTES(alloc_size);
+  ptr += align_size;
+
+  (chunk_nnz_kernel<I, 8>)<<<512, 256>>>(matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr,
+                                         row_ptr_c);
+  // max num in row_ptr
+  I *row_nnz_max_ptr = reinterpret_cast<I *>(ptr);
   alloc_size = sizeof(I);
   align_size = ALIGN_256_BYTES(alloc_size);
+  ptr += align_size;
+  common::max<I>(matrix_a.rows + 1, row_ptr_c, row_nnz_max_ptr, max_temp_buffer);
+  // scan row_ptr
+  common::scan<I>(matrix_a.rows + 1, row_ptr_c, scan_temp_buffer);
   hipDeviceSynchronize();
-  *hrow_nnz_max = *(reinterpret_cast<I *>(ptr - align_size));
+  *hrow_nnz_max = *row_nnz_max_ptr;
   *hnnz_c = row_ptr_c[matrix_a.rows];
+}
+
+template <typename T, typename I, SymbolicPolicy policy>
+void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b, I *row_ptr_c, size_t *hnnz_c,
+                     I *hrow_nnz_max, void *temp_buffer) {
+  if constexpr (policy == SymbolicPolicy::PRECISE_NORMAL_METHOD) {
+    spgemm_symbolic_normal<T, I>(matrix_a, matrix_b, row_ptr_c, hnnz_c, hrow_nnz_max, temp_buffer);
+    return;
+  }
+  if constexpr (policy == SymbolicPolicy::PRECISE_COMPRESS_METHOD) {
+    spgemm_symbolic_compress<T, I>(matrix_a, matrix_b, row_ptr_c, hnnz_c, hrow_nnz_max, temp_buffer);
+    return;
+  }
+  if constexpr (policy == SymbolicPolicy::UPPER_BOUND_METHOD) {
+    spgemm_symbolic_upper_bound<T, I>(matrix_a, matrix_b, row_ptr_c, hnnz_c, hrow_nnz_max, temp_buffer);
+    return;
+  }
 }
 
 #endif // SPGEMM_KOKKOS_SPGEMM_SYMBOLIC_IMPL_HPP
