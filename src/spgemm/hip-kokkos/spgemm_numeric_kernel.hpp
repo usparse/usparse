@@ -178,6 +178,8 @@ __global__ void __launch_bounds__(THREADS)
 
   I *const block_mem_ids = ids + row_ptr_c[row_a];
   T *const block_mem_values = values + row_ptr_c[row_a];
+  I *const last_mem_id = ids + row_ptr_c[row_a + 1] - 1;
+  T *const last_mem_val = values + row_ptr_c[row_a + 1] - 1;
 
   __syncthreads();
   for (int idx_a = row_idx_begin; idx_a < row_idx_end; ++idx_a) {
@@ -255,6 +257,11 @@ __global__ void __launch_bounds__(THREADS)
       if (block_lds_ids[l] < base_id) {
         smaller_count++;
       }
+    }
+    if (smaller_count == end_offset - 1) {
+      *last_mem_id = base_id;
+      *last_mem_val = base_values * alpha;
+      continue;
     }
     block_mem_ids[smaller_count] = base_id;
     block_mem_values[smaller_count] = base_values * alpha;
@@ -558,6 +565,8 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_v
   const I row_idx_end = row_ptr_a[row_a + 1];
   I *vec_mem_ids = ids + row_ptr_c[row_a];
   T *vec_mem_values = values + row_ptr_c[row_a];
+  I *last_mem_id = ids + row_ptr_c[row_a + 1] - 1;
+  T *last_mem_val = values + row_ptr_c[row_a + 1] - 1;
 
   for (int idx_a = row_idx_begin; idx_a < row_idx_end; ++idx_a) {
     const I col_a = col_idx_ptr_a[idx_a];
@@ -584,6 +593,11 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_v
       if (vec_lds_ids[j] < base_id) {
         smaller_count++;
       }
+    }
+    if (smaller_count == end_offset - 1) {
+      *last_mem_id = base_id;
+      *last_mem_val = base_values * alpha;
+      continue;
     }
     vec_mem_ids[smaller_count] = base_id;
     vec_mem_values[smaller_count] = base_values * alpha;
