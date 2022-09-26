@@ -430,16 +430,18 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_b
 #pragma unroll N
   for (int i = 0; i < N; ++i) {
     const int idx = block_thread_id + block_thread_num * i;
-    block_lds_begins[i] = HashMap<T, I>::NullValue;
-    block_lds_nexts[i] = HashMap<T, I>::NullValue;
+    block_lds_begins[idx] = HashMap<T, I>::NullValue;
+    block_lds_nexts[idx] = HashMap<T, I>::NullValue;
   }
   if (block_thread_id == 0) {
     block_lds_use_size = 0;
   }
   const I row_idx_begin = row_ptr_a[row_a];
   const I row_idx_end = row_ptr_a[row_a + 1];
+
   I *block_mem_ids = ids + row_ptr_c[row_a];
   T *block_mem_values = values + row_ptr_c[row_a];
+
   for (int idx_a = row_idx_begin; idx_a < row_idx_end; ++idx_a) {
     const I col_a = col_idx_ptr_a[idx_a];
     const T val_A = values_ptr_a[idx_a];

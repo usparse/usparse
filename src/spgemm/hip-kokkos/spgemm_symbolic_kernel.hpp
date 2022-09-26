@@ -40,8 +40,8 @@ __global__ void row_nnz_kernel(const I m, const I *map_row_ptr, const BitType *m
 }
 
 template <typename I, size_t VEC_SIZE>
-__global__ void trunk_nums_compress_kernel(const size_t m, const I *row_ptr_a, const I *col_idx_ptr_a,
-                                           const int *use_count, I *row_trunks_ptr) {
+__global__ void chunk_nnz_compress_kernel(const size_t m, const I *row_ptr_a, const I *col_idx_ptr_a,
+                                          const int *use_count, I *row_trunks_ptr) {
   using idtype_t = typename CompressMatrix<I>::IdType;
   using bittype_t = typename CompressMatrix<I>::BitSetEleType;
   // thread id in global
@@ -78,8 +78,8 @@ __global__ void trunk_nums_compress_kernel(const size_t m, const I *row_ptr_a, c
 }
 
 template <typename I, size_t VEC_SIZE>
-__global__ void trunk_nums_kernel(const size_t m, const I *row_ptr_a, const I *col_idx_ptr_a, const I *row_ptr_b,
-                                  I *row_trunks_ptr) {
+__global__ void chunk_nnz_kernel(const size_t m, const I *row_ptr_a, const I *col_idx_ptr_a, const I *row_ptr_b,
+                                 I *row_trunks_ptr) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // thread num in global

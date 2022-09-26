@@ -59,10 +59,8 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
     align_size = ALIGN_256_BYTES(alloc_size);
     ptr += align_size;
 
-    // int hgroup_num[GROUP_NUM];
-    I *hgroup_num;
+    int hgroup_num[GROUP_NUM];
     split_group<I>(matrix_c.rows, matrix_c.row_ptr, group_row_num_ptr, hgroup_num, split_group_temp_buffer);
-    hipDeviceSynchronize();
 
     if (hgroup_num[0] > 0) {
       constexpr size_t N = 2;
@@ -92,10 +90,12 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
     }
     if (hgroup_num[2] > 0) {
       constexpr size_t N = 2;
-      constexpr size_t BLOCK_THREAD_NUM = 256 / N;
-      const size_t GLOBAL_BLOCK_NUM = hgroup_num[2];
+      constexpr size_t VEC_SIZE = 128 / N;
+      constexpr size_t BLOCK_THREAD_NUM = 256;
+      constexpr size_t BLOCK_VEC_NUM = BLOCK_THREAD_NUM / VEC_SIZE;
+      const size_t GLOBAL_BLOCK_NUM = hgroup_num[2] / BLOCK_VEC_NUM + (hgroup_num[2] % BLOCK_VEC_NUM == 0 ? 0 : 1);
 
-      spgemm_numeric_block_per_row_flash_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>
+      spgemm_numeric_linear_chain_hashmap_vector_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, VEC_SIZE>
           <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
               alpha, matrix_a.rows, matrix_b.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
               matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 2,
@@ -103,7 +103,7 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
     }
     if (hgroup_num[3] > 0) {
       constexpr size_t N = 2;
-      constexpr size_t BLOCK_THREAD_NUM = 512 / N;
+      constexpr size_t BLOCK_THREAD_NUM = 256 / N;
       const size_t GLOBAL_BLOCK_NUM = hgroup_num[3];
 
       spgemm_numeric_block_per_row_flash_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>
@@ -114,7 +114,7 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
     }
     if (hgroup_num[4] > 0) {
       constexpr size_t N = 2;
-      constexpr size_t BLOCK_THREAD_NUM = 1024 / N;
+      constexpr size_t BLOCK_THREAD_NUM = 512 / N;
       const size_t GLOBAL_BLOCK_NUM = hgroup_num[4];
 
       spgemm_numeric_block_per_row_flash_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>
@@ -125,7 +125,7 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
     }
     if (hgroup_num[5] > 0) {
       constexpr size_t N = 2;
-      constexpr size_t BLOCK_THREAD_NUM = 2048 / N;
+      constexpr size_t BLOCK_THREAD_NUM = 1024 / N;
       const size_t GLOBAL_BLOCK_NUM = hgroup_num[5];
 
       spgemm_numeric_block_per_row_flash_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>
@@ -133,6 +133,17 @@ void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMat
               alpha, matrix_a.rows, matrix_b.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
               matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 5,
               hgroup_num[5], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr);
+    }
+    if (hgroup_num[6] > 0) {
+      constexpr size_t N = 2;
+      constexpr size_t BLOCK_THREAD_NUM = 2048 / N;
+      const size_t GLOBAL_BLOCK_NUM = hgroup_num[6];
+
+      spgemm_numeric_block_per_row_flash_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>
+          <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+              alpha, matrix_a.rows, matrix_b.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
+              matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 6,
+              hgroup_num[6], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr);
     }
   } else {
     constexpr int CHUNK_SIZE = 2048;
