@@ -10,6 +10,8 @@ if (DEVICE_SIDE_VERIFY_FLAG)
     set(DEVICE_SIDE_VERIFY ON)
     MESSAGE(STATUS "verify in device side")
 #     set(gpu ON)
+    set(CAS_PRA_VERIFY ON)
+    MESSAGE(STATUS "verify by cas-pra")
 endif ()
 
 set(__WF_SIZE__ ${WAVEFRONT_SIZE})

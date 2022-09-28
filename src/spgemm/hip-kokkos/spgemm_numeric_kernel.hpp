@@ -258,11 +258,13 @@ __global__ void __launch_bounds__(THREADS)
         smaller_count++;
       }
     }
+#ifdef CAS_PRA_VERIFY
     if (smaller_count == end_offset - 1) {
       *last_mem_id = base_id;
       *last_mem_val = base_values * alpha;
       continue;
     }
+#endif
     block_mem_ids[smaller_count] = base_id;
     block_mem_values[smaller_count] = base_values * alpha;
   }
@@ -594,11 +596,13 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_v
         smaller_count++;
       }
     }
+#ifdef CAS_PRA_VERIFY
     if (smaller_count == end_offset - 1) {
       *last_mem_id = base_id;
       *last_mem_val = base_values * alpha;
       continue;
     }
+#endif
     vec_mem_ids[smaller_count] = base_id;
     vec_mem_values[smaller_count] = base_values * alpha;
   }
