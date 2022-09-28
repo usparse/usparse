@@ -17,4 +17,6 @@ set(ACC_HEADER_FILES ${ACC_HEADER_FILES}
         ${CURRENT_ACC_HIP_SOURCE_DIR}/split_config.h
         ${CURRENT_ACC_HIP_SOURCE_DIR}/split_group_impl.hpp
         ${CURRENT_ACC_HIP_SOURCE_DIR}/split_group_kernel.hpp
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/create_bp_impl.hpp
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/create_bp_kernel.hpp
         )

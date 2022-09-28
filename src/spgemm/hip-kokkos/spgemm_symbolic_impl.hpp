@@ -14,7 +14,7 @@
 #include <hip/hip_runtime.h>
 #include <iostream>
 
-enum SymbolicPolicy { PRECISE_NORMAL_METHOD, PRECISE_COMPRESS_METHOD, UPPER_BOUND_METHOD };
+enum class SymbolicPolicy { PRECISE_NORMAL_METHOD, PRECISE_COMPRESS_METHOD, UPPER_BOUND_METHOD, BREAK_POINT_METHOD };
 
 template <typename T, typename I, SymbolicPolicy policy>
 size_t spgemm_symbolic_buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b) {
@@ -30,6 +30,12 @@ size_t spgemm_symbolic_buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMat
     buffer_size += ALIGN_256_BYTES(alloc_size);
 
     alloc_size = sizeof(I);
+    buffer_size += ALIGN_256_BYTES(alloc_size);
+  }
+
+  if constexpr (policy == SymbolicPolicy::BREAK_POINT_METHOD) {
+    constexpr size_t CHUNK_SIZE = 2048;
+    alloc_size = bp_buffer_size<T, I, CHUNK_SIZE>(matrix_b);
     buffer_size += ALIGN_256_BYTES(alloc_size);
   }
 
@@ -398,6 +404,56 @@ void spgemm_symbolic_upper_bound(const CsrMatrix<T, I> &matrix_a, const CsrMatri
   *hnnz_c = row_ptr_c[matrix_a.rows];
 }
 
+template <typename T, typename I>
+void spgemm_symbolic_break_point(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b, I *row_ptr_c,
+                                 size_t *hnnz_c, I *hrow_nnz_max, void *temp_buffer) {
+  constexpr int CHUNK_SIZE = 2048;
+  constexpr int BLOCK_THREAD_NUM = 512;
+  constexpr int VEC_SIZE = 16;
+  const int GLOBAL_BLOCK_NUM = matrix_a.rows;
+
+  const int BPS_PER_ROW = matrix_b.cols / CHUNK_SIZE + (matrix_b.cols % CHUNK_SIZE == 0 ? 0 : 1);
+  const int BP_IDX_PER_ROW = BPS_PER_ROW + 1;
+
+  char *ptr = reinterpret_cast<char *>(temp_buffer);
+  size_t alloc_size = 0;
+  size_t align_size = 0;
+
+  // alloc buffer for scan op
+  void *scan_temp_buffer = reinterpret_cast<void *>(ptr);
+  alloc_size = common::scan_buffer_size<I>(matrix_a.rows + 1);
+  align_size = ALIGN_256_BYTES(alloc_size);
+  ptr += align_size;
+  // alloc buffer for max op
+  void *max_temp_buffer = reinterpret_cast<void *>(ptr);
+  alloc_size = common::max_buffer_size<I>(matrix_a.rows + 1);
+  align_size = ALIGN_256_BYTES(alloc_size);
+  ptr += align_size;
+  // alloc buffer for break point
+  I *bp = reinterpret_cast<I *>(ptr);
+  alloc_size = bp_buffer_size<T, I, CHUNK_SIZE>(matrix_b);
+  align_size = ALIGN_256_BYTES(alloc_size);
+  ptr += align_size;
+
+  create_bp<T, I, CHUNK_SIZE>(matrix_b, bp, BP_IDX_PER_ROW);
+
+  (spgemm_symbolic_block_per_row_bp_kernel<T, I, CHUNK_SIZE, BLOCK_THREAD_NUM,
+                                           VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+      matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr, matrix_b.col_idx_ptr, row_ptr_c, bp,
+      BPS_PER_ROW, BP_IDX_PER_ROW);
+  // max num in row_ptr
+  I *row_nnz_max_ptr = reinterpret_cast<I *>(ptr);
+  alloc_size = sizeof(I);
+  align_size = ALIGN_256_BYTES(alloc_size);
+  ptr += align_size;
+  common::max<I>(matrix_a.rows + 1, row_ptr_c, row_nnz_max_ptr, max_temp_buffer);
+  // scan row_ptr
+  common::scan<I>(matrix_a.rows + 1, row_ptr_c, scan_temp_buffer);
+  hipDeviceSynchronize();
+  *hrow_nnz_max = *row_nnz_max_ptr;
+  *hnnz_c = row_ptr_c[matrix_a.rows];
+}
+
 template <typename T, typename I, SymbolicPolicy policy>
 void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b, I *row_ptr_c, size_t *hnnz_c,
                      I *hrow_nnz_max, void *temp_buffer) {
@@ -411,6 +467,10 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
   }
   if constexpr (policy == SymbolicPolicy::UPPER_BOUND_METHOD) {
     spgemm_symbolic_upper_bound<T, I>(matrix_a, matrix_b, row_ptr_c, hnnz_c, hrow_nnz_max, temp_buffer);
+    return;
+  }
+  if constexpr (policy == SymbolicPolicy::BREAK_POINT_METHOD) {
+    spgemm_symbolic_break_point<T, I>(matrix_a, matrix_b, row_ptr_c, hnnz_c, hrow_nnz_max, temp_buffer);
     return;
   }
 }

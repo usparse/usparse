@@ -30,6 +30,8 @@ source_files=(
     "${src_base}/spgemm/hip-kokkos/hash_map_insert.hpp"
     "${src_base}/spgemm/hip-kokkos/spgemm_compress_kernel.hpp"
     "${src_base}/spgemm/hip-kokkos/spgemm_compress_impl.hpp"
+    "${src_base}/spgemm/hip-kokkos/create_bp_kernel.hpp"
+    "${src_base}/spgemm/hip-kokkos/create_bp_impl.hpp"
     "${src_base}/spgemm/hip-kokkos/spgemm_symbolic_kernel.hpp"
     "${src_base}/spgemm/hip-kokkos/spgemm_symbolic_impl.hpp"
     "${src_base}/spgemm/hip-kokkos/split_group_kernel.hpp"
