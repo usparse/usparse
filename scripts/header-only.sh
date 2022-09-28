@@ -27,7 +27,6 @@ source_files=(
     "${src_base}/spgemm/hip-kokkos/align.h"
     "${src_base}/spgemm/hip-kokkos/compress_matrix.h"
     "${src_base}/spgemm/hip-kokkos/csr_matrix.h"
-    "${src_base}/spgemm/hip-kokkos/hash_map.h"
     "${src_base}/spgemm/hip-kokkos/hash_map_insert.hpp"
     "${src_base}/spgemm/hip-kokkos/spgemm_compress_kernel.hpp"
     "${src_base}/spgemm/hip-kokkos/spgemm_compress_impl.hpp"

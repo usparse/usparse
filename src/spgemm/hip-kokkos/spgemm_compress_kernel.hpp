@@ -1,6 +1,8 @@
 #ifndef SPGEMM_KOKKOS_SPGEMM_COMPRESS_KERNEL_HPP
 #define SPGEMM_KOKKOS_SPGEMM_COMPRESS_KERNEL_HPP
 
+#include <hip/hip_runtime.h>
+
 template <typename I, size_t BitsLen>
 __global__ void compress_matrix_thread_per_row_kernel(const size_t m, const I *row_ptr, const I *col_idx_ptr,
                                                       typename CompressMatrix<I>::IdType *ids,

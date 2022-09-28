@@ -141,7 +141,7 @@ void spgemm_symbolic_compress(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T
         matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
         compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_ptr_c);
   } else {
-    // calc size of trunk
+    // calc size of chunk
     I *chunk_num_ptr = reinterpret_cast<I *>(ptr);
     alloc_size = (matrix_a.rows + 1) * sizeof(I);
     align_size = ALIGN_256_BYTES(alloc_size);
@@ -149,7 +149,7 @@ void spgemm_symbolic_compress(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T
     (chunk_nnz_compress_kernel<I, 4>)<<<512, 256>>>(matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr,
                                                     compress_matrix_b.use_count, chunk_num_ptr);
 
-    // max of trunk num
+    // max of chunk num
     I hchunk_nnz_max = static_cast<I>(0);
     {
       I *chunk_num_max_ptr = reinterpret_cast<I *>(ptr);
@@ -240,45 +240,10 @@ void spgemm_symbolic_compress(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T
               compress_matrix_b.ids_ptr, compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_ptr_c);
 
     } else {
-      // todo: impl multipass kernel
-      using idType = typename CompressMatrix<I>::IdType;
-      using bitType = typename CompressMatrix<I>::BitSetEleType;
-      common::scan<I>(matrix_a.rows + 1, chunk_num_ptr, scan_temp_buffer);
-
-      I chunk_num_c = 0;
-      // HIP_CHECK(hipMemcpy(&chunk_num_c, chunk_num_ptr + matrix_a.rows, sizeof(I), hipMemcpyDeviceToHost))
-      hipDeviceSynchronize();
-      chunk_num_c = chunk_num_ptr[matrix_a.rows];
-      // alloc hashmap
-      idType *map_ids = nullptr;
-      bitType *map_values = nullptr;
-      int *map_use_count = nullptr;
-      HIP_CHECK(hipMalloc((void **)(&map_ids), chunk_num_c * sizeof(idType)));
-      HIP_CHECK(hipMalloc((void **)(&map_values), chunk_num_c * sizeof(bitType)));
-      HIP_CHECK(hipMalloc((void **)(&map_use_count), matrix_a.rows * sizeof(int)));
-
-      HashMap<bitType, idType> hash_map(map_ids, map_values, matrix_a.rows, chunk_num_c);
-      constexpr size_t LDS_MAP_CAP = 1 << 5;
-      constexpr size_t LDS_HASH_MASK = LDS_MAP_CAP - 1;
-      const size_t GLOBAL_BLOCK_NUM = 128;
-      constexpr size_t BLOCK_THREAD_NUM = 128;
-      constexpr size_t VEC_SIZE = 32;
-      constexpr size_t BLOCK_WF_NUM = BLOCK_THREAD_NUM / __WF_SIZE__;
-      constexpr size_t BLOCK_VEC_NUM = BLOCK_THREAD_NUM / VEC_SIZE;
-      constexpr size_t N = 4;
-      (spgemm_symbolic_linear_chain_hashmap_block_per_row_kernel<
-          T, I, N, LDS_MAP_CAP, LDS_HASH_MASK, BLOCK_THREAD_NUM>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
-          matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
-          compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, chunk_num_ptr, hash_map.begins, hash_map.nexts,
-          hash_map.ids, hash_map.values, map_use_count);
-      // calc row_ptr
-      (row_nnz_kernel<I, bitType, 32>
-       <<<512, 256>>>(matrix_a.rows, chunk_num_ptr, hash_map.values, map_use_count, row_ptr_c));
-
-      // free memory
-      HIP_CHECK(hipFree(map_use_count))
-      HIP_CHECK(hipFree(map_values))
-      HIP_CHECK(hipFree(map_ids))
+      // todo: impl multipass method.
+      std::cerr << "not support: hchunk_nnz_max is " << hchunk_nnz_max << ", more than 2048.\n"
+                << "file: " << __FILE__ << ", function: " << __FUNCTION__ << ", line" << __LINE__ << std::endl;
+      exit(-1);
     }
   }
 
@@ -317,7 +282,7 @@ void spgemm_symbolic_normal(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, 
   align_size = ALIGN_256_BYTES(alloc_size);
   ptr += align_size;
 
-  // calc size of trunk
+  // calc size of chunk
   I *chunk_num_ptr = reinterpret_cast<I *>(ptr);
   alloc_size = (matrix_a.rows + 1) * sizeof(I);
   align_size = ALIGN_256_BYTES(alloc_size);
@@ -325,7 +290,7 @@ void spgemm_symbolic_normal(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, 
   (chunk_nnz_kernel<I, 8>)<<<512, 256>>>(matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr,
                                          chunk_num_ptr);
 
-  // max of trunk num
+  // max of chunk num
   I hchunk_nnz_max = static_cast<I>(0);
   {
     I *chunk_num_max_ptr = reinterpret_cast<I *>(ptr);
@@ -380,7 +345,7 @@ void spgemm_symbolic_normal(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, 
 
   } else {
     // todo: impl multipass method.
-    std::cerr << "not support: hchunk_num more than 2048.\n"
+    std::cerr << "not support: hchunk_nnz_max is " << hchunk_nnz_max << " more than 2048.\n"
               << "file: " << __FILE__ << ", function: " << __FUNCTION__ << ", line" << __LINE__ << std::endl;
     exit(-1);
   }

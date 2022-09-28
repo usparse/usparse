@@ -9,12 +9,13 @@
 
 template <typename I> struct CompressMatrix {
   using BitSetEleType = unsigned int;
-  using IdType = int;
   static_assert(std::is_same<BitSetEleType, unsigned int>::value ||
                     std::is_same<BitSetEleType, unsigned long long int>::value,
                 "BitSetEleType in CompressMatrix must be (unsigned int) / (unsigned long long int)");
   static constexpr size_t BitsPerByte = 8;
   static constexpr size_t BitsLen = sizeof(BitSetEleType) * BitsPerByte;
+  using IdType = int;
+  static constexpr IdType NullValue = 0xffffffff;
   const size_t rows;
   const size_t cols;
   const size_t nnz;
