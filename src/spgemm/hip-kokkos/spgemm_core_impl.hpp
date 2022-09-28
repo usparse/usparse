@@ -22,16 +22,15 @@ CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, cons
   bool is_use_bp = (sparseness_a > 0.005 && sparseness_b > 0.005) ? true : false;
 
   if (is_compress) {
-    symbolic_buffer_size =
-        spgemm_symbolic_buffer_size<T, I, SymbolicPolicy::PRECISE_COMPRESS_METHOD>(matrix_a, matrix_b);
+    symbolic_buffer_size = spgemm_symbolic_buffer_size<T, I, PreciseCompressSymbolicPolicy>(matrix_a, matrix_b);
   } else {
-    symbolic_buffer_size = spgemm_symbolic_buffer_size<T, I, SymbolicPolicy::UPPER_BOUND_METHOD>(matrix_a, matrix_b);
+    symbolic_buffer_size = spgemm_symbolic_buffer_size<T, I, UpperBoundSymbolicPolicy>(matrix_a, matrix_b);
   }
 
   if (is_use_bp) {
-    numeric_buffer_size = spgemm_numeric_buffer_size<T, I, NumericPolicy::BREAK_POINT_METHOD>(matrix_a, matrix_b);
+    numeric_buffer_size = spgemm_numeric_buffer_size<T, I, BreakPointNumericPolicy>(matrix_a, matrix_b);
   } else {
-    numeric_buffer_size = spgemm_numeric_buffer_size<T, I, NumericPolicy::HASH_METHOD>(matrix_a, matrix_b);
+    numeric_buffer_size = spgemm_numeric_buffer_size<T, I, HashMapNumericPolicy>(matrix_a, matrix_b);
   }
 
   temp_buffer_size = std::max<size_t>(symbolic_buffer_size, numeric_buffer_size);
@@ -41,11 +40,10 @@ CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, cons
   size_t nnz_c = 0;
   I row_nnz_max = 0;
   if (is_compress) {
-    spgemm_symbolic<T, I, SymbolicPolicy::PRECISE_COMPRESS_METHOD>(matrix_a, matrix_b, row_ptr_c, &nnz_c, &row_nnz_max,
-                                                                   temp_buffer);
+    spgemm_symbolic<T, I, PreciseCompressSymbolicPolicy>(matrix_a, matrix_b, row_ptr_c, &nnz_c, &row_nnz_max,
+                                                         temp_buffer);
   } else {
-    spgemm_symbolic<T, I, SymbolicPolicy::UPPER_BOUND_METHOD>(matrix_a, matrix_b, row_ptr_c, &nnz_c, &row_nnz_max,
-                                                              temp_buffer);
+    spgemm_symbolic<T, I, UpperBoundSymbolicPolicy>(matrix_a, matrix_b, row_ptr_c, &nnz_c, &row_nnz_max, temp_buffer);
   }
 
   CsrMatrix<T, I> matrix_c(matrix_a.rows, matrix_b.cols, nnz_c, row_ptr_c, nullptr, nullptr);
@@ -57,10 +55,9 @@ CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, cons
 #endif
   // numeric phase
   if (is_use_bp) {
-    spgemm_numeric<T, I, NumericPolicy::BREAK_POINT_METHOD>(alpha, matrix_a, matrix_b, row_nnz_max, matrix_c,
-                                                            temp_buffer);
+    spgemm_numeric<T, I, BreakPointNumericPolicy>(alpha, matrix_a, matrix_b, row_nnz_max, matrix_c, temp_buffer);
   } else {
-    spgemm_numeric<T, I, NumericPolicy::HASH_METHOD>(alpha, matrix_a, matrix_b, row_nnz_max, matrix_c, temp_buffer);
+    spgemm_numeric<T, I, HashMapNumericPolicy>(alpha, matrix_a, matrix_b, row_nnz_max, matrix_c, temp_buffer);
   }
 
   // free temp memory
