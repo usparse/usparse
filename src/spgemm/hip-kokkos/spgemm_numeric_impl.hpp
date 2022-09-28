@@ -32,7 +32,7 @@ size_t spgemm_numeric_buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMatr
   return buffer_size;
 }
 
-template <typename T, typename I>
+template <typename T, typename I, NumericPolicy ALTERNATIVE_POLICY = NumericPolicy::BREAK_POINT_METHOD>
 void spgemm_numeric_hash(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b,
                          const I row_nnz_max, CsrMatrix<T, I> &matrix_c, void *temp_buffer) {
   char *ptr = reinterpret_cast<char *>(temp_buffer);
@@ -137,10 +137,9 @@ void spgemm_numeric_hash(const T alpha, const CsrMatrix<T, I> &matrix_a, const C
               hgroup_num[6], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr);
     }
   } else {
-    // if row nnz max bigger than 2048, turn to other method.
+    // if row nnz max larger than 2048, turn to other method.
     const size_t hash_method_buffer_size =
         spgemm_numeric_buffer_size<T, I, NumericPolicy::HASH_METHOD>(matrix_a, matrix_b);
-    constexpr NumericPolicy ALTERNATIVE_POLICY = NumericPolicy::BREAK_POINT_METHOD;
     const size_t alternative_policy_buffer_size =
         spgemm_numeric_buffer_size<T, I, ALTERNATIVE_POLICY>(matrix_a, matrix_b);
     if (hash_method_buffer_size >= alternative_policy_buffer_size) {

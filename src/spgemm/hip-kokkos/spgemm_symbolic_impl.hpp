@@ -50,7 +50,7 @@ size_t spgemm_symbolic_buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMat
   return buffer_size;
 }
 
-template <typename T, typename I>
+template <typename T, typename I, SymbolicPolicy ALTERNATIVE_POLICY = SymbolicPolicy::BREAK_POINT_METHOD>
 void spgemm_symbolic_compress(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b, I *row_ptr_c,
                               size_t *hnnz_c, I *hrow_nnz_max, void *temp_buffer) {
   char *ptr = reinterpret_cast<char *>(temp_buffer);
@@ -246,10 +246,20 @@ void spgemm_symbolic_compress(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T
               compress_matrix_b.ids_ptr, compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_ptr_c);
 
     } else {
-      // todo: impl multipass method.
-      std::cerr << "not support: hchunk_nnz_max is " << hchunk_nnz_max << ", more than 2048.\n"
-                << "file: " << __FILE__ << ", function: " << __FUNCTION__ << ", line" << __LINE__ << std::endl;
-      exit(-1);
+      // if row nnz max larger than 2048, turn to other method.
+      const size_t precise_compress_buffer_size =
+          spgemm_symbolic_buffer_size<T, I, SymbolicPolicy::PRECISE_COMPRESS_METHOD>(matrix_a, matrix_b);
+      const size_t alternative_policy_buffer_size =
+          spgemm_symbolic_buffer_size<T, I, ALTERNATIVE_POLICY>(matrix_a, matrix_b);
+      if (precise_compress_buffer_size >= alternative_policy_buffer_size) {
+        spgemm_symbolic<T, I, ALTERNATIVE_POLICY>(matrix_a, matrix_b, row_ptr_c, hnnz_c, hrow_nnz_max, temp_buffer);
+      } else {
+        void *alternative_buffer = nullptr;
+        HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&alternative_buffer), alternative_policy_buffer_size))
+        spgemm_symbolic<T, I, ALTERNATIVE_POLICY>(matrix_a, matrix_b, row_ptr_c, hnnz_c, hrow_nnz_max,
+                                                  alternative_buffer);
+        HIP_CHECK(hipFree(alternative_buffer))
+      }
     }
   }
 
@@ -269,7 +279,7 @@ void spgemm_symbolic_compress(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T
   *hnnz_c = row_ptr_c[matrix_a.rows];
 }
 
-template <typename T, typename I>
+template <typename T, typename I, SymbolicPolicy ALTERNATIVE_POLICY = SymbolicPolicy::BREAK_POINT_METHOD>
 void spgemm_symbolic_normal(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b, I *row_ptr_c,
                             size_t *hnnz_c, I *hrow_nnz_max, void *temp_buffer) {
   char *ptr = reinterpret_cast<char *>(temp_buffer);
@@ -350,10 +360,20 @@ void spgemm_symbolic_normal(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, 
         matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr, matrix_b.col_idx_ptr, row_ptr_c);
 
   } else {
-    // todo: impl multipass method.
-    std::cerr << "not support: hchunk_nnz_max is " << hchunk_nnz_max << " more than 2048.\n"
-              << "file: " << __FILE__ << ", function: " << __FUNCTION__ << ", line" << __LINE__ << std::endl;
-    exit(-1);
+    // if row nnz max larger than 2048, turn to other method.
+    const size_t precise_normal_buffer_size =
+        spgemm_symbolic_buffer_size<T, I, SymbolicPolicy::PRECISE_NORMAL_METHOD>(matrix_a, matrix_b);
+    const size_t alternative_policy_buffer_size =
+        spgemm_symbolic_buffer_size<T, I, ALTERNATIVE_POLICY>(matrix_a, matrix_b);
+    if (precise_normal_buffer_size >= alternative_policy_buffer_size) {
+      spgemm_symbolic<T, I, ALTERNATIVE_POLICY>(matrix_a, matrix_b, row_ptr_c, hnnz_c, hrow_nnz_max, temp_buffer);
+    } else {
+      void *alternative_buffer = nullptr;
+      HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&alternative_buffer), alternative_policy_buffer_size))
+      spgemm_symbolic<T, I, ALTERNATIVE_POLICY>(matrix_a, matrix_b, row_ptr_c, hnnz_c, hrow_nnz_max,
+                                                alternative_buffer);
+      HIP_CHECK(hipFree(alternative_buffer))
+    }
   }
 
   // max num in row_ptr
