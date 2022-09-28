@@ -50,12 +50,12 @@ template <typename I> struct CompressMatrix {
     return buffer_size;
   }
 
-  static __device__ __forceinline__ unsigned int pop_count(BitSetEleType bits) {
-    if constexpr (std::is_same<BitSetEleType, unsigned int>::value) {
-      return __popc(bits);
-    } else {
-      return __popcll(bits);
-    }
+  template <typename T> static __device__ __forceinline__ unsigned int pop_count(T bits);
+
+  template <> static __device__ __forceinline__ unsigned int pop_count(unsigned int bits) { return __popc(bits); }
+
+  template <> static __device__ __forceinline__ unsigned int pop_count(unsigned long long int bits) {
+    return __popcll(bits);
   }
 
   static __device__ __forceinline__ IdType convert_to_id(I col) { return col / BitsLen; }
