@@ -9,10 +9,8 @@
 #include "csr_matrix.h"
 #include "spgemm_compress_impl.hpp"
 #include "spgemm_symbolic_kernel.hpp"
-#include <algorithm>
 #include <cstddef>
 #include <hip/hip_runtime.h>
-#include <iostream>
 
 class BreakPointSymbolicPolicy {
 public:
