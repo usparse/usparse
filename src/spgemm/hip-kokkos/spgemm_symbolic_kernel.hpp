@@ -632,4 +632,84 @@ __global__ void __launch_bounds__(THREADS)
   }
 }
 
+template <typename T, typename I, size_t CHUNK_SIZE, size_t THREADS, size_t VEC_SIZE>
+__global__ void __launch_bounds__(THREADS)
+    spgemm_symbolic_block_per_row_bp_kernel(const size_t m, const I *row_ptr_a, const I *col_idx_ptr_a,
+                                            const I *row_ptr_b, const I *col_idx_ptr_b, I *row_ptr_c, const I *bp,
+                                            const size_t BPS_PER_ROW, const size_t BP_IDX_PER_ROW) {
+  // block id in global
+  const int global_block_id = blockIdx.x;
+  // block num in global
+  const int global_block_num = gridDim.x;
+  // thread id in block
+  const int block_thread_id = threadIdx.x;
+  // thread num in block
+  constexpr int block_thread_num = THREADS;
+  // vec id in block
+  const int block_vec_id = threadIdx.x / VEC_SIZE;
+  // vec num in block
+  constexpr int block_vec_num = THREADS / VEC_SIZE;
+  // thread id in vec
+  const int vec_thread_id = block_thread_id % VEC_SIZE;
+  // thread id in wf
+  const int wf_thread_id = threadIdx.x % __WF_SIZE__;
+  // thread num in vec
+  constexpr int vec_thread_num = VEC_SIZE;
+  // chunks
+  __shared__ bool table[CHUNK_SIZE];
+  __shared__ I shared_nnz_count;
+
+  // block processes a row
+  if (global_block_id >= m) {
+    return;
+  }
+  if (block_thread_id == 0) {
+    shared_nnz_count = static_cast<I>(0);
+  }
+  const int row_a = global_block_id;
+  const I row_idx_begin = row_ptr_a[row_a];
+  const I row_idx_end = row_ptr_a[row_a + 1];
+  I row_begin_c = row_ptr_c[row_a];
+
+  for (int r = 0; r < BPS_PER_ROW; r++) {
+    const int bp_idx = r;
+    const int chunk_begin = bp_idx * CHUNK_SIZE;
+    // init
+    for (int i = block_thread_id; i < CHUNK_SIZE; i += block_thread_num) {
+      table[i] = 0;
+    }
+    __syncthreads();
+
+    for (I idx_a = row_idx_begin + block_vec_id; idx_a < row_idx_end; idx_a += block_vec_num) {
+      const I col_a = col_idx_ptr_a[idx_a];
+      const I row_b = col_a;
+
+      I idx_begin_b = bp[row_b * BP_IDX_PER_ROW + bp_idx];
+      I idx_end_b = bp[row_b * BP_IDX_PER_ROW + bp_idx + 1];
+
+      for (I idx_b = idx_begin_b + vec_thread_id; idx_b < idx_end_b; idx_b += vec_thread_num) {
+        const I col_b = col_idx_ptr_b[idx_b];
+        table[col_b - chunk_begin] = 1;
+      }
+    }
+    __syncthreads();
+    I local_nnz_count = static_cast<I>(0);
+    for (int i = block_thread_id; i < CHUNK_SIZE; i += block_thread_num) {
+      if (table[i]) {
+        local_nnz_count++;
+      }
+    }
+    for (int i = __WF_SIZE__ >> 1; i > 0; i >>= 1) {
+      local_nnz_count += __shfl_down(local_nnz_count, i);
+    }
+    if (wf_thread_id == 0) {
+      atomicAdd(&shared_nnz_count, local_nnz_count);
+    }
+    __syncthreads();
+  }
+  if (block_thread_id == 0) {
+    row_ptr_c[row_a + 1] = shared_nnz_count;
+  }
+}
+
 #endif // SPGEMM_KOKKOS_SPGEMM_SYMBOLIC_KERNEL_HPP

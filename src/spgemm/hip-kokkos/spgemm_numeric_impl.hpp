@@ -3,6 +3,7 @@
 
 #include "../common/check/hip_check.hpp"
 #include "align.h"
+#include "create_bp_impl.hpp"
 #include "csr_matrix.h"
 #include "spgemm_numeric_kernel.hpp"
 #include "split_config.h"
@@ -10,14 +11,7 @@
 #include <cstddef>
 #include <hip/hip_runtime.h>
 
-enum NumericPolicy { HASH_METHOD, BREAK_POINT_METHOD };
-
-template <typename T, typename I, size_t CHUNK_SIZE> size_t bp_buffer_size(const CsrMatrix<T, I> &matrix) {
-  const int BPS_PER_ROW = matrix.cols / CHUNK_SIZE + (matrix.cols % CHUNK_SIZE == 0 ? 0 : 1);
-  const int BP_IDX_PER_ROW = BPS_PER_ROW + 1;
-  const size_t buffer_size = sizeof(I) * matrix.rows * BP_IDX_PER_ROW;
-  return buffer_size;
-}
+enum class NumericPolicy { HASH_METHOD, BREAK_POINT_METHOD };
 
 template <typename T, typename I, NumericPolicy policy>
 size_t spgemm_numeric_buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b) {
@@ -38,7 +32,7 @@ size_t spgemm_numeric_buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMatr
   return buffer_size;
 }
 
-template <typename T, typename I>
+template <typename T, typename I, NumericPolicy ALTERNATIVE_POLICY = NumericPolicy::BREAK_POINT_METHOD>
 void spgemm_numeric_hash(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b,
                          const I row_nnz_max, CsrMatrix<T, I> &matrix_c, void *temp_buffer) {
   char *ptr = reinterpret_cast<char *>(temp_buffer);
@@ -143,10 +137,9 @@ void spgemm_numeric_hash(const T alpha, const CsrMatrix<T, I> &matrix_a, const C
               hgroup_num[6], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr);
     }
   } else {
-    // if row nnz max bigger than 2048, turn to other method.
+    // if row nnz max larger than 2048, turn to other method.
     const size_t hash_method_buffer_size =
         spgemm_numeric_buffer_size<T, I, NumericPolicy::HASH_METHOD>(matrix_a, matrix_b);
-    constexpr NumericPolicy ALTERNATIVE_POLICY = NumericPolicy::BREAK_POINT_METHOD;
     const size_t alternative_policy_buffer_size =
         spgemm_numeric_buffer_size<T, I, ALTERNATIVE_POLICY>(matrix_a, matrix_b);
     if (hash_method_buffer_size >= alternative_policy_buffer_size) {
@@ -174,22 +167,12 @@ void spgemm_numeric_break_point(const T alpha, const CsrMatrix<T, I> &matrix_a, 
   size_t alloc_size = 0;
   size_t align_size = 0;
 
-  I *bp = nullptr;
+  I *bp = reinterpret_cast<I *>(ptr);
   alloc_size = bp_buffer_size<T, I, CHUNK_SIZE>(matrix_b);
   align_size = ALIGN_256_BYTES(alloc_size);
-  bp = reinterpret_cast<I *>(ptr);
   ptr += align_size;
 
-  if (BP_IDX_PER_ROW <= 8) {
-    create_bp_wf_per_row_kernel<I, CHUNK_SIZE, 8>
-        <<<512, 256>>>(matrix_b.rows, matrix_b.row_ptr, matrix_b.col_idx_ptr, bp, BP_IDX_PER_ROW);
-  } else if (BP_IDX_PER_ROW <= 16) {
-    create_bp_wf_per_row_kernel<I, CHUNK_SIZE, 16>
-        <<<512, 256>>>(matrix_b.rows, matrix_b.row_ptr, matrix_b.col_idx_ptr, bp, BP_IDX_PER_ROW);
-  } else {
-    create_bp_wf_per_row_kernel<I, CHUNK_SIZE>
-        <<<512, 256>>>(matrix_b.rows, matrix_b.row_ptr, matrix_b.col_idx_ptr, bp, BP_IDX_PER_ROW);
-  }
+  create_bp<T, I, CHUNK_SIZE>(matrix_b, bp, BP_IDX_PER_ROW);
 
   const double sparseness_c = static_cast<double>(matrix_c.nnz) / static_cast<double>(matrix_c.rows * matrix_c.cols);
 
