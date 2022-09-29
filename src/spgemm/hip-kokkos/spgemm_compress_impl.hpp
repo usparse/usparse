@@ -2,7 +2,6 @@
 #define SPGEMM_KOKKOS_SPGEMM_COMPRESS_IMPL_HPP
 
 #include "spgemm_compress_kernel.hpp"
-#include <hip/hip_runtime.h>
 
 template <typename T, typename I> size_t spgemm_compress_buffer_size(const CsrMatrix<T, I> &matrix) {
   return ALIGN_256_BYTES(CompressMatrix<I>::buffer_size(matrix.rows, matrix.cols, matrix.nnz));
