@@ -417,8 +417,10 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_block_per_row_flash_so
 
   I *const block_mem_ids = ids + row_ptr_c[row_a];
   T *const block_mem_values = values + row_ptr_c[row_a];
+#ifdef CAS_PRA_VERIFY
   I *const last_mem_id = ids + row_ptr_c[row_a + 1] - 1;
   T *const last_mem_val = values + row_ptr_c[row_a + 1] - 1;
+#endif
 
   __syncthreads();
   for (int idx_a = row_idx_begin; idx_a < row_idx_end; ++idx_a) {
@@ -557,8 +559,10 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_block_per_row_flash_so
 
   I *const block_mem_ids = ids + row_ptr_c[row_a];
   T *const block_mem_values = values + row_ptr_c[row_a];
+#ifdef CAS_PRA_VERIFY
   I *const last_mem_id = ids + row_ptr_c[row_a + 1] - 1;
   T *const last_mem_val = values + row_ptr_c[row_a + 1] - 1;
+#endif
 
   __syncthreads();
   for (int idx_a = row_idx_begin; idx_a < row_idx_end; ++idx_a) {
@@ -711,8 +715,10 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_v
   const I row_idx_end = row_ptr_a[row_a + 1];
   I *vec_mem_ids = ids + row_ptr_c[row_a];
   T *vec_mem_values = values + row_ptr_c[row_a];
+#ifdef CAS_PRA_VERIFY
   I *last_mem_id = ids + row_ptr_c[row_a + 1] - 1;
   T *last_mem_val = values + row_ptr_c[row_a + 1] - 1;
+#endif
 
   for (int idx_a = row_idx_begin; idx_a < row_idx_end; ++idx_a) {
     const I col_a = col_idx_ptr_a[idx_a];
