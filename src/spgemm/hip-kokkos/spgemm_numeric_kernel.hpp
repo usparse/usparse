@@ -801,7 +801,7 @@ __global__ void __launch_bounds__(THREADS)
   I *vec_lds_ids = shared_ids + CHUNK_CAP_PER_VEC * block_vec_id;
   T *vec_lds_values = shared_values + CHUNK_CAP_PER_VEC * block_vec_id;
 
-// init lds hashmap
+  // init lds hashmap
 #pragma unroll N
   for (int i = 0; i < N; ++i) {
     const int idx = vec_thread_id + vec_thread_num * i;
@@ -812,11 +812,12 @@ __global__ void __launch_bounds__(THREADS)
   const I row_idx_end = row_ptr_a[row_a + 1];
   I *vec_mem_ids = ids + row_ptr_c[row_a];
   T *vec_mem_values = values + row_ptr_c[row_a];
-  I *last_mem_id = ids + row_ptr_c[row_a + 1] - 1;
-  T *last_mem_val = values + row_ptr_c[row_a + 1] - 1;
+#ifdef CAS_PRA_VERIFY
+  int last_item_offset = row_ptr_c[row_a + 1] - row_ptr_c[row_a] - 1;
+#endif
 
   // expand
-  int lds_idx_begin = 0;
+  int end_offset = 0;
   for (int idx_a = row_idx_begin; idx_a < row_idx_end; ++idx_a) {
     const I col_a = col_idx_ptr_a[idx_a];
     const T val_A = values_ptr_a[idx_a];
@@ -827,23 +828,23 @@ __global__ void __launch_bounds__(THREADS)
     for (int idx_b = idx_begin_b + vec_thread_id; idx_b < idx_end_b; idx_b += vec_thread_num) {
       const T tmp_val = val_A * values_ptr_b[idx_b];
       const I col_b = col_idx_ptr_b[idx_b];
-      vec_lds_ids[lds_idx_begin + idx_b - idx_begin_b] = col_b;
-      vec_lds_values[lds_idx_begin + idx_b - idx_begin_b] = tmp_val;
+      vec_lds_ids[end_offset + idx_b - idx_begin_b] = col_b;
+      vec_lds_values[end_offset + idx_b - idx_begin_b] = tmp_val;
     }
-    lds_idx_begin += idx_end_b - idx_begin_b;
+    end_offset += idx_end_b - idx_begin_b;
   }
-  // sort
+  // select sort
   I reg_id[N];
   T reg_val[N];
   int reg_count[N];
 #pragma unroll N
   for (int i = 0; i < N; i++) {
     const int idx = vec_thread_num * i + vec_thread_id;
-    if (idx < lds_idx_begin) {
+    if (idx < end_offset) {
       reg_id[i] = vec_lds_ids[idx];
       reg_val[i] = vec_lds_values[idx];
       reg_count[i] = 0;
-      for (int j = 0; j < lds_idx_begin; ++j) {
+      for (int j = 0; j < end_offset; ++j) {
         if (vec_lds_ids[j] < reg_id[i]) {
           reg_count[i]++;
         }
@@ -852,10 +853,10 @@ __global__ void __launch_bounds__(THREADS)
       reg_count[i] = -1;
     }
   }
-// combine
+  // combine
 #pragma unroll N
   for (int i = 0; i < N; ++i) {
-    const int idx = vec_thread_id + vec_thread_num * i;
+    const int idx = vec_thread_num * i + vec_thread_id;
     vec_lds_ids[idx] = CHUNK_NULL_VALUE;
     vec_lds_values[idx] = static_cast<T>(0);
   }
@@ -867,6 +868,43 @@ __global__ void __launch_bounds__(THREADS)
       atomicAdd(&vec_lds_values[idx], reg_val[i]);
     }
   }
+#ifdef CAS_PRA_VERIFY
+  if (vec_thread_id == 0) {
+    if (last_item_offset > 0 && vec_lds_ids[last_item_offset] == CHUNK_NULL_VALUE) {
+      int idx = last_item_offset - 1;
+      while (vec_lds_ids[idx] == CHUNK_NULL_VALUE) {
+        idx--;
+      }
+      // swap item
+      vec_lds_ids[last_item_offset] = vec_lds_ids[idx];
+      vec_lds_values[last_item_offset] = vec_lds_values[idx];
+
+      vec_lds_ids[idx] = CHUNK_NULL_VALUE;
+    }
+  }
+#endif
+
+#ifndef CAS_PRA_VERIFY
+  // notes: if have same items in array, middle of array will have CHUNK_NULL_VALUE
+  // scan and re-map
+  int scan_sum = 0;
+#pragma unroll N
+  for (int i = 0; i < N; ++i) {
+    const int idx = vec_thread_num * i + vec_thread_id;
+    const I base_id = vec_lds_ids[idx];
+    const T base_values = vec_lds_values[idx];
+    vec_lds_ids[idx] = CHUNK_NULL_VALUE;
+    int scan_val = (base_id == CHUNK_NULL_VALUE ? 1 : 0);
+    common::scan_in_vector_device<int, VEC_SIZE>(&scan_val);
+    scan_val += scan_sum;
+    if (base_id != CHUNK_NULL_VALUE) {
+      vec_lds_ids[idx - scan_val] = base_id;
+      vec_lds_values[idx - scan_val] = base_values;
+    }
+    scan_sum += __shfl(scan_val, VEC_SIZE - 1, VEC_SIZE);
+  }
+#endif
+  // write back
 #pragma unroll N
   for (int i = 0; i < N; ++i) {
     const int idx = vec_thread_id + vec_thread_num * i;
