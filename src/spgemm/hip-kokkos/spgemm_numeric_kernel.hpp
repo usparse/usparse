@@ -758,6 +758,102 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_v
   }
 }
 
+template <typename T, typename I, size_t N, size_t THREADS>
+__global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_block_per_row_sorted_one_pass_kernel(
+    const T alpha, const size_t m, const size_t n, const I *row_ptr_a, const I *col_idx_ptr_a, const T *values_ptr_a,
+    const I *row_ptr_b, const I *col_idx_ptr_b, const T *values_ptr_b, const I *group_row_ptr, const int group_row_num,
+    const I *row_ptr_c, I *ids, T *values) {
+  // block id in global
+  const int global_block_id = blockIdx.x;
+  // block num in global
+  const int global_block_num = gridDim.x;
+  // thread id in block
+  const int block_thread_id = threadIdx.x;
+  // thread num in block
+  constexpr int block_thread_num = THREADS;
+  // hashmap in LDS
+  constexpr size_t LDS_MAP_CAP = THREADS * N;
+  constexpr size_t LDS_HASH_MASK = LDS_MAP_CAP - 1;
+  constexpr int LDS_BEGINS_SIZE = LDS_MAP_CAP;
+  constexpr int LDS_NEXTS_SIZE = LDS_MAP_CAP;
+  constexpr int HASH_MAP_NULL_VALUE = 0xffffffff;
+
+  // each block process one row
+  if (global_block_id >= group_row_num) {
+    return;
+  }
+  const int row_a = group_row_ptr[global_block_id];
+
+  __shared__ int block_lds_begins[LDS_BEGINS_SIZE];
+  __shared__ int block_lds_nexts[LDS_NEXTS_SIZE];
+  __shared__ I block_lds_ids[LDS_NEXTS_SIZE];
+  __shared__ T block_lds_values[LDS_NEXTS_SIZE];
+  __shared__ int block_lds_use_size;
+// init lds hashmap
+#pragma unroll N
+  for (int i = 0; i < N; ++i) {
+    const int idx = block_thread_id + block_thread_num * i;
+    block_lds_begins[idx] = HASH_MAP_NULL_VALUE;
+    block_lds_nexts[idx] = HASH_MAP_NULL_VALUE;
+  }
+  if (block_thread_id == 0) {
+    block_lds_use_size = 0;
+  }
+  const I row_idx_begin = row_ptr_a[row_a];
+  const I row_idx_end = row_ptr_a[row_a + 1];
+
+  I *block_mem_ids = ids + row_ptr_c[row_a];
+  T *block_mem_values = values + row_ptr_c[row_a];
+
+  for (int idx_a = row_idx_begin; idx_a < row_idx_end; ++idx_a) {
+    const I col_a = col_idx_ptr_a[idx_a];
+    const T val_A = values_ptr_a[idx_a];
+
+    const I row_b = col_a;
+    const I idx_begin_b = row_ptr_b[row_b];
+    const I idx_end_b = row_ptr_b[row_b + 1];
+    const int BLOCK_ROUNDS = (idx_end_b - idx_begin_b) / THREADS + ((idx_end_b - idx_begin_b) % THREADS == 0 ? 0 : 1);
+    __syncthreads();
+    if (BLOCK_ROUNDS == 0) {
+      continue;
+    }
+    for (int r = 0; r < BLOCK_ROUNDS - 1; ++r) {
+      const int idx_b = idx_begin_b + THREADS * r + block_thread_id;
+      const T tmp_val = val_A * values_ptr_b[idx_b];
+      const I col_b = col_idx_ptr_b[idx_b];
+      // insert to lds hashmap
+      linear_chain_hashmap_vector_insert_add<T, I, HASH_MAP_NULL_VALUE, LDS_HASH_MASK>(
+          block_lds_begins, block_lds_nexts, block_lds_ids, block_lds_values, col_b, tmp_val, &block_lds_use_size);
+    }
+    {
+      const int r = BLOCK_ROUNDS - 1;
+      const int idx_b = idx_begin_b + THREADS * r + block_thread_id;
+      if (idx_b < idx_end_b) {
+        const T tmp_val = val_A * values_ptr_b[idx_b];
+        const I col_b = col_idx_ptr_b[idx_b];
+        // insert to lds hashmap
+        linear_chain_hashmap_vector_insert_add<T, I, HASH_MAP_NULL_VALUE, LDS_HASH_MASK>(
+            block_lds_begins, block_lds_nexts, block_lds_ids, block_lds_values, col_b, tmp_val, &block_lds_use_size);
+      }
+    }
+  }
+  __syncthreads();
+  // sort and write to device memory
+  const int end_offset = block_lds_use_size;
+  for (int i = block_thread_id; i < end_offset; i += block_thread_num) {
+    const I base_id = block_lds_ids[i];
+    const T base_values = block_lds_values[i];
+    int smaller_count = 0;
+    for (int j = 0; j < end_offset; ++j) {
+      if (block_lds_ids[j] < base_id) {
+        smaller_count++;
+      }
+    }
+    block_mem_ids[smaller_count] = base_id;
+    block_mem_values[smaller_count] = base_values * alpha;
+  }
+}
+
 template <typename T, typename I, size_t N, size_t THREADS, size_t VEC_SIZE>
 __global__ void __launch_bounds__(THREADS)
     spgemm_numeric_esc_vector_per_row_sorted_one_pass_kernel(const T alpha, const size_t m, const size_t n,
@@ -916,10 +1012,13 @@ __global__ void __launch_bounds__(THREADS)
 }
 
 template <typename T, typename I, size_t N, size_t THREADS>
-__global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_block_per_row_sorted_one_pass_kernel(
-    const T alpha, const size_t m, const size_t n, const I *row_ptr_a, const I *col_idx_ptr_a, const T *values_ptr_a,
-    const I *row_ptr_b, const I *col_idx_ptr_b, const T *values_ptr_b, const I *group_row_ptr, const int group_row_num,
-    const I *row_ptr_c, I *ids, T *values) {
+__global__ void __launch_bounds__(THREADS)
+    spgemm_numeric_esc_block_per_row_sorted_one_pass_kernel(const T alpha, const size_t m, const size_t n,
+                                                            const I *row_ptr_a, const I *col_idx_ptr_a,
+                                                            const T *values_ptr_a, const I *row_ptr_b,
+                                                            const I *col_idx_ptr_b, const T *values_ptr_b,
+                                                            const I *group_row_ptr, const int group_row_num,
+                                                            const I *row_ptr_c, I *ids, T *values) {
   // block id in global
   const int global_block_id = blockIdx.x;
   // block num in global
@@ -928,12 +1027,6 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_b
   const int block_thread_id = threadIdx.x;
   // thread num in block
   constexpr int block_thread_num = THREADS;
-  // hashmap in LDS
-  constexpr size_t LDS_MAP_CAP = THREADS * N;
-  constexpr size_t LDS_HASH_MASK = LDS_MAP_CAP - 1;
-  constexpr int LDS_BEGINS_SIZE = LDS_MAP_CAP;
-  constexpr int LDS_NEXTS_SIZE = LDS_MAP_CAP;
-  constexpr int HASH_MAP_NULL_VALUE = 0xffffffff;
 
   // each block process one row
   if (global_block_id >= group_row_num) {
@@ -941,27 +1034,32 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_b
   }
   const int row_a = group_row_ptr[global_block_id];
 
-  __shared__ int block_lds_begins[LDS_BEGINS_SIZE];
-  __shared__ int block_lds_nexts[LDS_NEXTS_SIZE];
-  __shared__ I block_lds_ids[LDS_NEXTS_SIZE];
-  __shared__ T block_lds_values[LDS_NEXTS_SIZE];
-  __shared__ int block_lds_use_size;
-// init lds hashmap
+  // hashmap in LDS
+  constexpr size_t CHUNK_CAP_PER_BLOCK = THREADS * N;
+  constexpr size_t CHUNK_CAP = CHUNK_CAP_PER_BLOCK;
+  constexpr I CHUNK_NULL_VALUE = 0xffffffff;
+
+  __shared__ I block_lds_ids[CHUNK_CAP];
+  __shared__ T block_lds_values[CHUNK_CAP];
+
+  // init lds hashmap
 #pragma unroll N
   for (int i = 0; i < N; ++i) {
     const int idx = block_thread_id + block_thread_num * i;
-    block_lds_begins[idx] = HASH_MAP_NULL_VALUE;
-    block_lds_nexts[idx] = HASH_MAP_NULL_VALUE;
+    block_lds_ids[idx] = CHUNK_NULL_VALUE;
   }
-  if (block_thread_id == 0) {
-    block_lds_use_size = 0;
-  }
+  __syncthreads();
+  // each block process one row
   const I row_idx_begin = row_ptr_a[row_a];
   const I row_idx_end = row_ptr_a[row_a + 1];
-
   I *block_mem_ids = ids + row_ptr_c[row_a];
   T *block_mem_values = values + row_ptr_c[row_a];
+#ifdef CAS_PRA_VERIFY
+  int last_item_offset = row_ptr_c[row_a + 1] - row_ptr_c[row_a] - 1;
+#endif
 
+  // expand
+  int end_offset = 0;
   for (int idx_a = row_idx_begin; idx_a < row_idx_end; ++idx_a) {
     const I col_a = col_idx_ptr_a[idx_a];
     const T val_A = values_ptr_a[idx_a];
@@ -974,13 +1072,13 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_b
     if (BLOCK_ROUNDS == 0) {
       continue;
     }
+
     for (int r = 0; r < BLOCK_ROUNDS - 1; ++r) {
       const int idx_b = idx_begin_b + THREADS * r + block_thread_id;
       const T tmp_val = val_A * values_ptr_b[idx_b];
       const I col_b = col_idx_ptr_b[idx_b];
-      // insert to lds hashmap
-      linear_chain_hashmap_vector_insert_add<T, I, HASH_MAP_NULL_VALUE, LDS_HASH_MASK>(
-          block_lds_begins, block_lds_nexts, block_lds_ids, block_lds_values, col_b, tmp_val, &block_lds_use_size);
+      block_lds_ids[end_offset + idx_b - idx_begin_b] = col_b;
+      block_lds_values[end_offset + idx_b - idx_begin_b] = tmp_val;
     }
     {
       const int r = BLOCK_ROUNDS - 1;
@@ -988,26 +1086,78 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_b
       if (idx_b < idx_end_b) {
         const T tmp_val = val_A * values_ptr_b[idx_b];
         const I col_b = col_idx_ptr_b[idx_b];
-        // insert to lds hashmap
-        linear_chain_hashmap_vector_insert_add<T, I, HASH_MAP_NULL_VALUE, LDS_HASH_MASK>(
-            block_lds_begins, block_lds_nexts, block_lds_ids, block_lds_values, col_b, tmp_val, &block_lds_use_size);
+        block_lds_ids[end_offset + idx_b - idx_begin_b] = col_b;
+        block_lds_values[end_offset + idx_b - idx_begin_b] = tmp_val;
       }
+    }
+    end_offset += idx_end_b - idx_begin_b;
+  }
+  __syncthreads();
+  // select sort
+  I reg_id[N];
+  T reg_val[N];
+  int reg_count[N];
+#pragma unroll N
+  for (int i = 0; i < N; i++) {
+    const int idx = block_thread_num * i + block_thread_id;
+    if (idx < end_offset) {
+      reg_id[i] = block_lds_ids[idx];
+      reg_val[i] = block_lds_values[idx];
+      reg_count[i] = 0;
+      for (int j = 0; j < end_offset; ++j) {
+        if (block_lds_ids[j] < reg_id[i]) {
+          reg_count[i]++;
+        }
+      }
+    } else {
+      reg_count[i] = -1;
     }
   }
   __syncthreads();
-  // sort and write to device memory
-  const int end_offset = block_lds_use_size;
-  for (int i = block_thread_id; i < end_offset; i += block_thread_num) {
-    const I base_id = block_lds_ids[i];
-    const T base_values = block_lds_values[i];
-    int smaller_count = 0;
-    for (int j = 0; j < end_offset; ++j) {
-      if (block_lds_ids[j] < base_id) {
-        smaller_count++;
-      }
+  // combine
+#pragma unroll N
+  for (int i = 0; i < N; ++i) {
+    const int idx = block_thread_num * i + block_thread_id;
+    block_lds_ids[idx] = CHUNK_NULL_VALUE;
+    block_lds_values[idx] = static_cast<T>(0);
+  }
+  __syncthreads();
+#pragma unroll N
+  for (int i = 0; i < N; ++i) {
+    if (reg_count[i] != -1) {
+      const int idx = reg_count[i];
+      block_lds_ids[idx] = reg_id[i];
+      atomicAdd(&block_lds_values[idx], reg_val[i]);
     }
-    block_mem_ids[smaller_count] = base_id;
-    block_mem_values[smaller_count] = base_values * alpha;
+  }
+  __syncthreads();
+#ifdef CAS_PRA_VERIFY
+  if (block_thread_id == 0) {
+    if (last_item_offset > 0 && block_lds_ids[last_item_offset] == CHUNK_NULL_VALUE) {
+      int idx = last_item_offset - 1;
+      while (block_lds_ids[idx] == CHUNK_NULL_VALUE) {
+        idx--;
+      }
+      // swap item
+      block_lds_ids[last_item_offset] = block_lds_ids[idx];
+      block_lds_values[last_item_offset] = block_lds_values[idx];
+
+      block_lds_ids[idx] = CHUNK_NULL_VALUE;
+    }
+  }
+  __syncthreads();
+#endif
+#ifndef CAS_PRA_VERIFY
+  // todo: fix it, need scan and re-map
+#endif
+  // write back
+#pragma unroll N
+  for (int i = 0; i < N; ++i) {
+    const int idx = block_thread_id + block_thread_num * i;
+    if (block_lds_ids[idx] != CHUNK_NULL_VALUE) {
+      block_mem_ids[idx] = block_lds_ids[idx];
+      block_mem_values[idx] = block_lds_values[idx] * alpha;
+    }
   }
 }
 
