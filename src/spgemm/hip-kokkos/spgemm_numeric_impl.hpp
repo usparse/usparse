@@ -11,6 +11,18 @@
 #include <cstddef>
 #include <hip/hip_runtime.h>
 
+template <bool IS_SINGLE_SCAN> struct FlashSortDispatchTrait;
+
+template <> struct FlashSortDispatchTrait<true> { using Tag = FlashSortSingleScanTag; };
+
+template <> struct FlashSortDispatchTrait<false> { using Tag = FlashSortMultipleScanTag; };
+
+static constexpr bool is_single_vec_scan(size_t n, size_t items_per_bucket) { return n <= items_per_bucket; }
+
+static constexpr bool is_single_wf_scan(size_t n, size_t items_per_bucket, size_t threads) {
+  return threads * n <= items_per_bucket * __WF_SIZE__;
+}
+
 class BreakPointNumericPolicy {
 public:
   constexpr static size_t CHUNK_SIZE = 2048;
@@ -67,19 +79,6 @@ public:
 };
 
 class HashMapNumericPolicy {
-private:
-  template <bool IS_SINGLE_SCAN> struct FlashSortDispatchTrait;
-
-  template <> struct FlashSortDispatchTrait<true> { using Tag = FlashSortSingleScanTag; };
-
-  template <> struct FlashSortDispatchTrait<false> { using Tag = FlashSortMultipleScanTag; };
-
-  static constexpr bool is_single_vec_scan(size_t n, size_t items_per_bucket) { return n <= items_per_bucket; }
-
-  static constexpr bool is_single_wf_scan(size_t n, size_t items_per_bucket, size_t threads) {
-    return threads * n <= items_per_bucket * __WF_SIZE__;
-  }
-
 public:
   template <typename T, typename I>
   static size_t buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b) {
@@ -225,19 +224,6 @@ public:
 };
 
 class EscNumericPolicy {
-private:
-  template <bool IS_SINGLE_SCAN> struct FlashSortDispatchTrait;
-
-  template <> struct FlashSortDispatchTrait<true> { using Tag = FlashSortSingleScanTag; };
-
-  template <> struct FlashSortDispatchTrait<false> { using Tag = FlashSortMultipleScanTag; };
-
-  static constexpr bool is_single_vec_scan(size_t n, size_t items_per_bucket) { return n <= items_per_bucket; }
-
-  static constexpr bool is_single_wf_scan(size_t n, size_t items_per_bucket, size_t threads) {
-    return threads * n <= items_per_bucket * __WF_SIZE__;
-  }
-
 public:
   template <typename T, typename I>
   static size_t buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b) {
