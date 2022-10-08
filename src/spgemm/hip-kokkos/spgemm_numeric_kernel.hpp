@@ -151,7 +151,7 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_vector_per_row_flash_s
   constexpr int FLASH_BUCKET_NUM = LDS_MAP_CAP / ITEMS_PER_BUCKET + (LDS_MAP_CAP % ITEMS_PER_BUCKET == 0 ? 0 : 1);
   const int FLASH_SORT_WIDTH = n / FLASH_BUCKET_NUM + (n % FLASH_BUCKET_NUM == 0 ? 0 : 1);
 
-  __shared__ int shared_begins[LDS_BEGINS_SIZE];
+  __shared__ int shared_begins[FLASH_BUCKET_NUM];
   __shared__ int shared_nexts[LDS_NEXTS_SIZE];
   __shared__ I shared_ids[LDS_NEXTS_SIZE];
   __shared__ T shared_values[LDS_NEXTS_SIZE];
@@ -168,12 +168,14 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_vector_per_row_flash_s
   __shared__ int shared_flash_bucket_use_size[PADDING_FLASH_BUCKET_NUM * block_vec_num];
   int *const flash_bucket_use_size = shared_flash_bucket_use_size + PADDING_FLASH_BUCKET_NUM * block_vec_id;
 
-// init lds hashmap
+  // init lds hashmap
 #pragma unroll N
   for (int i = 0; i < N; ++i) {
     const int idx = vec_thread_id + VEC_SIZE * i;
-    vec_lds_begins[idx] = HASH_MAP_NULL_VALUE;
     vec_lds_nexts[idx] = HASH_MAP_NULL_VALUE;
+  }
+  for (int i = vec_thread_id; i < FLASH_BUCKET_NUM; i += VEC_SIZE) {
+    vec_lds_begins[i] = HASH_MAP_NULL_VALUE;
   }
   if (vec_thread_id == 0) {
     *vec_lds_use_size = 0;
@@ -272,7 +274,7 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_vector_per_row_flash_s
   constexpr int FLASH_BUCKET_NUM = LDS_MAP_CAP / ITEMS_PER_BUCKET + (LDS_MAP_CAP % ITEMS_PER_BUCKET == 0 ? 0 : 1);
   const int FLASH_SORT_WIDTH = n / FLASH_BUCKET_NUM + (n % FLASH_BUCKET_NUM == 0 ? 0 : 1);
 
-  __shared__ int shared_begins[LDS_BEGINS_SIZE];
+  __shared__ int shared_begins[FLASH_BUCKET_NUM];
   __shared__ int shared_nexts[LDS_NEXTS_SIZE];
   __shared__ I shared_ids[LDS_NEXTS_SIZE];
   __shared__ T shared_values[LDS_NEXTS_SIZE];
@@ -293,8 +295,10 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_vector_per_row_flash_s
 #pragma unroll N
   for (int i = 0; i < N; ++i) {
     const int idx = vec_thread_id + VEC_SIZE * i;
-    vec_lds_begins[idx] = HASH_MAP_NULL_VALUE;
     vec_lds_nexts[idx] = HASH_MAP_NULL_VALUE;
+  }
+  for (int i = vec_thread_id; i < FLASH_BUCKET_NUM; i += VEC_SIZE) {
+    vec_lds_begins[i] = HASH_MAP_NULL_VALUE;
   }
   if (vec_thread_id == 0) {
     *vec_lds_use_size = 0;
@@ -392,7 +396,7 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_block_per_row_flash_so
 
   const int row_a = group_row_ptr[global_block_id];
 
-  __shared__ int block_lds_begins[LDS_BEGINS_SIZE];
+  __shared__ int block_lds_begins[FLASH_BUCKET_NUM];
   __shared__ int block_lds_nexts[LDS_NEXTS_SIZE];
   __shared__ I block_lds_ids[LDS_NEXTS_SIZE];
   __shared__ T block_lds_values[LDS_NEXTS_SIZE];
@@ -405,8 +409,10 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_block_per_row_flash_so
 #pragma unroll N
   for (int i = 0; i < N; ++i) {
     const int idx = block_thread_num * i + block_thread_id;
-    block_lds_begins[idx] = HASH_MAP_NULL_VALUE;
     block_lds_nexts[idx] = HASH_MAP_NULL_VALUE;
+  }
+  for (int i = block_thread_id; i < FLASH_BUCKET_NUM; i += block_thread_num) {
+    block_lds_begins[i] = HASH_MAP_NULL_VALUE;
   }
   if (block_thread_id == 0) {
     block_lds_use_size = 0;
@@ -534,7 +540,7 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_block_per_row_flash_so
 
   const int row_a = group_row_ptr[global_block_id];
 
-  __shared__ int block_lds_begins[LDS_BEGINS_SIZE];
+  __shared__ int block_lds_begins[FLASH_BUCKET_NUM];
   __shared__ int block_lds_nexts[LDS_NEXTS_SIZE];
   __shared__ I block_lds_ids[LDS_NEXTS_SIZE];
   __shared__ T block_lds_values[LDS_NEXTS_SIZE];
@@ -547,8 +553,10 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_block_per_row_flash_so
 #pragma unroll N
   for (int i = 0; i < N; ++i) {
     const int idx = block_thread_num * i + block_thread_id;
-    block_lds_begins[idx] = HASH_MAP_NULL_VALUE;
     block_lds_nexts[idx] = HASH_MAP_NULL_VALUE;
+  }
+  for (int i = block_thread_id; i < FLASH_BUCKET_NUM; i += block_thread_num) {
+    block_lds_begins[i] = HASH_MAP_NULL_VALUE;
   }
   if (block_thread_id == 0) {
     block_lds_use_size = 0;
