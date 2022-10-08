@@ -225,6 +225,19 @@ public:
 };
 
 class EscNumericPolicy {
+private:
+  template <bool IS_SINGLE_SCAN> struct FlashSortDispatchTrait;
+
+  template <> struct FlashSortDispatchTrait<true> { using Tag = FlashSortSingleScanTag; };
+
+  template <> struct FlashSortDispatchTrait<false> { using Tag = FlashSortMultipleScanTag; };
+
+  static constexpr bool is_single_vec_scan(size_t n, size_t items_per_bucket) { return n <= items_per_bucket; }
+
+  static constexpr bool is_single_wf_scan(size_t n, size_t items_per_bucket, size_t threads) {
+    return threads * n <= items_per_bucket * __WF_SIZE__;
+  }
+
 public:
   template <typename T, typename I>
   static size_t buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b) {
@@ -303,46 +316,54 @@ public:
       if (hgroup_num[3] > 0) {
         constexpr size_t N = 2;
         constexpr size_t BLOCK_THREAD_NUM = 256 / N;
+        constexpr size_t ITEMS_PER_BUCKET = 8;
         const size_t GLOBAL_BLOCK_NUM = hgroup_num[3];
 
-        spgemm_numeric_esc_block_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>
+        spgemm_numeric_esc_block_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, ITEMS_PER_BUCKET>
             <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
                 alpha, matrix_a.rows, matrix_b.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
                 matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 3,
-                hgroup_num[3], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr);
+                hgroup_num[3], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr,
+                typename FlashSortDispatchTrait<is_single_wf_scan(N, ITEMS_PER_BUCKET, BLOCK_THREAD_NUM)>::Tag{});
       }
       if (hgroup_num[4] > 0) {
         constexpr size_t N = 2;
         constexpr size_t BLOCK_THREAD_NUM = 512 / N;
+        constexpr size_t ITEMS_PER_BUCKET = 8;
         const size_t GLOBAL_BLOCK_NUM = hgroup_num[4];
 
-        spgemm_numeric_esc_block_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>
+        spgemm_numeric_esc_block_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, ITEMS_PER_BUCKET>
             <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
                 alpha, matrix_a.rows, matrix_b.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
                 matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 4,
-                hgroup_num[4], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr);
+                hgroup_num[4], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr,
+                typename FlashSortDispatchTrait<is_single_wf_scan(N, ITEMS_PER_BUCKET, BLOCK_THREAD_NUM)>::Tag{});
       }
       if (hgroup_num[5] > 0) {
         constexpr size_t N = 2;
         constexpr size_t BLOCK_THREAD_NUM = 1024 / N;
+        constexpr size_t ITEMS_PER_BUCKET = 8;
         const size_t GLOBAL_BLOCK_NUM = hgroup_num[5];
 
-        spgemm_numeric_esc_block_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>
+        spgemm_numeric_esc_block_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, ITEMS_PER_BUCKET>
             <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
                 alpha, matrix_a.rows, matrix_b.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
                 matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 5,
-                hgroup_num[5], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr);
+                hgroup_num[5], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr,
+                typename FlashSortDispatchTrait<is_single_wf_scan(N, ITEMS_PER_BUCKET, BLOCK_THREAD_NUM)>::Tag{});
       }
       if (hgroup_num[6] > 0) {
         constexpr size_t N = 2;
         constexpr size_t BLOCK_THREAD_NUM = 2048 / N;
+        constexpr size_t ITEMS_PER_BUCKET = 8;
         const size_t GLOBAL_BLOCK_NUM = hgroup_num[6];
 
-        spgemm_numeric_esc_block_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>
+        spgemm_numeric_esc_block_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, ITEMS_PER_BUCKET>
             <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
                 alpha, matrix_a.rows, matrix_b.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
                 matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 6,
-                hgroup_num[6], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr);
+                hgroup_num[6], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr,
+                typename FlashSortDispatchTrait<is_single_wf_scan(N, ITEMS_PER_BUCKET, BLOCK_THREAD_NUM)>::Tag{});
       }
     } else {
       // if row nnz max larger than 2048, turn to other method.
