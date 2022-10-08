@@ -897,12 +897,6 @@ __global__ void __launch_bounds__(THREADS)
   I *vec_lds_ids = shared_ids + CHUNK_CAP_PER_VEC * block_vec_id;
   T *vec_lds_values = shared_values + CHUNK_CAP_PER_VEC * block_vec_id;
 
-  // init lds hashmap
-#pragma unroll N
-  for (int i = 0; i < N; ++i) {
-    const int idx = vec_thread_id + vec_thread_num * i;
-    vec_lds_ids[idx] = CHUNK_NULL_VALUE;
-  }
   // each vec process one row
   const I row_idx_begin = row_ptr_a[row_a];
   const I row_idx_end = row_ptr_a[row_a + 1];
@@ -1042,13 +1036,6 @@ __global__ void __launch_bounds__(THREADS)
   __shared__ I block_lds_ids[CHUNK_CAP];
   __shared__ T block_lds_values[CHUNK_CAP];
 
-  // init lds hashmap
-#pragma unroll N
-  for (int i = 0; i < N; ++i) {
-    const int idx = block_thread_id + block_thread_num * i;
-    block_lds_ids[idx] = CHUNK_NULL_VALUE;
-  }
-  __syncthreads();
   // each block process one row
   const I row_idx_begin = row_ptr_a[row_a];
   const I row_idx_end = row_ptr_a[row_a + 1];
