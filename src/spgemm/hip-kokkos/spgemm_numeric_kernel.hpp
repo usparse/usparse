@@ -1050,6 +1050,9 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_esc_block_per_row_sort
   __shared__ I block_lds_ids[CHUNK_CAP];
   __shared__ T block_lds_values[CHUNK_CAP];
   __shared__ int block_lds_count[CHUNK_CAP];
+  // re-use lds
+  I *block_lds_idx_b = block_lds_ids;
+  T *block_lds_val_a = block_lds_values;
 
   constexpr int PADDING_BUCKET_N = FLASH_BUCKET_NUM / __WF_SIZE__ + (FLASH_BUCKET_NUM % __WF_SIZE__ == 0 ? 0 : 1);
   constexpr size_t PADDING_FLASH_BUCKET_NUM = PADDING_BUCKET_N * __WF_SIZE__;
@@ -1089,28 +1092,31 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_esc_block_per_row_sort
 
     for (int r = 0; r < BLOCK_ROUNDS - 1; ++r) {
       const int idx_b = idx_begin_b + THREADS * r + block_thread_id;
-      const T tmp_val = val_A * values_ptr_b[idx_b];
-      const I col_b = col_idx_ptr_b[idx_b];
-      const size_t hash_val = col_b / FLASH_SORT_WIDTH;
       const int lds_idx = end_offset + idx_b - idx_begin_b;
-      block_lds_ids[lds_idx] = col_b;
-      block_lds_values[lds_idx] = tmp_val;
-      block_lds_count[lds_idx] = atomicAdd(&flash_bucket_use_size[hash_val], 1);
+      block_lds_idx_b[lds_idx] = idx_b;
+      block_lds_val_a[lds_idx] = val_A;
     }
     {
       const int r = BLOCK_ROUNDS - 1;
       const int idx_b = idx_begin_b + THREADS * r + block_thread_id;
       if (idx_b < idx_end_b) {
-        const T tmp_val = val_A * values_ptr_b[idx_b];
-        const I col_b = col_idx_ptr_b[idx_b];
-        const size_t hash_val = col_b / FLASH_SORT_WIDTH;
         const int lds_idx = end_offset + idx_b - idx_begin_b;
-        block_lds_ids[lds_idx] = col_b;
-        block_lds_values[lds_idx] = tmp_val;
-        block_lds_count[lds_idx] = atomicAdd(&flash_bucket_use_size[hash_val], 1);
+        block_lds_idx_b[lds_idx] = idx_b;
+        block_lds_val_a[lds_idx] = val_A;
       }
     }
     end_offset += idx_end_b - idx_begin_b;
+  }
+  __syncthreads();
+  for (int i = block_thread_id; i < end_offset; i += block_thread_num) {
+    const I idx_b = block_lds_idx_b[i];
+    const T val_A = block_lds_val_a[i];
+    const T tmp_val = val_A * values_ptr_b[idx_b];
+    const I col_b = col_idx_ptr_b[idx_b];
+    const size_t hash_val = col_b / FLASH_SORT_WIDTH;
+    block_lds_ids[i] = col_b;
+    block_lds_values[i] = tmp_val;
+    block_lds_count[i] = atomicAdd(&flash_bucket_use_size[hash_val], 1);
   }
   __syncthreads();
   // scan
@@ -1264,6 +1270,9 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_esc_block_per_row_sort
   __shared__ I block_lds_ids[CHUNK_CAP];
   __shared__ T block_lds_values[CHUNK_CAP];
   __shared__ int block_lds_count[CHUNK_CAP];
+  // re-use lds
+  I *block_lds_idx_b = block_lds_ids;
+  T *block_lds_val_a = block_lds_values;
 
   constexpr int PADDING_BUCKET_N = FLASH_BUCKET_NUM / __WF_SIZE__ + (FLASH_BUCKET_NUM % __WF_SIZE__ == 0 ? 0 : 1);
   constexpr size_t PADDING_FLASH_BUCKET_NUM = PADDING_BUCKET_N * __WF_SIZE__;
@@ -1303,28 +1312,31 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_esc_block_per_row_sort
 
     for (int r = 0; r < BLOCK_ROUNDS - 1; ++r) {
       const int idx_b = idx_begin_b + THREADS * r + block_thread_id;
-      const T tmp_val = val_A * values_ptr_b[idx_b];
-      const I col_b = col_idx_ptr_b[idx_b];
-      const size_t hash_val = col_b / FLASH_SORT_WIDTH;
       const int lds_idx = end_offset + idx_b - idx_begin_b;
-      block_lds_ids[lds_idx] = col_b;
-      block_lds_values[lds_idx] = tmp_val;
-      block_lds_count[lds_idx] = atomicAdd(&flash_bucket_use_size[hash_val], 1);
+      block_lds_idx_b[lds_idx] = idx_b;
+      block_lds_val_a[lds_idx] = val_A;
     }
     {
       const int r = BLOCK_ROUNDS - 1;
       const int idx_b = idx_begin_b + THREADS * r + block_thread_id;
       if (idx_b < idx_end_b) {
-        const T tmp_val = val_A * values_ptr_b[idx_b];
-        const I col_b = col_idx_ptr_b[idx_b];
-        const size_t hash_val = col_b / FLASH_SORT_WIDTH;
         const int lds_idx = end_offset + idx_b - idx_begin_b;
-        block_lds_ids[lds_idx] = col_b;
-        block_lds_values[lds_idx] = tmp_val;
-        block_lds_count[lds_idx] = atomicAdd(&flash_bucket_use_size[hash_val], 1);
+        block_lds_idx_b[lds_idx] = idx_b;
+        block_lds_val_a[lds_idx] = val_A;
       }
     }
     end_offset += idx_end_b - idx_begin_b;
+  }
+  __syncthreads();
+  for (int i = block_thread_id; i < end_offset; i += block_thread_num) {
+    const I idx_b = block_lds_idx_b[i];
+    const T val_A = block_lds_val_a[i];
+    const T tmp_val = val_A * values_ptr_b[idx_b];
+    const I col_b = col_idx_ptr_b[idx_b];
+    const size_t hash_val = col_b / FLASH_SORT_WIDTH;
+    block_lds_ids[i] = col_b;
+    block_lds_values[i] = tmp_val;
+    block_lds_count[i] = atomicAdd(&flash_bucket_use_size[hash_val], 1);
   }
   __syncthreads();
   // scan
