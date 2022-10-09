@@ -31,7 +31,7 @@ CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, cons
   if (is_use_bp) {
     numeric_buffer_size = spgemm_numeric_buffer_size<T, I, BreakPointNumericPolicy>(matrix_a, matrix_b);
   } else {
-    numeric_buffer_size = spgemm_numeric_buffer_size<T, I, HashMapNumericPolicy>(matrix_a, matrix_b);
+    numeric_buffer_size = spgemm_numeric_buffer_size<T, I, EscNumericPolicy>(matrix_a, matrix_b);
   }
 
   temp_buffer_size = std::max<size_t>(symbolic_buffer_size, numeric_buffer_size);
@@ -71,7 +71,7 @@ CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, cons
   if (is_use_bp) {
     spgemm_numeric<T, I, BreakPointNumericPolicy>(alpha, matrix_a, matrix_b, row_nnz_max, matrix_c, temp_buffer);
   } else {
-    spgemm_numeric<T, I, HashMapNumericPolicy>(alpha, matrix_a, matrix_b, row_nnz_max, matrix_c, temp_buffer);
+    spgemm_numeric<T, I, EscNumericPolicy>(alpha, matrix_a, matrix_b, row_nnz_max, matrix_c, temp_buffer);
   }
 
   // free temp memory
