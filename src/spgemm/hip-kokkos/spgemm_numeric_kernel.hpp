@@ -910,9 +910,8 @@ __global__ void __launch_bounds__(THREADS)
   const I row_idx_end = row_ptr_a[row_a + 1];
   I *vec_mem_ids = ids + row_ptr_c[row_a];
   T *vec_mem_values = values + row_ptr_c[row_a];
-#ifdef CAS_PRA_VERIFY
+
   int last_item_offset = row_ptr_c[row_a + 1] - row_ptr_c[row_a] - 1;
-#endif
 
   // expand
   int end_offset = 0;
@@ -1003,12 +1002,13 @@ __global__ void __launch_bounds__(THREADS)
   }
 #endif
   // write back
-#pragma unroll N
-  for (int i = 0; i < N; ++i) {
-    const int idx = vec_thread_id + vec_thread_num * i;
+  for (int idx = vec_thread_id; idx <= last_item_offset; idx += vec_thread_num) {
     if (vec_lds_ids[idx] != CHUNK_NULL_VALUE) {
       vec_mem_ids[idx] = vec_lds_ids[idx];
       vec_mem_values[idx] = vec_lds_values[idx] * alpha;
+    } else {
+      vec_mem_ids[idx] = static_cast<I>(0);
+      vec_mem_values[idx] = static_cast<T>(0);
     }
   }
 }
@@ -1065,7 +1065,6 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_esc_block_per_row_sort
   constexpr int PADDING_BUCKET_N = FLASH_BUCKET_NUM / __WF_SIZE__ + (FLASH_BUCKET_NUM % __WF_SIZE__ == 0 ? 0 : 1);
   constexpr size_t PADDING_FLASH_BUCKET_NUM = PADDING_BUCKET_N * __WF_SIZE__;
   __shared__ int flash_bucket_use_size[PADDING_FLASH_BUCKET_NUM];
-  __shared__ int block_lds_use_size;
 
   I reg_id[N];
   T reg_val[N];
@@ -1079,9 +1078,8 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_esc_block_per_row_sort
   const I row_idx_end = row_ptr_a[row_a + 1];
   I *block_mem_ids = ids + row_ptr_c[row_a];
   T *block_mem_values = values + row_ptr_c[row_a];
-#ifdef CAS_PRA_VERIFY
+
   int last_item_offset = row_ptr_c[row_a + 1] - row_ptr_c[row_a] - 1;
-#endif
 
   // expand
   int end_offset = 0;
@@ -1092,26 +1090,10 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_esc_block_per_row_sort
     const I row_b = col_a;
     const I idx_begin_b = row_ptr_b[row_b];
     const I idx_end_b = row_ptr_b[row_b + 1];
-    const int BLOCK_ROUNDS = (idx_end_b - idx_begin_b) / THREADS + ((idx_end_b - idx_begin_b) % THREADS == 0 ? 0 : 1);
-    __syncthreads();
-    if (BLOCK_ROUNDS == 0) {
-      continue;
-    }
-
-    for (int r = 0; r < BLOCK_ROUNDS - 1; ++r) {
-      const int idx_b = idx_begin_b + THREADS * r + block_thread_id;
+    for (int idx_b = idx_begin_b + block_thread_id; idx_b < idx_end_b; idx_b += THREADS) {
       const int lds_idx = end_offset + idx_b - idx_begin_b;
       block_lds_idx_b[lds_idx] = idx_b;
       block_lds_val_a[lds_idx] = val_A;
-    }
-    {
-      const int r = BLOCK_ROUNDS - 1;
-      const int idx_b = idx_begin_b + THREADS * r + block_thread_id;
-      if (idx_b < idx_end_b) {
-        const int lds_idx = end_offset + idx_b - idx_begin_b;
-        block_lds_idx_b[lds_idx] = idx_b;
-        block_lds_val_a[lds_idx] = val_A;
-      }
     }
     end_offset += idx_end_b - idx_begin_b;
   }
@@ -1139,11 +1121,9 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_esc_block_per_row_sort
 #pragma unroll N
   for (int i = 0; i < N; ++i) {
     const int idx = block_thread_id + block_thread_num * i;
-    if (idx < end_offset) {
-      reg_id[i] = block_lds_ids[idx];
-      reg_val[i] = block_lds_values[idx];
-      reg_count[i] = block_lds_count[idx];
-    }
+    reg_id[i] = block_lds_ids[idx];
+    reg_val[i] = block_lds_values[idx];
+    reg_count[i] = block_lds_count[idx];
   }
   __syncthreads();
 #pragma unroll N
@@ -1223,12 +1203,13 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_esc_block_per_row_sort
   // todo: fix it, need scan and re-map
 #endif
   // write back
-#pragma unroll N
-  for (int i = 0; i < N; ++i) {
-    const int idx = block_thread_id + block_thread_num * i;
+  for (int idx = block_thread_id; idx <= last_item_offset; idx += block_thread_num) {
     if (block_lds_ids[idx] != CHUNK_NULL_VALUE) {
       block_mem_ids[idx] = block_lds_ids[idx];
       block_mem_values[idx] = block_lds_values[idx] * alpha;
+    } else {
+      block_mem_ids[idx] = static_cast<I>(0);
+      block_mem_values[idx] = static_cast<T>(0);
     }
   }
 }
@@ -1285,7 +1266,6 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_esc_block_per_row_sort
   constexpr int PADDING_BUCKET_N = FLASH_BUCKET_NUM / __WF_SIZE__ + (FLASH_BUCKET_NUM % __WF_SIZE__ == 0 ? 0 : 1);
   constexpr size_t PADDING_FLASH_BUCKET_NUM = PADDING_BUCKET_N * __WF_SIZE__;
   __shared__ int flash_bucket_use_size[PADDING_FLASH_BUCKET_NUM];
-  __shared__ int block_lds_use_size;
 
   I reg_id[N];
   T reg_val[N];
@@ -1299,9 +1279,8 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_esc_block_per_row_sort
   const I row_idx_end = row_ptr_a[row_a + 1];
   I *block_mem_ids = ids + row_ptr_c[row_a];
   T *block_mem_values = values + row_ptr_c[row_a];
-#ifdef CAS_PRA_VERIFY
+
   int last_item_offset = row_ptr_c[row_a + 1] - row_ptr_c[row_a] - 1;
-#endif
 
   // expand
   int end_offset = 0;
@@ -1312,26 +1291,10 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_esc_block_per_row_sort
     const I row_b = col_a;
     const I idx_begin_b = row_ptr_b[row_b];
     const I idx_end_b = row_ptr_b[row_b + 1];
-    const int BLOCK_ROUNDS = (idx_end_b - idx_begin_b) / THREADS + ((idx_end_b - idx_begin_b) % THREADS == 0 ? 0 : 1);
-    __syncthreads();
-    if (BLOCK_ROUNDS == 0) {
-      continue;
-    }
-
-    for (int r = 0; r < BLOCK_ROUNDS - 1; ++r) {
-      const int idx_b = idx_begin_b + THREADS * r + block_thread_id;
+    for (int idx_b = idx_begin_b + block_thread_id; idx_b < idx_end_b; idx_b += THREADS) {
       const int lds_idx = end_offset + idx_b - idx_begin_b;
       block_lds_idx_b[lds_idx] = idx_b;
       block_lds_val_a[lds_idx] = val_A;
-    }
-    {
-      const int r = BLOCK_ROUNDS - 1;
-      const int idx_b = idx_begin_b + THREADS * r + block_thread_id;
-      if (idx_b < idx_end_b) {
-        const int lds_idx = end_offset + idx_b - idx_begin_b;
-        block_lds_idx_b[lds_idx] = idx_b;
-        block_lds_val_a[lds_idx] = val_A;
-      }
     }
     end_offset += idx_end_b - idx_begin_b;
   }
@@ -1365,11 +1328,9 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_esc_block_per_row_sort
 #pragma unroll N
   for (int i = 0; i < N; ++i) {
     const int idx = block_thread_id + block_thread_num * i;
-    if (idx < end_offset) {
-      reg_id[i] = block_lds_ids[idx];
-      reg_val[i] = block_lds_values[idx];
-      reg_count[i] = block_lds_count[idx];
-    }
+    reg_id[i] = block_lds_ids[idx];
+    reg_val[i] = block_lds_values[idx];
+    reg_count[i] = block_lds_count[idx];
   }
   __syncthreads();
 #pragma unroll N
@@ -1449,12 +1410,13 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_esc_block_per_row_sort
   // todo: fix it, need scan and re-map
 #endif
   // write back
-#pragma unroll N
-  for (int i = 0; i < N; ++i) {
-    const int idx = block_thread_id + block_thread_num * i;
+  for (int idx = block_thread_id; idx <= last_item_offset; idx += block_thread_num) {
     if (block_lds_ids[idx] != CHUNK_NULL_VALUE) {
       block_mem_ids[idx] = block_lds_ids[idx];
       block_mem_values[idx] = block_lds_values[idx] * alpha;
+    } else {
+      block_mem_ids[idx] = static_cast<I>(0);
+      block_mem_values[idx] = static_cast<T>(0);
     }
   }
 }
