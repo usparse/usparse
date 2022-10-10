@@ -2,6 +2,7 @@
 #define LOOKBACK_SCAN_HPP
 
 #include "../check/hip_check.hpp"
+#include "../tools/set_val.hpp"
 #include <hip/hip_runtime.h>
 
 namespace common {
@@ -227,7 +228,8 @@ void decoupled_look_back_scan_impl(const size_t input_size, const T *input, T *o
 
   int *id_count_ptr = reinterpret_cast<int *>(ptr);
 #ifdef DEVICE_MALLOC_INITILIZE
-  HIP_CHECK(hipMemset(id_count_ptr, 0, sizeof(int)))
+  // HIP_CHECK(hipMemset(id_count_ptr, 0, sizeof(int)))
+  set_val<int, 0>(id_count_ptr);
 #endif
 
   (decoupled_look_back_scan_kernel<T, THREADS, ITEMS_PER_THREAD>)<<<BLOCKS, THREADS>>>(
