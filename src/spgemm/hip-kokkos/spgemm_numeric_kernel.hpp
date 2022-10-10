@@ -910,9 +910,8 @@ __global__ void __launch_bounds__(THREADS)
   const I row_idx_end = row_ptr_a[row_a + 1];
   I *vec_mem_ids = ids + row_ptr_c[row_a];
   T *vec_mem_values = values + row_ptr_c[row_a];
-#ifdef CAS_PRA_VERIFY
+
   int last_item_offset = row_ptr_c[row_a + 1] - row_ptr_c[row_a] - 1;
-#endif
 
   // expand
   int end_offset = 0;
@@ -1003,12 +1002,13 @@ __global__ void __launch_bounds__(THREADS)
   }
 #endif
   // write back
-#pragma unroll N
-  for (int i = 0; i < N; ++i) {
-    const int idx = vec_thread_id + vec_thread_num * i;
+  for (int idx = vec_thread_id; idx <= last_item_offset; idx += vec_thread_num) {
     if (vec_lds_ids[idx] != CHUNK_NULL_VALUE) {
       vec_mem_ids[idx] = vec_lds_ids[idx];
       vec_mem_values[idx] = vec_lds_values[idx] * alpha;
+    } else {
+      vec_mem_ids[idx] = static_cast<I>(0);
+      vec_mem_values[idx] = static_cast<T>(0);
     }
   }
 }
@@ -1078,9 +1078,8 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_esc_block_per_row_sort
   const I row_idx_end = row_ptr_a[row_a + 1];
   I *block_mem_ids = ids + row_ptr_c[row_a];
   T *block_mem_values = values + row_ptr_c[row_a];
-#ifdef CAS_PRA_VERIFY
+
   int last_item_offset = row_ptr_c[row_a + 1] - row_ptr_c[row_a] - 1;
-#endif
 
   // expand
   int end_offset = 0;
@@ -1206,12 +1205,13 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_esc_block_per_row_sort
   // todo: fix it, need scan and re-map
 #endif
   // write back
-#pragma unroll N
-  for (int i = 0; i < N; ++i) {
-    const int idx = block_thread_id + block_thread_num * i;
+  for (int idx = block_thread_id; idx <= last_item_offset; idx += block_thread_num) {
     if (block_lds_ids[idx] != CHUNK_NULL_VALUE) {
       block_mem_ids[idx] = block_lds_ids[idx];
       block_mem_values[idx] = block_lds_values[idx] * alpha;
+    } else {
+      block_mem_ids[idx] = static_cast<I>(0);
+      block_mem_values[idx] = static_cast<T>(0);
     }
   }
 }
@@ -1281,9 +1281,8 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_esc_block_per_row_sort
   const I row_idx_end = row_ptr_a[row_a + 1];
   I *block_mem_ids = ids + row_ptr_c[row_a];
   T *block_mem_values = values + row_ptr_c[row_a];
-#ifdef CAS_PRA_VERIFY
+
   int last_item_offset = row_ptr_c[row_a + 1] - row_ptr_c[row_a] - 1;
-#endif
 
   // expand
   int end_offset = 0;
@@ -1415,12 +1414,13 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_esc_block_per_row_sort
   // todo: fix it, need scan and re-map
 #endif
   // write back
-#pragma unroll N
-  for (int i = 0; i < N; ++i) {
-    const int idx = block_thread_id + block_thread_num * i;
+  for (int idx = block_thread_id; idx <= last_item_offset; idx += block_thread_num) {
     if (block_lds_ids[idx] != CHUNK_NULL_VALUE) {
       block_mem_ids[idx] = block_lds_ids[idx];
       block_mem_values[idx] = block_lds_values[idx] * alpha;
+    } else {
+      block_mem_ids[idx] = static_cast<I>(0);
+      block_mem_values[idx] = static_cast<T>(0);
     }
   }
 }
