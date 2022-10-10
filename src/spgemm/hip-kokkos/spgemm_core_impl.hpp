@@ -54,6 +54,9 @@ CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, cons
 
   CsrMatrix<T, I> matrix_c(matrix_a.rows, matrix_b.cols, nnz_c, row_ptr_c, nullptr, nullptr);
   if(use_buffer){
+#ifdef DEVICE_MALLOC_INITILIZE
+    HIP_CHECK(hipMemset(temp_buffer, static_cast<I>(0), nnz_c * (sizeof(I) + sizeof(T))))
+#endif
     matrix_c.col_idx_ptr = reinterpret_cast<I *>(temp_buffer);
     matrix_c.values_ptr = reinterpret_cast<T *>(matrix_c.col_idx_ptr + nnz_c);
     temp_buffer = reinterpret_cast<void *>(matrix_c.values_ptr + nnz_c);
@@ -61,11 +64,14 @@ CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, cons
     HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&matrix_c.col_idx_ptr), nnz_c * (sizeof(I) + sizeof(T))))
     // HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&matrix_c.values_ptr), nnz_c * sizeof(T)))
     matrix_c.values_ptr = reinterpret_cast<T *>(matrix_c.col_idx_ptr + nnz_c);
-  }
 #ifdef DEVICE_MALLOC_INITILIZE
-  HIP_CHECK(hipMemset(matrix_c.col_idx_ptr, static_cast<I>(0), nnz_c * sizeof(I)))
-  HIP_CHECK(hipMemset(matrix_c.values_ptr, static_cast<T>(0), nnz_c * sizeof(T)))
+    HIP_CHECK(hipMemset(matrix_c.col_idx_ptr, static_cast<I>(0), nnz_c * (sizeof(I) + sizeof(T))))
 #endif
+  }
+// #ifdef DEVICE_MALLOC_INITILIZE
+//   // HIP_CHECK(hipMemset(matrix_c.col_idx_ptr, static_cast<I>(0), nnz_c * sizeof(I)))
+//   // HIP_CHECK(hipMemset(matrix_c.values_ptr, static_cast<T>(0), nnz_c * sizeof(T)))
+// #endif
   // numeric phase
   if (is_use_bp) {
     spgemm_numeric<T, I, BreakPointNumericPolicy>(alpha, matrix_a, matrix_b, row_nnz_max, matrix_c, temp_buffer);
