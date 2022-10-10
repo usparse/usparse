@@ -15,6 +15,7 @@ source_files=(
     "${src_base}/spgemm/api/spgemm_hip_types.h"
     "${src_base}/spgemm/api/spgemm_hip_api.h"
     "${src_base}/spgemm/common/check/hip_check.hpp"
+    "${src_base}/spgemm/common/tools/set_val.hpp"
     "${src_base}/spgemm/common/scan/scan_in_device.hpp"
     "${src_base}/spgemm/common/scan/single_block_scan.hpp"
     "${src_base}/spgemm/common/scan/reduce_then_scan.hpp"
