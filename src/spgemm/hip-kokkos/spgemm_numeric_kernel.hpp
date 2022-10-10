@@ -1121,11 +1121,9 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_esc_block_per_row_sort
 #pragma unroll N
   for (int i = 0; i < N; ++i) {
     const int idx = block_thread_id + block_thread_num * i;
-    if (idx < end_offset) {
-      reg_id[i] = block_lds_ids[idx];
-      reg_val[i] = block_lds_values[idx];
-      reg_count[i] = block_lds_count[idx];
-    }
+    reg_id[i] = block_lds_ids[idx];
+    reg_val[i] = block_lds_values[idx];
+    reg_count[i] = block_lds_count[idx];
   }
   __syncthreads();
 #pragma unroll N
@@ -1330,11 +1328,9 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_esc_block_per_row_sort
 #pragma unroll N
   for (int i = 0; i < N; ++i) {
     const int idx = block_thread_id + block_thread_num * i;
-    if (idx < end_offset) {
-      reg_id[i] = block_lds_ids[idx];
-      reg_val[i] = block_lds_values[idx];
-      reg_count[i] = block_lds_count[idx];
-    }
+    reg_id[i] = block_lds_ids[idx];
+    reg_val[i] = block_lds_values[idx];
+    reg_count[i] = block_lds_count[idx];
   }
   __syncthreads();
 #pragma unroll N
