@@ -1065,7 +1065,6 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_esc_block_per_row_sort
   constexpr int PADDING_BUCKET_N = FLASH_BUCKET_NUM / __WF_SIZE__ + (FLASH_BUCKET_NUM % __WF_SIZE__ == 0 ? 0 : 1);
   constexpr size_t PADDING_FLASH_BUCKET_NUM = PADDING_BUCKET_N * __WF_SIZE__;
   __shared__ int flash_bucket_use_size[PADDING_FLASH_BUCKET_NUM];
-  __shared__ int block_lds_use_size;
 
   I reg_id[N];
   T reg_val[N];
@@ -1092,26 +1091,10 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_esc_block_per_row_sort
     const I row_b = col_a;
     const I idx_begin_b = row_ptr_b[row_b];
     const I idx_end_b = row_ptr_b[row_b + 1];
-    const int BLOCK_ROUNDS = (idx_end_b - idx_begin_b) / THREADS + ((idx_end_b - idx_begin_b) % THREADS == 0 ? 0 : 1);
-    __syncthreads();
-    if (BLOCK_ROUNDS == 0) {
-      continue;
-    }
-
-    for (int r = 0; r < BLOCK_ROUNDS - 1; ++r) {
-      const int idx_b = idx_begin_b + THREADS * r + block_thread_id;
+    for (int idx_b = idx_begin_b + block_thread_id; idx_b < idx_end_b; idx_b += THREADS) {
       const int lds_idx = end_offset + idx_b - idx_begin_b;
       block_lds_idx_b[lds_idx] = idx_b;
       block_lds_val_a[lds_idx] = val_A;
-    }
-    {
-      const int r = BLOCK_ROUNDS - 1;
-      const int idx_b = idx_begin_b + THREADS * r + block_thread_id;
-      if (idx_b < idx_end_b) {
-        const int lds_idx = end_offset + idx_b - idx_begin_b;
-        block_lds_idx_b[lds_idx] = idx_b;
-        block_lds_val_a[lds_idx] = val_A;
-      }
     }
     end_offset += idx_end_b - idx_begin_b;
   }
@@ -1285,7 +1268,6 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_esc_block_per_row_sort
   constexpr int PADDING_BUCKET_N = FLASH_BUCKET_NUM / __WF_SIZE__ + (FLASH_BUCKET_NUM % __WF_SIZE__ == 0 ? 0 : 1);
   constexpr size_t PADDING_FLASH_BUCKET_NUM = PADDING_BUCKET_N * __WF_SIZE__;
   __shared__ int flash_bucket_use_size[PADDING_FLASH_BUCKET_NUM];
-  __shared__ int block_lds_use_size;
 
   I reg_id[N];
   T reg_val[N];
@@ -1312,26 +1294,10 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_esc_block_per_row_sort
     const I row_b = col_a;
     const I idx_begin_b = row_ptr_b[row_b];
     const I idx_end_b = row_ptr_b[row_b + 1];
-    const int BLOCK_ROUNDS = (idx_end_b - idx_begin_b) / THREADS + ((idx_end_b - idx_begin_b) % THREADS == 0 ? 0 : 1);
-    __syncthreads();
-    if (BLOCK_ROUNDS == 0) {
-      continue;
-    }
-
-    for (int r = 0; r < BLOCK_ROUNDS - 1; ++r) {
-      const int idx_b = idx_begin_b + THREADS * r + block_thread_id;
+    for (int idx_b = idx_begin_b + block_thread_id; idx_b < idx_end_b; idx_b += THREADS) {
       const int lds_idx = end_offset + idx_b - idx_begin_b;
       block_lds_idx_b[lds_idx] = idx_b;
       block_lds_val_a[lds_idx] = val_A;
-    }
-    {
-      const int r = BLOCK_ROUNDS - 1;
-      const int idx_b = idx_begin_b + THREADS * r + block_thread_id;
-      if (idx_b < idx_end_b) {
-        const int lds_idx = end_offset + idx_b - idx_begin_b;
-        block_lds_idx_b[lds_idx] = idx_b;
-        block_lds_val_a[lds_idx] = val_A;
-      }
     }
     end_offset += idx_end_b - idx_begin_b;
   }
