@@ -2,6 +2,7 @@
 #define SPGEMM_HIP_KOKKOS_SPGEMM_H
 
 #include "../common/check/hip_check.hpp"
+#include "../common/tools/set_val.hpp"
 #include "api/spgemm_hip_types.h"
 #include "spgemm_core_impl.hpp"
 
@@ -10,7 +11,8 @@ void kokkos_spgemm(const T alpha, const size_t m, const size_t n, const size_t k
                    const I *pColIndexA, const T *pValueA, const size_t nnzB, const I *pOffsetB, const I *pColIndexB,
                    const T *pValueB, size_t *pNnzC, I *pOffsetC, I **ppColIndexC, T **ppValueC) {
 #ifdef DEVICE_MALLOC_INITILIZE
-  HIP_CHECK(hipMemset(pOffsetC, static_cast<I>(0), (m + 1) * sizeof(I)))
+  // HIP_CHECK(hipMemset(pOffsetC, static_cast<I>(0), (m + 1) * sizeof(I)))
+  common::set_val<I, 0>(pOffsetC);
 #endif
   CsrMatrix<T, I> matrix_a(m, k, nnzA, const_cast<I *>(pOffsetA), const_cast<I *>(pColIndexA),
                            const_cast<T *>(pValueA));

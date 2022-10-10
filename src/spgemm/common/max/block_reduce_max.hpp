@@ -2,10 +2,12 @@
 #define BLOCK_REDUCE_MAX_KERNEL_HPP
 
 #include "../check/hip_check.hpp"
+#include "../tools/set_val.hpp"
 #include <hip/hip_runtime.h>
 #include <limits>
 
 namespace common {
+
 template <typename T> size_t block_reduce_max_buffer_size(const size_t input_size) {
   constexpr size_t THREADS = 256;
   constexpr size_t ITEMS_PER_THREAD = 4;
@@ -93,7 +95,8 @@ void block_reduce_max_impl(const size_t input_size, const T *input, T *output, v
   T *block_buffer = reinterpret_cast<T *>(temp_buffer);
   int *counter = reinterpret_cast<int *>(output);
 #ifdef DEVICE_MALLOC_INITILIZE
-  HIP_CHECK(hipMemset(counter, 0, sizeof(int)))
+  // HIP_CHECK(hipMemset(counter, 0, sizeof(int)))
+  set_val<int, 0>(counter);
 #endif
   (block_reduce_max_kernel<T, THREADS, ITEMS_PER_THREAD>)<<<BLOCKS, THREADS>>>(input_size, input, block_buffer, output);
 }
