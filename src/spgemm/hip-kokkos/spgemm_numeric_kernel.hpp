@@ -141,8 +141,6 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_vector_per_row_flash_s
 
   // hashmap in LDS
   constexpr size_t LDS_MAP_CAP = VEC_SIZE * N;
-  constexpr int BEGINS_SIZE_PER_VEC = LDS_MAP_CAP;
-  constexpr int LDS_BEGINS_SIZE = LDS_MAP_CAP * block_vec_num;
   constexpr int NEXTS_SIZE_PER_VEC = LDS_MAP_CAP;
   constexpr int LDS_NEXTS_SIZE = LDS_MAP_CAP * block_vec_num;
   constexpr int VEC_PROCESS_ONCE = VEC_SIZE;
@@ -151,7 +149,9 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_vector_per_row_flash_s
   constexpr int FLASH_BUCKET_NUM = LDS_MAP_CAP / ITEMS_PER_BUCKET + (LDS_MAP_CAP % ITEMS_PER_BUCKET == 0 ? 0 : 1);
   const int FLASH_SORT_WIDTH = n / FLASH_BUCKET_NUM + (n % FLASH_BUCKET_NUM == 0 ? 0 : 1);
 
-  __shared__ int shared_begins[FLASH_BUCKET_NUM];
+  constexpr int BEGINS_SIZE_PER_VEC = FLASH_BUCKET_NUM;
+  constexpr int LDS_BEGINS_SIZE = BEGINS_SIZE_PER_VEC * block_vec_num;
+  __shared__ int shared_begins[LDS_BEGINS_SIZE];
   __shared__ int shared_nexts[LDS_NEXTS_SIZE];
   __shared__ I shared_ids[LDS_NEXTS_SIZE];
   __shared__ T shared_values[LDS_NEXTS_SIZE];
@@ -264,8 +264,6 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_vector_per_row_flash_s
 
   // hashmap in LDS
   constexpr size_t LDS_MAP_CAP = VEC_SIZE * N;
-  constexpr int BEGINS_SIZE_PER_VEC = LDS_MAP_CAP;
-  constexpr int LDS_BEGINS_SIZE = LDS_MAP_CAP * block_vec_num;
   constexpr int NEXTS_SIZE_PER_VEC = LDS_MAP_CAP;
   constexpr int LDS_NEXTS_SIZE = LDS_MAP_CAP * block_vec_num;
   constexpr int VEC_PROCESS_ONCE = VEC_SIZE;
@@ -274,7 +272,9 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_vector_per_row_flash_s
   constexpr int FLASH_BUCKET_NUM = LDS_MAP_CAP / ITEMS_PER_BUCKET + (LDS_MAP_CAP % ITEMS_PER_BUCKET == 0 ? 0 : 1);
   const int FLASH_SORT_WIDTH = n / FLASH_BUCKET_NUM + (n % FLASH_BUCKET_NUM == 0 ? 0 : 1);
 
-  __shared__ int shared_begins[FLASH_BUCKET_NUM];
+  constexpr int BEGINS_SIZE_PER_VEC = FLASH_BUCKET_NUM;
+  constexpr int LDS_BEGINS_SIZE = BEGINS_SIZE_PER_VEC * block_vec_num;
+  __shared__ int shared_begins[LDS_BEGINS_SIZE];
   __shared__ int shared_nexts[LDS_NEXTS_SIZE];
   __shared__ I shared_ids[LDS_NEXTS_SIZE];
   __shared__ T shared_values[LDS_NEXTS_SIZE];
