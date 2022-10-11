@@ -52,8 +52,10 @@ CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, cons
   }
 
   CsrMatrix<T, I> matrix_c(matrix_a.rows, matrix_b.cols, nnz_c, row_ptr_c, nullptr, nullptr);
-  HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&matrix_c.col_idx_ptr), nnz_c * (sizeof(I) + sizeof(T))))
-  matrix_c.values_ptr = reinterpret_cast<T *>(matrix_c.col_idx_ptr + nnz_c);
+  char *matrix_c_buffer_ptr = nullptr;
+  HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&matrix_c_buffer_ptr), ALIGN_256_BYTES(nnz_c * sizeof(I)) + ALIGN_256_BYTES(nnz_c * sizeof(T))))
+  matrix_c.col_idx_ptr = reinterpret_cast<I *>(matrix_c_buffer_ptr);
+  matrix_c.values_ptr = reinterpret_cast<T *>(matrix_c_buffer_ptr + ALIGN_256_BYTES(nnz_c * sizeof(I)));
 // #ifdef DEVICE_MALLOC_INITILIZE
 //   // HIP_CHECK(hipMemset(matrix_c.col_idx_ptr, static_cast<I>(0), nnz_c * sizeof(I)))
 //   // HIP_CHECK(hipMemset(matrix_c.values_ptr, static_cast<T>(0), nnz_c * sizeof(T)))
@@ -61,7 +63,6 @@ CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, cons
   // numeric phase
   if (is_use_bp) {
     if (is_use_hash) {
-      std::cout<<"use_hash"<<std::endl;
       spgemm_numeric<T, I, HashMapNumericPolicy>(alpha, matrix_a, matrix_b, row_nnz_max, matrix_c, temp_buffer);
     } else {
       spgemm_numeric<T, I, BreakPointNumericPolicy>(alpha, matrix_a, matrix_b, row_nnz_max, matrix_c, temp_buffer);
