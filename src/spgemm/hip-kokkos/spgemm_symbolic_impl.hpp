@@ -20,7 +20,7 @@ public:
 
   template <typename T, typename I>
   static size_t buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b) {
-    size_t alloc_size = alloc_size = bp_buffer_size<T, I, CHUNK_SIZE>(matrix_b);
+    size_t alloc_size = bp_buffer_size<T, I, CHUNK_SIZE>(matrix_b);
     return ALIGN_256_BYTES(alloc_size);
   }
 
