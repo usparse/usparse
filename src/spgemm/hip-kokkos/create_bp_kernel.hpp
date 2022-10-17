@@ -47,8 +47,9 @@ __global__ void create_bp_wf_per_row_kernel(const size_t m, const I *row_ptr, co
         } while (__any(flag));
       }
     }
-    if (wf_thread_id == 0) {
-      row_bp_ptr[bp_idx++] = row_idx_end;
+    bp_idx = __shfl(bp_idx, 0);
+    for (int idx = bp_idx + wf_thread_id; idx < BP_IDX_PER_ROW; idx += wf_thread_num) {
+      row_bp_ptr[idx] = row_idx_end;
     }
   }
 }
@@ -107,8 +108,8 @@ __global__ void create_bp_wf_per_row_kernel(const size_t m, const I *row_ptr, co
         row_bp_ptr[i] = bp_val;
       }
     }
-    if (wf_thread_id == 0) {
-      row_bp_ptr[max_bp_idx] = row_idx_end;
+    for (int idx = max_bp_idx + wf_thread_id; idx < BP_IDX_PER_ROW; idx += wf_thread_num) {
+      row_bp_ptr[idx] = row_idx_end;
     }
   }
 }
