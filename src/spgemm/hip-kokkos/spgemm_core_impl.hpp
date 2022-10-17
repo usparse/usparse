@@ -19,7 +19,7 @@ CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, cons
 
   bool is_compress = sparseness_b > 0.005 ? true : false;
   bool is_use_bp = sparseness_b > 0.005 ? true : false;
-  bool is_use_hash = matrix_a.rows < 10000 && sparseness_b < 0.015? true : false;
+  bool is_use_hash = matrix_a.rows < 10000 && sparseness_b < 0.015 ? true : false;
 
   if (is_compress) {
     symbolic_buffer_size = spgemm_symbolic_buffer_size<T, I, PreciseCompressSymbolicPolicy>(matrix_a, matrix_b);
@@ -30,7 +30,7 @@ CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, cons
   if (is_use_bp) {
     if (is_use_hash) {
       numeric_buffer_size = spgemm_numeric_buffer_size<T, I, HashMapNumericPolicy>(matrix_a, matrix_b);
-    }else {
+    } else {
       numeric_buffer_size = spgemm_numeric_buffer_size<T, I, BreakPointNumericPolicy>(matrix_a, matrix_b);
     }
   } else {
@@ -51,13 +51,14 @@ CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, cons
 
   CsrMatrix<T, I> matrix_c(matrix_a.rows, matrix_b.cols, nnz_c, row_ptr_c, nullptr, nullptr);
   char *matrix_c_buffer_ptr = nullptr;
-  HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&matrix_c_buffer_ptr), ALIGN_256_BYTES(nnz_c * sizeof(I)) + ALIGN_256_BYTES(nnz_c * sizeof(T))))
+  HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&matrix_c_buffer_ptr),
+                      ALIGN_256_BYTES(nnz_c * sizeof(I)) + ALIGN_256_BYTES(nnz_c * sizeof(T))))
   matrix_c.col_idx_ptr = reinterpret_cast<I *>(matrix_c_buffer_ptr);
   matrix_c.values_ptr = reinterpret_cast<T *>(matrix_c_buffer_ptr + ALIGN_256_BYTES(nnz_c * sizeof(I)));
-// #ifdef DEVICE_MALLOC_INITILIZE
-//   // HIP_CHECK(hipMemset(matrix_c.col_idx_ptr, static_cast<I>(0), nnz_c * sizeof(I)))
-//   // HIP_CHECK(hipMemset(matrix_c.values_ptr, static_cast<T>(0), nnz_c * sizeof(T)))
-// #endif
+  // #ifdef DEVICE_MALLOC_INITILIZE
+  //   // HIP_CHECK(hipMemset(matrix_c.col_idx_ptr, static_cast<I>(0), nnz_c * sizeof(I)))
+  //   // HIP_CHECK(hipMemset(matrix_c.values_ptr, static_cast<T>(0), nnz_c * sizeof(T)))
+  // #endif
   // numeric phase
   if (is_use_bp) {
     if (is_use_hash) {
