@@ -44,15 +44,9 @@ CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, cons
   size_t nnz_c = 0;
   I row_nnz_max = 0;
   if (is_compress) {
-    spgemm_symbolic<T, I, PreciseCompressSymbolicPolicy>(
-        matrix_a, matrix_b, row_ptr_c, &nnz_c, &row_nnz_max,
-        reinterpret_cast<void *>(reinterpret_cast<char *>(temp_buffer) +
-                                 (temp_buffer_size - std::max<size_t>(symbolic_buffer_size, numeric_buffer_size))));
+    spgemm_symbolic<T, I, PreciseCompressSymbolicPolicy>(matrix_a, matrix_b, row_ptr_c, &nnz_c, &row_nnz_max, temp_buffer);
   } else {
-    spgemm_symbolic<T, I, UpperBoundSymbolicPolicy>(
-        matrix_a, matrix_b, row_ptr_c, &nnz_c, &row_nnz_max,
-        reinterpret_cast<void *>(reinterpret_cast<char *>(temp_buffer) +
-                                 (temp_buffer_size - std::max<size_t>(symbolic_buffer_size, numeric_buffer_size))));
+    spgemm_symbolic<T, I, UpperBoundSymbolicPolicy>(matrix_a, matrix_b, row_ptr_c, &nnz_c, &row_nnz_max, temp_buffer);
   }
 
   CsrMatrix<T, I> matrix_c(matrix_a.rows, matrix_b.cols, nnz_c, row_ptr_c, nullptr, nullptr);
