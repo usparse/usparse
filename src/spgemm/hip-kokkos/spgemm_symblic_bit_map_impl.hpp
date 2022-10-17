@@ -14,7 +14,7 @@
 #include <hip/hip_runtime.h>
 #include <iostream>
 
-template <typename T, typename I,bool use_compress>
+template <typename T, typename I, bool use_compress>
 size_t spgemm_symbolic_buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b) {
   size_t buffer_size = 0;
   size_t alloc_size = 0;
@@ -36,7 +36,7 @@ size_t spgemm_symbolic_buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMat
 template <typename T, typename I>
 void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b, I *row_ptr_c, size_t *hnnz_c,
                      I *hrow_nnz_max, void *temp_buffer) {
-  using bitMapType=unsigned long long;
+  using bitMapType = unsigned long long;
   constexpr size_t BitsLen = sizeof(bitMapType) * 8;
   char *ptr = reinterpret_cast<char *>(temp_buffer);
   size_t alloc_size = 0;
@@ -58,7 +58,7 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
   align_size = ALIGN_256_BYTES(alloc_size);
   ptr += align_size;
 
-  if(ave_nnz_per_row_B <= 16){
+  if (ave_nnz_per_row_B <= 16) {
     constexpr size_t VEC_SIZE = 8;
     constexpr size_t BLOCK_THREAD_NUM = 128;
     constexpr size_t BLOCK_WF_NUM = BLOCK_THREAD_NUM / __WF_SIZE__;
@@ -66,9 +66,9 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
     const size_t WF_LDS_NUM = matrix_a.rows / BitsLen + (matrix_a.rows % BitsLen == 0 ? 0 : 1);
 
     spgemm_symbolic_bit_map_wf_per_row<T, I, bitMapType, BLOCK_THREAD_NUM, VEC_SIZE>
-      <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM, sizeof(bitMapType) * BLOCK_WF_NUM * WF_LDS_NUM>>>(
-      matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr, matrix_b.col_idx_ptr, row_ptr_c);
-  }else if(ave_nnz_per_row_B <= 32){
+        <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM, sizeof(bitMapType) * BLOCK_WF_NUM * WF_LDS_NUM>>>(
+            matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr, matrix_b.col_idx_ptr, row_ptr_c);
+  } else if (ave_nnz_per_row_B <= 32) {
     constexpr size_t VEC_SIZE = 16;
     constexpr size_t BLOCK_THREAD_NUM = 128;
     constexpr size_t BLOCK_WF_NUM = BLOCK_THREAD_NUM / __WF_SIZE__;
@@ -76,9 +76,9 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
     const size_t WF_LDS_NUM = matrix_a.rows / BitsLen + (matrix_a.rows % BitsLen == 0 ? 0 : 1);
 
     spgemm_symbolic_bit_map_wf_per_row<T, I, bitMapType, BLOCK_THREAD_NUM, VEC_SIZE>
-      <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM, sizeof(bitMapType) * BLOCK_WF_NUM * WF_LDS_NUM>>>(
-      matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr, matrix_b.col_idx_ptr, row_ptr_c);
-  }else if(ave_nnz_per_row_B <= 64){
+        <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM, sizeof(bitMapType) * BLOCK_WF_NUM * WF_LDS_NUM>>>(
+            matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr, matrix_b.col_idx_ptr, row_ptr_c);
+  } else if (ave_nnz_per_row_B <= 64) {
     constexpr size_t VEC_SIZE = 32;
     constexpr size_t BLOCK_THREAD_NUM = 128;
     constexpr size_t BLOCK_WF_NUM = BLOCK_THREAD_NUM / __WF_SIZE__;
@@ -86,9 +86,9 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
     const size_t WF_LDS_NUM = matrix_a.rows / BitsLen + (matrix_a.rows % BitsLen == 0 ? 0 : 1);
 
     spgemm_symbolic_bit_map_wf_per_row<T, I, bitMapType, BLOCK_THREAD_NUM, VEC_SIZE>
-      <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM, sizeof(bitMapType) * BLOCK_WF_NUM * WF_LDS_NUM>>>(
-      matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr, matrix_b.col_idx_ptr, row_ptr_c);
-  }else if(ave_nnz_per_row_B <= 128){
+        <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM, sizeof(bitMapType) * BLOCK_WF_NUM * WF_LDS_NUM>>>(
+            matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr, matrix_b.col_idx_ptr, row_ptr_c);
+  } else if (ave_nnz_per_row_B <= 128) {
     constexpr size_t VEC_SIZE = 128;
     constexpr size_t BLOCK_THREAD_NUM = 128;
     constexpr size_t BLOCK_WF_NUM = BLOCK_THREAD_NUM / __WF_SIZE__;
@@ -96,19 +96,19 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
     const size_t WF_LDS_NUM = matrix_a.rows / BitsLen + (matrix_a.rows % BitsLen == 0 ? 0 : 1);
 
     spgemm_symbolic_bit_map_wf_per_row<T, I, bitMapType, BLOCK_THREAD_NUM, VEC_SIZE>
-      <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM, sizeof(bitMapType) * BLOCK_WF_NUM * WF_LDS_NUM>>>(
-      matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr, matrix_b.col_idx_ptr, row_ptr_c);
-  }else{
+        <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM, sizeof(bitMapType) * BLOCK_WF_NUM * WF_LDS_NUM>>>(
+            matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr, matrix_b.col_idx_ptr, row_ptr_c);
+  } else {
     constexpr size_t VEC_SIZE = 8;
     constexpr size_t BLOCK_THREAD_NUM = 256;
     const size_t GLOBAL_BLOCK_NUM = matrix_a.rows;
     const size_t BLOCK_LDS_NUM = matrix_a.rows / BitsLen + (matrix_a.rows % BitsLen == 0 ? 0 : 1);
 
     spgemm_symbolic_bit_map_block_per_row<T, I, bitMapType, BLOCK_THREAD_NUM, VEC_SIZE>
-      <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM, sizeof(bitMapType) * BLOCK_LDS_NUM>>>(
-      matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr, matrix_b.col_idx_ptr, row_ptr_c);
+        <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM, sizeof(bitMapType) * BLOCK_LDS_NUM>>>(
+            matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr, matrix_b.col_idx_ptr, row_ptr_c);
   }
-  
+
   // max num in row_ptr
   {
     I *row_nnz_max_ptr = reinterpret_cast<I *>(ptr);
@@ -123,8 +123,8 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
   alloc_size = sizeof(I);
   align_size = ALIGN_256_BYTES(alloc_size);
   hipDeviceSynchronize();
-  *hrow_nnz_max=*(reinterpret_cast<I *>(ptr-align_size));
-  *hnnz_c=row_ptr_c[matrix_a.rows];
+  *hrow_nnz_max = *(reinterpret_cast<I *>(ptr - align_size));
+  *hnnz_c = row_ptr_c[matrix_a.rows];
 }
 
 #endif // SPGEMM_KOKKOS_SPGEMM_SYMBOLIC_IMPL_HPP

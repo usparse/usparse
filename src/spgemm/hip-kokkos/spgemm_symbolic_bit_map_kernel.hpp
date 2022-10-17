@@ -3,12 +3,11 @@
 
 #include <hip/hip_runtime.h>
 
-//without hash
+// without hash
 template <typename T, typename I, typename bitMapType, size_t THREADS, size_t VEC_SIZE>
 __global__ void __launch_bounds__(THREADS)
-    spgemm_symbolic_bit_map_wf_per_row(const size_t m, const I *row_ptr_a,
-                                                                        const I *col_idx_ptr_a, const I *row_ptr_b,
-                                                                        const I *col_idx_ptr_b, I *row_ptr_c) {
+    spgemm_symbolic_bit_map_wf_per_row(const size_t m, const I *row_ptr_a, const I *col_idx_ptr_a, const I *row_ptr_b,
+                                       const I *col_idx_ptr_b, I *row_ptr_c) {
   // thread id in global
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   // wf id in global
@@ -38,7 +37,7 @@ __global__ void __launch_bounds__(THREADS)
 
   constexpr size_t BitsLen = sizeof(bitMapType) * 8;
   const size_t WF_LDS_NUM = 512;
-  bitMapType* wf_lds_ids = shared_bit_map + WF_LDS_NUM * block_wf_id;
+  bitMapType *wf_lds_ids = shared_bit_map + WF_LDS_NUM * block_wf_id;
 
   // init lds hashmap
   for (int i = wf_thread_id; i < WF_LDS_NUM; i += wf_thread_num) {
@@ -62,7 +61,7 @@ __global__ void __launch_bounds__(THREADS)
   }
 
   int local_use_count = static_cast<int>(0);
-  for(int i = wf_thread_id; i < WF_LDS_NUM - __WF_SIZE__; i += wf_thread_num * 2){
+  for (int i = wf_thread_id; i < WF_LDS_NUM - __WF_SIZE__; i += wf_thread_num * 2) {
     local_use_count += __popcll(wf_lds_ids[i]);
     local_use_count += __popcll(wf_lds_ids[i + __WF_SIZE__]);
   }
@@ -78,9 +77,8 @@ __global__ void __launch_bounds__(THREADS)
 
 template <typename T, typename I, typename bitMapType, size_t THREADS>
 __global__ void __launch_bounds__(THREADS)
-    spgemm_symbolic_bit_map_block_per_row(const size_t m, const I *row_ptr_a,
-                                                                        const I *col_idx_ptr_a, const I *row_ptr_b,
-                                                                        const I *col_idx_ptr_b, I *row_ptr_c) {
+    spgemm_symbolic_bit_map_block_per_row(const size_t m, const I *row_ptr_a, const I *col_idx_ptr_a,
+                                          const I *row_ptr_b, const I *col_idx_ptr_b, I *row_ptr_c) {
   // block id in global
   const int global_block_id = blockIdx.x;
   // thread id in block
@@ -131,7 +129,7 @@ __global__ void __launch_bounds__(THREADS)
   __syncthreads();
 
   int local_use_count = static_cast<int>(0);
-  for(int i = block_thread_id; i < BLOCK_LDS_NUM; i += block_thread_num){
+  for (int i = block_thread_id; i < BLOCK_LDS_NUM; i += block_thread_num) {
     local_use_count += __popcll(block_lds_ids[i]);
   }
   __syncthreads();
@@ -141,7 +139,7 @@ __global__ void __launch_bounds__(THREADS)
   }
   __syncthreads();
 
-  if(wf_thread_id == 0){
+  if (wf_thread_id == 0) {
     atomicAdd(&offset, local_use_count);
   }
   __syncthreads();
