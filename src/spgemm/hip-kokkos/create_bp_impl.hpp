@@ -13,16 +13,8 @@ template <typename T, typename I, size_t CHUNK_SIZE> size_t bp_buffer_size(const
 
 template <typename T, typename I, size_t CHUNK_SIZE>
 void create_bp(const CsrMatrix<T, I> &matrix, I *bp, const size_t BP_IDX_PER_ROW) {
-  if (BP_IDX_PER_ROW <= 8) {
-    create_bp_wf_per_row_kernel<I, CHUNK_SIZE, 8>
-        <<<512, 256>>>(matrix.rows, matrix.row_ptr, matrix.col_idx_ptr, bp, BP_IDX_PER_ROW);
-  } else if (BP_IDX_PER_ROW <= 16) {
-    create_bp_wf_per_row_kernel<I, CHUNK_SIZE, 16>
-        <<<512, 256>>>(matrix.rows, matrix.row_ptr, matrix.col_idx_ptr, bp, BP_IDX_PER_ROW);
-  } else {
-    create_bp_wf_per_row_kernel<I, CHUNK_SIZE>
-        <<<512, 256>>>(matrix.rows, matrix.row_ptr, matrix.col_idx_ptr, bp, BP_IDX_PER_ROW);
-  }
+  create_bp_wf_per_row_kernel<I, CHUNK_SIZE>
+      <<<512, 256>>>(matrix.rows, matrix.row_ptr, matrix.col_idx_ptr, bp, BP_IDX_PER_ROW);
 }
 
 #endif // SPGEMM_KOKKOS_CREATE_BP_IMPL_HPP
