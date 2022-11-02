@@ -25,7 +25,6 @@ mkdir -p ${tar_dir}
 mkdir -p ${tar_dir}/${solver_target_dir}
 
 # copy solver files.
-cp -r ${source_dir}/sort ${tar_dir}/${solver_target_dir}
 cp -r ${source_dir}/spgemm ${tar_dir}/${solver_target_dir}
 cp -r ${generated_dir} ${tar_dir}/${solver_target_dir}/
 ## remove CMakeLists.txt

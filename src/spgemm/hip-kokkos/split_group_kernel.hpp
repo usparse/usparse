@@ -1,6 +1,7 @@
 #ifndef SPGEMM_HIP_KOKKOS_SPLIT_GROUP_KERNEL_HPP
 #define SPGEMM_HIP_KOKKOS_SPLIT_GROUP_KERNEL_HPP
 
+#include "../common/scan/scan_in_device.hpp"
 #include "split_config.h"
 #include <hip/hip_runtime.h>
 
@@ -68,9 +69,67 @@ __global__ void __launch_bounds__(THREADS)
   }
 }
 
+template <typename T, size_t VEC_SIZE, size_t THREADS>
+__global__ void __launch_bounds__(THREADS)
+    split_group_part2_kernel(const size_t input_size, const size_t step_width, T *scan_ptr, T *sum_ptr) {
+  // thread id in global
+  const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
+  // thread id in block
+  const int block_thread_id = threadIdx.x;
+  // vector id in block
+  const int block_vector_id = block_thread_id / VEC_SIZE;
+  // thread id in vector
+  const int vector_thread_id = block_thread_id % VEC_SIZE;
+
+  __shared__ T shared_vector_reduce[THREADS / VEC_SIZE];
+  __shared__ T shared_base_sum;
+  T *lds_vec_sum = shared_vector_reduce + block_vector_id;
+
+  const T *input = scan_ptr + step_width * blockIdx.x;
+  T *output = scan_ptr + step_width * blockIdx.x;
+  T *block_sum = sum_ptr + blockIdx.x;
+  if (block_thread_id == 0) {
+    shared_base_sum = static_cast<T>(0);
+  }
+  __syncthreads();
+  for (int i = block_thread_id; i < input_size; i += THREADS) {
+    T local_sum = input[i];
+    common::scan_in_vector_device<T, VEC_SIZE>(&local_sum);
+    if (vector_thread_id == VEC_SIZE - 1) {
+      *lds_vec_sum = local_sum;
+    }
+    __syncthreads();
+    // scan for lds
+    if (block_vector_id == 0) {
+      T lds_scan_sum = static_cast<T>(0);
+      for (int j = vector_thread_id; j < THREADS / VEC_SIZE; j += VEC_SIZE) {
+        T vec_local_sum = shared_vector_reduce[j];
+        common::scan_in_vector_device<T, VEC_SIZE>(&vec_local_sum);
+        vec_local_sum += lds_scan_sum;
+        shared_vector_reduce[j] = vec_local_sum;
+        lds_scan_sum = __shfl(vec_local_sum, VEC_SIZE - 1, VEC_SIZE);
+      }
+    }
+    __syncthreads();
+    // add sum in lds
+    T tmp = shared_base_sum + local_sum +
+            (block_vector_id > 0 ? shared_vector_reduce[block_vector_id - 1] : static_cast<T>(0));
+    output[i] = tmp;
+    if (i == input_size - 1) {
+      *block_sum = tmp;
+    }
+    __syncthreads();
+    // update base sum
+    if (block_thread_id == 0) {
+      shared_base_sum += shared_vector_reduce[THREADS / VEC_SIZE - 1];
+    }
+    __syncthreads();
+  }
+}
+
 template <typename I, size_t GROUP_NUM, const I (&GROUP_THRESHOLD)[GROUP_NUM], size_t N, size_t THREADS>
 __global__ void __launch_bounds__(THREADS)
-    split_group_part2_kernel(const size_t m, const I *row_ptr, I *group_row_ptr, int *temp_buffer) {
+    split_group_part3_kernel(const size_t m, const I *row_ptr, I *group_row_ptr, int *temp_buffer) {
   // block id in global
   const int global_block_id = blockIdx.x;
   // block num in global

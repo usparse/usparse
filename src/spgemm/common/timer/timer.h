@@ -1,10 +1,11 @@
-#ifndef SPGEMM_HIP_KOKKOS_TIMER_H
-#define SPGEMM_HIP_KOKKOS_TIMER_H
+#ifndef COMMON_TIMER_H
+#define COMMON_TIMER_H
 
 #include <chrono>
 
 using namespace std::chrono;
 
+namespace common {
 struct Timer {
   time_point<high_resolution_clock> time_start;
   time_point<high_resolution_clock> time_stop;
@@ -15,5 +16,6 @@ struct Timer {
     time_use = duration_cast<microseconds>(time_stop - time_start);
   }
 };
+} // namespace common
 
-#endif // SPGEMM_HIP_KOKKOS_TIMER_H
+#endif // COMMON_TIMER_H

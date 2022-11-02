@@ -6,7 +6,6 @@
 #include "building_config.h"
 
 #include "hip-kokkos/spgemm.h"
-#include "hip-dense/dense_impl.hpp"
 
 template <typename T, typename I>
 void sparse_gemm_hip(const hip_sparse_operation transA, const hip_sparse_operation transB, 
@@ -18,15 +17,6 @@ void sparse_gemm_hip(const hip_sparse_operation transA, const hip_sparse_operati
     kokkos_spgemm<T, I>(alpha, m, n, k, nnzA, pOffsetA, pColIndexA, pValueA, 
                       nnzB, pOffsetB, pColIndexB, pValueB, 
                       pNnzC, pOffsetC, ppColIndexC, ppValueC);
-    // const size_t buff_size = dense_spgemm(transA, transB, alpha, m,n,k,nnzA, pOffsetA, pColIndexA, pValueA,nnzB, pOffsetB, pColIndexB, pValueB,pNnzC, pOffsetC, ppColIndexC, ppValueC,nullptr);
-    
-    // void *buffer_data = nullptr;
-    // HIP_CHECK(hipMalloc((void**)&buffer_data, buff_size));
-    // // HIP_CHECK(hipMemset(buffer_data,0, buff_size));
-
-    // // dense_spgemm(transA, transB, alpha, m,n,k,nnzA, pOffsetA, pColIndexA, pValueA,nnzB, pOffsetB, pColIndexB, pValueB,pNnzC, pOffsetC, ppColIndexC, ppValueC,buffer_data);
-
-    // // HIP_CHECK(hipFree(buffer_data));
 }
 
 // template instantiation

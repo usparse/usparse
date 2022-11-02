@@ -1,10 +1,13 @@
 # all enabled strategies
 set(ENABLED_STRATEGIES
     kokkos
-    dense
     )
 
 # find HIP
+
+# to include common folder
+set(COMMON_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/common)
+include(${COMMON_SRC_PATH}/source_list.cmake)
 
 # to include strategies source files.
 set(CURRENT_SPGEMM_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
@@ -29,11 +32,9 @@ foreach (X_STRATEGY IN LISTS ENABLED_STRATEGIES)
     endif ()
 endforeach ()
 
-set(ACC_HIP_HEADER_FILES ${ACC_HEADER_FILES}
+set(ACC_HIP_HEADER_FILES ${COMMON_HEADER_FILES} ${ACC_HEADER_FILES}
         api/spgemm_hip_api.h
         api/spgemm_hip_types.h
-        common/reduction_kernel.hpp
-        common/scan_kernel.hpp
         )
 
 set(ACC_HIP_SOURCE_FILES ${ACC_SOURCE_FILES}
@@ -44,18 +45,10 @@ set(ACC_HIP_SOURCE_FILES ${ACC_SOURCE_FILES}
 # hip_add_library(${SPGEMM_KERNEL_LIB_NAME} STATIC ${ACC_HIP_SOURCE_FILES} ${ACC_HIP_HEADER_FILES} HIPCC_OPTIONS ${SPGEMM_HIPCC_OPTIONS})
 
 # build static library
-MESSAGE(STATUS "sort source dir is ${SORT_SOURCE_DIR}")
 add_library(${SPGEMM_KERNEL_LIB_NAME} STATIC ${ACC_HIP_SOURCE_FILES} ${ACC_HIP_HEADER_FILES})
 target_include_directories(
         ${SPGEMM_KERNEL_LIB_NAME}
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}$<SEMICOLON>${PROJECT_BINARY_DIR}/generated>
         $<INSTALL_INTERFACE:include>
-        PRIVATE
-        ${SORT_KERNEL_SOURCE_DIR}
-)
-target_link_libraries(
-        ${SPGEMM_KERNEL_LIB_NAME}
-        PRIVATE
-        ${SORT_KERNEL_LIB_NAME}
 )

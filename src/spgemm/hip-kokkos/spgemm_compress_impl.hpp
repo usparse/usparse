@@ -1,23 +1,18 @@
 #ifndef SPGEMM_KOKKOS_SPGEMM_COMPRESS_IMPL_HPP
 #define SPGEMM_KOKKOS_SPGEMM_COMPRESS_IMPL_HPP
 
-#include "build_flag.h"
 #include "spgemm_compress_kernel.hpp"
-#include <hip/hip_runtime.h>
 
-#ifdef DEBUG_MODE
-#include <iostream>
-#endif
+template <typename T, typename I> size_t spgemm_compress_buffer_size(const CsrMatrix<T, I> &matrix) {
+  return ALIGN_256_BYTES(CompressMatrix<I>::buffer_size(matrix.rows, matrix.cols, matrix.nnz));
+}
 
-template <typename T, typename I> CompressMatrix<I> spgemm_compress(const CsrMatrix<T, I> &matrix) {
+template <typename T, typename I> CompressMatrix<I> spgemm_compress(const CsrMatrix<T, I> &matrix, void *temp_buffer) {
   using idType = typename CompressMatrix<I>::IdType;
   using bitType = typename CompressMatrix<I>::BitSetEleType;
-  CompressMatrix<I> compress_matrix(matrix.rows, matrix.cols, matrix.nnz, matrix.row_ptr);
+  CompressMatrix<I> compress_matrix(matrix.rows, matrix.cols, matrix.nnz, matrix.row_ptr, temp_buffer);
   const I nnz_per_row = matrix.nnz / matrix.rows;
 
-#ifdef DEBUG_MODE
-  std::cout << "nnz_per_row: " << nnz_per_row << std::endl;
-#endif
   constexpr size_t N = 4;
   const size_t GLOBAL_BLOCK_NUM = 512;
   constexpr size_t BLOCK_THREAD_NUM = 256;
