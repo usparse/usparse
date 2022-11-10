@@ -18,15 +18,15 @@ __global__ void create_bp_wf_per_row_kernel(const size_t m, const I *row_ptr, co
   const int wf_thread_id = global_thread_id % __WF_SIZE__;
   // thread num in wf
   const int wf_thread_num = __WF_SIZE__;
-  // each vector process a row
+  // each wf process a row
   for (int row = global_wf_id; row < m; row += global_wf_num) {
-    I *row_bp_ptr = &bp[BP_IDX_PER_ROW * row];
+    I *row_bp_ptr = bp + BP_IDX_PER_ROW * row;
     I base_bp = CHUNK_SIZE;
     int bp_idx = 0;
     const I row_idx_begin = row_ptr[row];
     const I row_idx_end = row_ptr[row + 1];
     const int WF_ROUNDS = (row_idx_end - row_idx_begin + __WF_SIZE__ - 1) / __WF_SIZE__;
-    for (int i = 0; i < WF_ROUNDS; ++i) {
+    for (int i = 0; i < WF_ROUNDS; i++) {
       const int idx = row_idx_begin + __WF_SIZE__ * i + wf_thread_id;
       const I col = idx < row_idx_end ? col_idx_ptr[idx] : static_cast<I>(0);
       bool flag = col >= base_bp;
@@ -48,6 +48,9 @@ __global__ void create_bp_wf_per_row_kernel(const size_t m, const I *row_ptr, co
           flag = col >= base_bp;
         } while (__any(flag));
       }
+    }
+    if(wf_thread_id == 0){
+      row_bp_ptr[0] = row_idx_begin;
     }
     bp_idx = __shfl(bp_idx, 0);
     for (int idx = bp_idx + wf_thread_id; idx < BP_IDX_PER_ROW; idx += wf_thread_num) {
