@@ -114,7 +114,7 @@ int main(int argc,char** argv)
     timer_kernel_warmup.stop();
 
     HIP_CHECK( hipFree(device_colindexC) )
-    HIP_CHECK( hipFree(device_valueC) )
+    // HIP_CHECK( hipFree(device_valueC) )
 
     cout << "non zero num of matrix C : " << C_nnz << endl;
     cout << "Warmup finished!  elapsed time: " << timer_kernel_warmup.time_use << "(us)" << endl;
@@ -167,7 +167,7 @@ int main(int argc,char** argv)
         }
 
         HIP_CHECK( hipFree(device_colindexC) )
-        HIP_CHECK( hipFree(device_valueC) )
+        // HIP_CHECK( hipFree(device_valueC) )
 
         cout <<"Round: "<< i+1 <<"  elapsed time: " << timer_kernel.time_use << "(us)" << endl;
     }

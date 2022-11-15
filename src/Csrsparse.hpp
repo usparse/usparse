@@ -2,11 +2,6 @@
 #include "api/spgemm_hip_api.h"
 #include "api/spgemm_hip_types.h"
 
-
-hipError_t hipFree(double* ptr) {
-	return hipSuccess;
-}
-
 void  call_device_spgemm(const int transA,
 		const int          transB,
 		const dtype        alpha,
