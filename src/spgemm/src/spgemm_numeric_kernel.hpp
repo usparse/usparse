@@ -423,10 +423,6 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_block_per_row_flash_so
 
   I *const block_mem_ids = ids + row_ptr_c[row_a];
   T *const block_mem_values = values + row_ptr_c[row_a];
-#ifdef CAS_PRA_VERIFY
-  I *const last_mem_id = ids + row_ptr_c[row_a + 1] - 1;
-  T *const last_mem_val = values + row_ptr_c[row_a + 1] - 1;
-#endif
 
   __syncthreads();
   for (int idx_a = row_idx_begin; idx_a < row_idx_end; ++idx_a) {
@@ -494,13 +490,7 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_block_per_row_flash_so
         smaller_count++;
       }
     }
-#ifdef CAS_PRA_VERIFY
-    if (smaller_count == end_offset - 1) {
-      *last_mem_id = base_id;
-      *last_mem_val = base_values * alpha;
-      continue;
-    }
-#endif
+
     block_mem_ids[smaller_count] = base_id;
     block_mem_values[smaller_count] = base_values * alpha;
   }
@@ -567,10 +557,6 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_block_per_row_flash_so
 
   I *const block_mem_ids = ids + row_ptr_c[row_a];
   T *const block_mem_values = values + row_ptr_c[row_a];
-#ifdef CAS_PRA_VERIFY
-  I *const last_mem_id = ids + row_ptr_c[row_a + 1] - 1;
-  T *const last_mem_val = values + row_ptr_c[row_a + 1] - 1;
-#endif
 
   __syncthreads();
   for (int idx_a = row_idx_begin; idx_a < row_idx_end; ++idx_a) {
@@ -644,13 +630,7 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_block_per_row_flash_so
         smaller_count++;
       }
     }
-#ifdef CAS_PRA_VERIFY
-    if (smaller_count == end_offset - 1) {
-      *last_mem_id = base_id;
-      *last_mem_val = base_values * alpha;
-      continue;
-    }
-#endif
+
     block_mem_ids[smaller_count] = base_id;
     block_mem_values[smaller_count] = base_values * alpha;
   }
@@ -723,10 +703,6 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_v
   const I row_idx_end = row_ptr_a[row_a + 1];
   I *vec_mem_ids = ids + row_ptr_c[row_a];
   T *vec_mem_values = values + row_ptr_c[row_a];
-#ifdef CAS_PRA_VERIFY
-  I *last_mem_id = ids + row_ptr_c[row_a + 1] - 1;
-  T *last_mem_val = values + row_ptr_c[row_a + 1] - 1;
-#endif
 
   for (int idx_a = row_idx_begin; idx_a < row_idx_end; ++idx_a) {
     const I col_a = col_idx_ptr_a[idx_a];
@@ -754,13 +730,7 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_v
         smaller_count++;
       }
     }
-#ifdef CAS_PRA_VERIFY
-    if (smaller_count == end_offset - 1) {
-      *last_mem_id = base_id;
-      *last_mem_val = base_values * alpha;
-      continue;
-    }
-#endif
+
     vec_mem_ids[smaller_count] = base_id;
     vec_mem_values[smaller_count] = base_values * alpha;
   }
@@ -965,23 +935,7 @@ __global__ void __launch_bounds__(THREADS)
       atomicAdd(&vec_lds_values[idx], reg_val[i]);
     }
   }
-#ifdef CAS_PRA_VERIFY
-  if (vec_thread_id == 0) {
-    if (last_item_offset > 0 && vec_lds_ids[last_item_offset] == CHUNK_NULL_VALUE) {
-      int idx = last_item_offset - 1;
-      while (vec_lds_ids[idx] == CHUNK_NULL_VALUE) {
-        idx--;
-      }
-      // swap item
-      vec_lds_ids[last_item_offset] = vec_lds_ids[idx];
-      vec_lds_values[last_item_offset] = vec_lds_values[idx];
 
-      vec_lds_ids[idx] = CHUNK_NULL_VALUE;
-    }
-  }
-#endif
-
-#ifndef CAS_PRA_VERIFY
   // notes: if have same items in array, middle of array will have CHUNK_NULL_VALUE
   // scan and re-map
   int scan_sum = 0;
@@ -1000,7 +954,7 @@ __global__ void __launch_bounds__(THREADS)
     }
     scan_sum += __shfl(scan_val, VEC_SIZE - 1, VEC_SIZE);
   }
-#endif
+
   // write back
   for (int idx = vec_thread_id; idx <= last_item_offset; idx += vec_thread_num) {
     if (vec_lds_ids[idx] != CHUNK_NULL_VALUE) {
@@ -1183,25 +1137,7 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_esc_block_per_row_sort
     }
   }
   __syncthreads();
-#ifdef CAS_PRA_VERIFY
-  if (block_thread_id == 0) {
-    if (last_item_offset > 0 && block_lds_ids[last_item_offset] == CHUNK_NULL_VALUE) {
-      int idx = last_item_offset - 1;
-      while (block_lds_ids[idx] == CHUNK_NULL_VALUE) {
-        idx--;
-      }
-      // swap item
-      block_lds_ids[last_item_offset] = block_lds_ids[idx];
-      block_lds_values[last_item_offset] = block_lds_values[idx];
 
-      block_lds_ids[idx] = CHUNK_NULL_VALUE;
-    }
-  }
-  __syncthreads();
-#endif
-#ifndef CAS_PRA_VERIFY
-  // todo: fix it, need scan and re-map
-#endif
   // write back
   for (int idx = block_thread_id; idx <= last_item_offset; idx += block_thread_num) {
     if (block_lds_ids[idx] != CHUNK_NULL_VALUE) {
@@ -1390,25 +1326,7 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_esc_block_per_row_sort
     }
   }
   __syncthreads();
-#ifdef CAS_PRA_VERIFY
-  if (block_thread_id == 0) {
-    if (last_item_offset > 0 && block_lds_ids[last_item_offset] == CHUNK_NULL_VALUE) {
-      int idx = last_item_offset - 1;
-      while (block_lds_ids[idx] == CHUNK_NULL_VALUE) {
-        idx--;
-      }
-      // swap item
-      block_lds_ids[last_item_offset] = block_lds_ids[idx];
-      block_lds_values[last_item_offset] = block_lds_values[idx];
 
-      block_lds_ids[idx] = CHUNK_NULL_VALUE;
-    }
-  }
-  __syncthreads();
-#endif
-#ifndef CAS_PRA_VERIFY
-  // todo: fix it, need scan and re-map
-#endif
   // write back
   for (int idx = block_thread_id; idx <= last_item_offset; idx += block_thread_num) {
     if (block_lds_ids[idx] != CHUNK_NULL_VALUE) {
