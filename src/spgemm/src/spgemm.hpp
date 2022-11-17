@@ -1,5 +1,5 @@
-#ifndef SPGEMM_HIP_KOKKOS_SPGEMM_H
-#define SPGEMM_HIP_KOKKOS_SPGEMM_H
+#ifndef USTB_SPARSE_SPGEMM_SPGEMM_HPP
+#define USTB_SPARSE_SPGEMM_SPGEMM_HPP
 
 #include "../common/check/hip_check.hpp"
 #include "../common/tools/set_val.hpp"
@@ -7,7 +7,7 @@
 #include "spgemm_core_impl.hpp"
 
 template <typename T, typename I>
-void kokkos_spgemm(const T alpha, const size_t m, const size_t n, const size_t k, const size_t nnzA, const I *pOffsetA,
+void ustb_sparse_spgemm(const T alpha, const size_t m, const size_t n, const size_t k, const size_t nnzA, const I *pOffsetA,
                    const I *pColIndexA, const T *pValueA, const size_t nnzB, const I *pOffsetB, const I *pColIndexB,
                    const T *pValueB, size_t *pNnzC, I *pOffsetC, I **ppColIndexC, T **ppValueC) {
 #ifdef DEVICE_MALLOC_INITILIZE
@@ -24,4 +24,4 @@ void kokkos_spgemm(const T alpha, const size_t m, const size_t n, const size_t k
   *ppValueC = matrix_c.values_ptr;
 }
 
-#endif // SPGEMM_HIP_KOKKOS_SPGEMM_H
+#endif // USTB_SPARSE_SPGEMM_SPGEMM_HPP

@@ -1,5 +1,5 @@
-#ifndef SPGEMM_KOKKOS_HASH_MAP_KERNEL_HPP
-#define SPGEMM_KOKKOS_HASH_MAP_KERNEL_HPP
+#ifndef USTB_SPARSE_SPGEMM_HASH_MAP_INSERT_KERNEL_HPP
+#define USTB_SPARSE_SPGEMM_HASH_MAP_INSERT_KERNEL_HPP
 
 #include <hip/hip_runtime.h>
 
@@ -167,4 +167,4 @@ __device__ __forceinline__ void linear_chain_hashmap_vector_insert_or(int *begin
   nexts[write_index] = hash_begin;
 }
 
-#endif // SPGEMM_KOKKOS_HASH_MAP_KERNEL_HPP
+#endif // USTB_SPARSE_SPGEMM_HASH_MAP_INSERT_KERNEL_HPP

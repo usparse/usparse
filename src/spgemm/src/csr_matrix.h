@@ -1,5 +1,5 @@
-#ifndef SPGEMM_KOKKOS_CSR_MATRIX_H
-#define SPGEMM_KOKKOS_CSR_MATRIX_H
+#ifndef USTB_SPARSE_SPGEMM_CSR_MATRIX_H
+#define USTB_SPARSE_SPGEMM_CSR_MATRIX_H
 
 template <typename T, typename I> struct CsrMatrix {
   const size_t rows;
@@ -12,4 +12,4 @@ template <typename T, typename I> struct CsrMatrix {
       : rows(m), cols(n), nnz(nnz), row_ptr(r), col_idx_ptr(c), values_ptr(v) {}
 };
 
-#endif // SPGEMM_KOKKOS_CSR_MATRIX_H
+#endif // USTB_SPARSE_SPGEMM_CSR_MATRIX_H

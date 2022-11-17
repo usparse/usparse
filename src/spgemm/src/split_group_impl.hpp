@@ -1,5 +1,5 @@
-#ifndef SPGEMM_HIP_KOKKOS_SPLIT_GROUP_IMPL_HPP
-#define SPGEMM_HIP_KOKKOS_SPLIT_GROUP_IMPL_HPP
+#ifndef USTB_SPARSE_SPGEMM_SPLIT_GROUP_IMPL_HPP
+#define USTB_SPARSE_SPGEMM_SPLIT_GROUP_IMPL_HPP
 
 #include "../common/check/hip_check.hpp"
 #include "../common/scan/scan_impl.hpp"
@@ -74,4 +74,4 @@ void split_group(const size_t rows, const I *row_ptr, I *group_row_ptr, int *hgr
   }
 }
 
-#endif // SPGEMM_HIP_KOKKOS_SPLIT_GROUP_IMPL_HPP
+#endif // USTB_SPARSE_SPGEMM_SPLIT_GROUP_IMPL_HPP

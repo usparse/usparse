@@ -1,5 +1,5 @@
-#ifndef SPGEMM_KOKKOS_CREATE_BP_IMPL_HPP
-#define SPGEMM_KOKKOS_CREATE_BP_IMPL_HPP
+#ifndef USTB_SPARSE_SPGEMM_CREATE_BP_IMPL_HPP
+#define USTB_SPARSE_SPGEMM_CREATE_BP_IMPL_HPP
 
 #include "create_bp_kernel.hpp"
 #include "csr_matrix.h"
@@ -17,4 +17,4 @@ void create_bp(const CsrMatrix<T, I> &matrix, I *bp, const size_t BP_IDX_PER_ROW
       <<<512, 256>>>(matrix.rows, matrix.row_ptr, matrix.col_idx_ptr, bp, BP_IDX_PER_ROW);
 }
 
-#endif // SPGEMM_KOKKOS_CREATE_BP_IMPL_HPP
+#endif // USTB_SPARSE_SPGEMM_CREATE_BP_IMPL_HPP

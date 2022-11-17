@@ -1,5 +1,5 @@
-#ifndef SPGEMM_KOKKOS_SPGEMM_COMPRESS_IMPL_HPP
-#define SPGEMM_KOKKOS_SPGEMM_COMPRESS_IMPL_HPP
+#ifndef USTB_SPARSE_SPGEMM_SPGEMM_COMPRESS_IMPL_HPP
+#define USTB_SPARSE_SPGEMM_SPGEMM_COMPRESS_IMPL_HPP
 
 #include "spgemm_compress_kernel.hpp"
 
@@ -59,4 +59,4 @@ template <typename T, typename I> CompressMatrix<I> spgemm_compress(const CsrMat
   return compress_matrix;
 }
 
-#endif // SPGEMM_KOKKOS_SPGEMM_COMPRESS_IMPL_HPP
+#endif // USTB_SPARSE_SPGEMM_SPGEMM_COMPRESS_IMPL_HPP

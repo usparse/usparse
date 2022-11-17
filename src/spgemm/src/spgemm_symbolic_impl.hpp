@@ -1,5 +1,5 @@
-#ifndef SPGEMM_KOKKOS_SPGEMM_SYMBOLIC_IMPL_HPP
-#define SPGEMM_KOKKOS_SPGEMM_SYMBOLIC_IMPL_HPP
+#ifndef USTB_SPARSE_SPGEMM_SPGEMM_SYMBOLIC_IMPL_HPP
+#define USTB_SPARSE_SPGEMM_SPGEMM_SYMBOLIC_IMPL_HPP
 
 #include "../common/check/hip_check.hpp"
 #include "../common/max/max_impl.hpp"
@@ -452,4 +452,4 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
   *hnnz_c = row_ptr_c[matrix_a.rows];
 }
 
-#endif // SPGEMM_KOKKOS_SPGEMM_SYMBOLIC_IMPL_HPP
+#endif // USTB_SPARSE_SPGEMM_SPGEMM_SYMBOLIC_IMPL_HPP

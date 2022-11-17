@@ -12,7 +12,7 @@
 - Build and verify on GPU side.
 (Note: make sure lib `rocsparse` is loaded):
 ```
-CC=clang CXX=hipcc cmake -DCMAKE_BUILD_TYPE=Release -DDEVICE_SIDE_VERIFY_FLAG=ON -B./${build_dir} -S./
+CC=clang CXX=hipcc cmake -DCMAKE_BUILD_TYPE=Release -B./${build_dir} -S./
 cmake --build ./${build_dir} -j8
 ```
 

@@ -1,5 +1,5 @@
-#ifndef SPGEMM_KOKKOS_SPGEMM_CORE_IMPL_HPP
-#define SPGEMM_KOKKOS_SPGEMM_CORE_IMPL_HPP
+#ifndef USTB_SPARSE_SPGEMM_SPGEMM_CORE_IMPL_HPP
+#define USTB_SPARSE_SPGEMM_SPGEMM_CORE_IMPL_HPP
 
 #include "../common/check/hip_check.hpp"
 #include "align.h"
@@ -75,4 +75,4 @@ CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, cons
   return matrix_c;
 }
 
-#endif // SPGEMM_KOKKOS_SPGEMM_CORE_IMPL_HPP
+#endif // USTB_SPARSE_SPGEMM_SPGEMM_CORE_IMPL_HPP

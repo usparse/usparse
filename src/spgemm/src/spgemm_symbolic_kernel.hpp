@@ -1,8 +1,8 @@
-#ifndef SPGEMM_KOKKOS_SPGEMM_SYMBOLIC_KERNEL_HPP
-#define SPGEMM_KOKKOS_SPGEMM_SYMBOLIC_KERNEL_HPP
+#ifndef USTB_SPARSE_SPGEMM_SPGEMM_SYMBOLIC_KERNEL_HPP
+#define USTB_SPARSE_SPGEMM_SPGEMM_SYMBOLIC_KERNEL_HPP
 
 #include "compress_matrix.h"
-#include "hash_map_insert.hpp"
+#include "hash_map_insert_kernel.hpp"
 #include <hip/hip_runtime.h>
 
 template <typename I, typename BitType, size_t VEC_SIZE>
@@ -712,4 +712,4 @@ __global__ void __launch_bounds__(THREADS)
   }
 }
 
-#endif // SPGEMM_KOKKOS_SPGEMM_SYMBOLIC_KERNEL_HPP
+#endif // USTB_SPARSE_SPGEMM_SPGEMM_SYMBOLIC_KERNEL_HPP
