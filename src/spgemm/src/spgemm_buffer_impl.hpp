@@ -2,8 +2,8 @@
 #define USTB_SPARSE_SPGEMM_SPGEMM_BUFFER_IMPL_HPP
 
 #include "spgemm_adapt_policy.hpp"
-#include "spgemm_symbolic_impl.hpp"
 #include "spgemm_numeric_impl.hpp"
+#include "spgemm_symbolic_impl.hpp"
 
 template <typename T, typename I, typename Policy>
 size_t spgemm_symbolic_buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b) {
@@ -32,7 +32,8 @@ size_t spgemm_numeric_buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMatr
 }
 
 template <typename T, typename I>
-size_t spgemm_buffer_size(const PolicyFlag<T, I> &policyflag, const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b) {
+size_t spgemm_buffer_size(const PolicyFlag<T, I> &policyflag, const CsrMatrix<T, I> &matrix_a,
+                          const CsrMatrix<T, I> &matrix_b) {
   size_t symbolic_buffer_size = 0;
   size_t numeric_buffer_size = 0;
   if (policyflag.use_compress) {

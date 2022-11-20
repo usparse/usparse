@@ -3,13 +3,13 @@
 
 #include "../common/check/hip_check.hpp"
 #include "align.h"
-#include "spgemm_buffer_impl.hpp"
 #include "spgemm_adapt_policy.hpp"
+#include "spgemm_buffer_impl.hpp"
 
 template <typename T, typename I>
 CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b,
                             I *row_ptr_c) {
-  
+
   PolicyFlag<T, I> policyflag(matrix_a, matrix_b);
   size_t nnz_c = 0;
   I row_nnz_max = 0;
@@ -20,7 +20,8 @@ CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, cons
   HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&temp_buffer), temp_buffer_size))
 
   // symbolic phase
-  AdaptPolicyChoice::template symbolic_stage<T, I>(policyflag, matrix_a, matrix_b, row_ptr_c, &nnz_c, &row_nnz_max, temp_buffer);
+  AdaptPolicyChoice::template symbolic_stage<T, I>(policyflag, matrix_a, matrix_b, row_ptr_c, &nnz_c, &row_nnz_max,
+                                                   temp_buffer);
 
   // alloc matrix_c mem
   CsrMatrix<T, I> matrix_c(matrix_a.rows, matrix_b.cols, nnz_c, row_ptr_c, nullptr, nullptr);
@@ -34,9 +35,9 @@ CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, cons
   //   // HIP_CHECK(hipMemset(matrix_c.values_ptr, static_cast<T>(0), nnz_c * sizeof(T)))
   // #endif
 
-
   // numeric phase
-  AdaptPolicyChoice::template numeric_stage<T, I>(policyflag, alpha, matrix_a, matrix_b, row_nnz_max, matrix_c, temp_buffer);
+  AdaptPolicyChoice::template numeric_stage<T, I>(policyflag, alpha, matrix_a, matrix_b, row_nnz_max, matrix_c,
+                                                  temp_buffer);
 
   // free temp memory
   HIP_CHECK(hipFree(temp_buffer));
