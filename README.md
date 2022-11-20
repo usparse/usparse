@@ -18,7 +18,7 @@ cmake --build ./${build_dir} -j8
 
 - Build and verify on CPU side.
 ```
-CC=clang CXX=hipcc cmake -DCMAKE_BUILD_TYPE=Release -B./${build_dir} -S./
+CC=clang CXX=hipcc cmake -DCMAKE_BUILD_TYPE=Release -DDEVICE_SIDE_VERIFY_FLAG=OFF -B./${build_dir} -S./
 cmake --build ./${build_dir} -j8
 ```
 

@@ -393,27 +393,6 @@ public:
 };
 
 template <typename T, typename I, typename Policy>
-size_t spgemm_symbolic_buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b) {
-  size_t buffer_size = 0;
-  size_t alloc_size = 0;
-
-  // buffer for scan op
-  alloc_size = common::scan_buffer_size<I>(matrix_a.rows + 1);
-  buffer_size += ALIGN_256_BYTES(alloc_size);
-  // buffer for max op
-  alloc_size = common::max_buffer_size<I>(matrix_a.rows + 1);
-  buffer_size += ALIGN_256_BYTES(alloc_size);
-  // buffer for max nnz item
-  alloc_size = sizeof(I);
-  buffer_size += ALIGN_256_BYTES(alloc_size);
-  // buffer for row nnz policy
-  alloc_size = Policy::template buffer_size<T, I>(matrix_a, matrix_b);
-  buffer_size += ALIGN_256_BYTES(alloc_size);
-
-  return buffer_size;
-}
-
-template <typename T, typename I, typename Policy>
 void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b, I *row_ptr_c, size_t *hnnz_c,
                      I *hrow_nnz_max, void *temp_buffer) {
   char *ptr = reinterpret_cast<char *>(temp_buffer);

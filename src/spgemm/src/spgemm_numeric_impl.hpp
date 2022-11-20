@@ -369,11 +369,6 @@ public:
 };
 
 template <typename T, typename I, typename Policy>
-size_t spgemm_numeric_buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b) {
-  return Policy::template buffer_size<T, I>(matrix_a, matrix_b);
-}
-
-template <typename T, typename I, typename Policy>
 void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b,
                     const I row_nnz_max, CsrMatrix<T, I> &matrix_c, void *temp_buffer) {
   Policy::template spgemm_numeric<T, I>(alpha, matrix_a, matrix_b, row_nnz_max, matrix_c, temp_buffer);
