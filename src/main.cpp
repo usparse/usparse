@@ -1,10 +1,10 @@
-#include "./Csrsparse.hpp"
-#include "./common_function.hpp"
 #include <hip/hip_runtime.h>
 #include <iostream>
 #include <stdlib.h>
 #include <sys/time.h>
 #include <vector>
+#include "./common_function.hpp"
+#include "./Csrsparse.hpp"
 
 using namespace std;
 
