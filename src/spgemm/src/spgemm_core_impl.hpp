@@ -37,7 +37,7 @@ CsrMatrix<T, I> spgemm_core(const T alpha, const CsrMatrix<T, I> &matrix_a, cons
 
   // numeric phase
   AdaptPolicyChoice::template numeric_stage<T, I>(policyflag, alpha, matrix_a, matrix_b, row_nnz_max, matrix_c,
-                                                  temp_buffer);
+                                                  temp_buffer, temp_buffer_size);
 
   // free temp memory
   HIP_CHECK(hipFree(temp_buffer));
