@@ -1,5 +1,5 @@
-#ifndef SPGEMM_HIP_KOKKOS_SPLIT_GROUP_KERNEL_HPP
-#define SPGEMM_HIP_KOKKOS_SPLIT_GROUP_KERNEL_HPP
+#ifndef USTB_SPARSE_SPGEMM_SPLIT_GROUP_KERNEL_HPP
+#define USTB_SPARSE_SPGEMM_SPLIT_GROUP_KERNEL_HPP
 
 #include "../common/scan/scan_in_device.hpp"
 #include "split_config.h"
@@ -198,4 +198,4 @@ __global__ void __launch_bounds__(THREADS)
   }
 }
 
-#endif // SPGEMM_HIP_KOKKOS_SPLIT_GROUP_KERNEL_HPP
+#endif // USTB_SPARSE_SPGEMM_SPLIT_GROUP_KERNEL_HPP

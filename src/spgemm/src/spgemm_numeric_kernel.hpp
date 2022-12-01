@@ -1,8 +1,8 @@
-#ifndef SPGEMM_KOKKOS_SPGEMM_NUMERIC_KERNEL_H
-#define SPGEMM_KOKKOS_SPGEMM_NUMERIC_KERNEL_H
+#ifndef USTB_SPARSE_SPGEMM_SPGEMM_NUMERIC_KERNEL_HPP
+#define USTB_SPARSE_SPGEMM_SPGEMM_NUMERIC_KERNEL_HPP
 
 #include "../common/scan/scan_in_device.hpp"
-#include "hash_map_insert.hpp"
+#include "hash_map_insert_kernel.hpp"
 #include <cstddef>
 #include <hip/hip_runtime.h>
 
@@ -1339,4 +1339,4 @@ __global__ void __launch_bounds__(THREADS) spgemm_numeric_esc_block_per_row_sort
   }
 }
 
-#endif // SPGEMM_KOKKOS_SPGEMM_NUMERIC_KERNEL_H
+#endif // USTB_SPARSE_SPGEMM_SPGEMM_NUMERIC_KERNEL_HPP

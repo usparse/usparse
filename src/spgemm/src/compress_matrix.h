@@ -1,5 +1,5 @@
-#ifndef SPGEMM_HIP_KOKKOS_BITSET_H
-#define SPGEMM_HIP_KOKKOS_BITSET_H
+#ifndef USTB_SPARSE_SPGEMM_COMPRESS_MATRIX_H
+#define USTB_SPARSE_SPGEMM_COMPRESS_MATRIX_H
 
 #include "../common/check/hip_check.hpp"
 #include "align.h"
@@ -65,4 +65,4 @@ template <typename I> struct CompressMatrix {
   }
 };
 
-#endif // SPGEMM_HIP_KOKKOS_BITSET_H
+#endif // USTB_SPARSE_SPGEMM_COMPRESS_MATRIX_H

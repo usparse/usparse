@@ -8,4 +8,4 @@ typedef double dp_data_type;    // type of double precision float point number.
 typedef dp_data_type data_type; // default data type for float point number.
 typedef int idx_type;           // type of index.
 
-#endif //SPGEMM_HIP_TYPES_H
+#endif // SPGEMM_HIP_TYPES_H

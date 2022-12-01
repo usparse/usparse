@@ -1,5 +1,5 @@
 option(HIP_ENABLE_FLAG "Enable HIP" ON)
-option(DEVICE_SIDE_VERIFY_FLAG "Verify result of device side" OFF)
+option(DEVICE_SIDE_VERIFY_FLAG "Verify result of device side" ON)
 option(DEVICE_MALLOC_INITILIZE_FLAG "Perform device side malloc initialization" ON)
 
 if(DEVICE_SIDE_VERIFY_FLAG)

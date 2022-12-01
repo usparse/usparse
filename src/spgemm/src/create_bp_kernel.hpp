@@ -1,5 +1,5 @@
-#ifndef SPGEMM_KOKKOS_CREATE_BP_KERNEL_HPP
-#define SPGEMM_KOKKOS_CREATE_BP_KERNEL_HPP
+#ifndef USTB_SPARSE_SPGEMM_CREATE_BP_KERNEL_HPP
+#define USTB_SPARSE_SPGEMM_CREATE_BP_KERNEL_HPP
 
 #include <hip/hip_runtime.h>
 
@@ -49,7 +49,7 @@ __global__ void create_bp_wf_per_row_kernel(const size_t m, const I *row_ptr, co
         } while (__any(flag));
       }
     }
-    if(wf_thread_id == 0){
+    if (wf_thread_id == 0) {
       row_bp_ptr[0] = row_idx_begin;
     }
     bp_idx = __shfl(bp_idx, 0);
@@ -59,4 +59,4 @@ __global__ void create_bp_wf_per_row_kernel(const size_t m, const I *row_ptr, co
   }
 }
 
-#endif // SPGEMM_KOKKOS_CREATE_BP_KERNEL_HPP
+#endif // USTB_SPARSE_SPGEMM_CREATE_BP_KERNEL_HPP
