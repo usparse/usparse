@@ -1,13 +1,16 @@
 include(configure.cmake)
 
 set(HEADER_FILES
-        common_function.hpp
-        Csrsparse.hpp
-        )
+        ${CMAKE_CURRENT_SOURCE_DIR}/tools/common_function.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/tools/matrix_market_reader.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/tools/sparse_format.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/tools/sort_omp.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/tools/types.h
+)
 
 set(SOURCE_FILES
         main.cpp
-        )
+)
 
 # set binary path and lib storage path for compiling process.
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
