@@ -3,10 +3,10 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <vector>
-#include "tools/common_function.hpp"
+#include "common_function.hpp"
 #include "api/spgemm_hip_api.h"
-#include "tools/sparse_format.h"
-#include "tools/matrix_market_reader.hpp"
+#include "sparse_format.h"
+#include "matrix_market_reader.hpp"
 
 using namespace std;
 

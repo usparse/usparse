@@ -15,7 +15,16 @@ namespace common {
       time_stop = high_resolution_clock::now();
       time_use = duration_cast<microseconds>(time_stop - time_start);
     }
-  };
+  } timer[8];
 } // namespace common
+
+#define ustb_spgemm_warmup_timer 0
+#define ustb_spgemm_timer 1
+#define ustb_spgemm_symbolic_timer 2
+#define ustb_spgemm_numeric_timer 3
+#define rocsparse_spgemm_warmup_timer 4
+#define rocsparse_spgemm_timer 5
+#define rocsparse_spgemm_symbolic_timer 6
+#define rocsparse_spgemm_numeric_timer 7
 
 #endif // COMMON_TIMER_H
