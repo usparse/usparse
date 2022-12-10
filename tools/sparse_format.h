@@ -109,7 +109,6 @@ public:
     return csr;
   }
 
-
   /**
    * set metadata and allocate memory for COO matrix.
    */

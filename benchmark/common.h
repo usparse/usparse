@@ -7,7 +7,7 @@
 
 #ifdef DEVICE_SIDE_VERIFY_FLAG
 #include <hipsparse.h>
-#include <rocsparse.h>  
+#include <rocsparse.h>
 #endif
 
 #include "common/check/hip_check.hpp"

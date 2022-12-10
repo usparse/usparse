@@ -5,8 +5,8 @@
 #include <vector>
 #include "common_function.hpp"
 #include "api/spgemm_hip_api.h"
-#include "sparse_format.h"
 #include "matrix_market_reader.hpp"
+#include "sparse_format.h"
 
 using namespace std;
 
@@ -15,9 +15,9 @@ int main(int argc, char **argv) {
   cout << "Instructions:" << endl;
   cout << "[1] If generating matrix A randomly, input args should be: " << endl;
   cout << "    0, rows of A, columns of A, sparsity of A, sparsity of B, random seed of generating matrix " << endl;
-    cout << "[2] If using local file to creat matrix A, input args should be: " << endl;
+  cout << "[2] If using local file to creat matrix A, input args should be: " << endl;
   cout << "    2, CSR file path, sparsity of B, random seed of generating matrix " << endl;
-    cout << "[3] If using Matrix Market file to creat matrix A & matrix B, input args should be: " << endl;
+  cout << "[3] If using Matrix Market file to creat matrix A & matrix B, input args should be: " << endl;
   cout << "    2, .mtx file path " << endl;
   cout << "==================================================================" << endl;
 
@@ -29,14 +29,14 @@ int main(int argc, char **argv) {
   int FromFile = 0;
   FromFile = atoi(argv[1]);
 
-  if (FromFile == 2){
+  if (FromFile == 2) {
     cout << "matrix A is read from CSR file, while matrix B is generated randomly!" << endl;
     char path[1024];
     strcpy(path, argv[2]);
-    matrix_market_reader<csrIdxType,dtype> mtr;
-    matrix_market<csrIdxType, dtype> csr_mm=mtr.load_mat(path);
-    csr_mtx<csrIdxType,dtype> matrix_a=csr_mm.to_csr();
-    csr_mtx<csrIdxType,dtype> matrix_b=csr_mm.to_csr();
+    matrix_market_reader<csrIdxType, dtype> mtr;
+    matrix_market<csrIdxType, dtype> csr_mm = mtr.load_mat(path);
+    csr_mtx<csrIdxType, dtype> matrix_a = csr_mm.to_csr();
+    csr_mtx<csrIdxType, dtype> matrix_b = csr_mm.to_csr();
     A_num_rows = matrix_a.rows;
     A_num_cols = matrix_a.cols;
     A_nnz = matrix_a.nnz;
@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
     host_compare_dnmatC = new dtype[A_num_rows * B_num_cols];
     memset(host_compare_dnmatC, 0, A_num_rows * B_num_cols * sizeof(dtype));
   } else {
-    if (FromFile == 0){
+    if (FromFile == 0) {
       cout << "matrix A and matrix B are both generated randomly!" << endl;
       // Size of Matrix
       A_num_rows = atol(argv[2]);
@@ -89,11 +89,10 @@ int main(int argc, char **argv) {
     create_host_data(FromFile);
   }
 
-
   // Show Info
   cout << "marix A: " << A_num_rows << " X " << A_num_cols << "    marix B: " << B_num_rows << " X " << B_num_cols
        << endl;
-  if(FromFile ==2 ){
+  if (FromFile == 2) {
     cout << "sparsity A: " << sparsityA << "    sparsity B: " << sparsityB << endl;
   } else if (FromFile == 0) {
     cout << "sparsity A: " << sparsityA << "    sparsity B: " << sparsityB << endl;
@@ -127,9 +126,10 @@ int main(int argc, char **argv) {
   timer_kernel_warmup.start();
 
   // Execute Device spgemm
-  sparse_gemm_hip<dtype, csrIdxType>(hip_operation_none, hip_operation_none, alpha, beta, A_num_rows, B_num_cols, A_num_cols, A_nnz, device_offsetA, device_colindexA,
-                     device_valueA, B_nnz, device_offsetB, device_colindexB, device_valueB, &C_nnz, device_offsetC,
-                     &device_colindexC, &device_valueC);
+  sparse_gemm_hip<dtype, csrIdxType>(hip_operation_none, hip_operation_none, alpha, beta, A_num_rows, B_num_cols,
+                                     A_num_cols, A_nnz, device_offsetA, device_colindexA, device_valueA, B_nnz,
+                                     device_offsetB, device_colindexB, device_valueB, &C_nnz, device_offsetC,
+                                     &device_colindexC, &device_valueC);
 
   hipDeviceSynchronize();
 
@@ -157,9 +157,10 @@ int main(int argc, char **argv) {
     timer_kernel.start();
 
     // Execute Device spgemm
-    sparse_gemm_hip<dtype, csrIdxType>(hip_operation_none, hip_operation_none, alpha, beta, A_num_rows, B_num_cols, A_num_cols, A_nnz, device_offsetA, device_colindexA,
-                     device_valueA, B_nnz, device_offsetB, device_colindexB, device_valueB, &C_nnz, device_offsetC,
-                     &device_colindexC, &device_valueC);
+    sparse_gemm_hip<dtype, csrIdxType>(hip_operation_none, hip_operation_none, alpha, beta, A_num_rows, B_num_cols,
+                                       A_num_cols, A_nnz, device_offsetA, device_colindexA, device_valueA, B_nnz,
+                                       device_offsetB, device_colindexB, device_valueB, &C_nnz, device_offsetC,
+                                       &device_colindexC, &device_valueC);
 
     hipDeviceSynchronize();
 

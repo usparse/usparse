@@ -5,7 +5,6 @@
 #ifndef SPMV_ACC_TYPES_H
 #define SPMV_ACC_TYPES_H
 
-
 template <typename I, typename T> class csr_desc;
 
 template <typename I, typename T> class var_csr_desc {

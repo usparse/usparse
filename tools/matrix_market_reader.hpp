@@ -6,13 +6,13 @@
 #define SPMV_ACC_MATRIX_MARKET_LOADER_H
 
 #include <cstdint>
+#include <fstream>
 #include <iostream>
+#include <iterator>
 #include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include <fstream>
-#include <iterator>
 
 #ifdef _OPENMP
 #include <omp.h>
