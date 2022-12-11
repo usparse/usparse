@@ -5,7 +5,7 @@
 #ifndef SPGEMM_BENCHMARK_MEMORY_MANAGEMENT_HPP
 #define SPGEMM_BENCHMARK_MEMORY_MANAGEMENT_HPP
 
-#include "rocsparse_csr2csc.hpp"
+#include "rocsparse_call.hpp"
 
 template <typename I, typename T>
 void create_deivce_data(csr_mtx<I, T> &matrix, I *&drow_ptr_A, I *&dcol_idx_A, T *&dval_A, bool opB, I *&drow_ptr_B,
@@ -34,6 +34,19 @@ void create_deivce_data(csr_mtx<I, T> &matrix, I *&drow_ptr_A, I *&dcol_idx_A, T
 
   std::cout << "Preparing Device Memory for matrixC's row_ptr ..." << std::endl;
   HIP_CHECK(hipMalloc((void **)&drow_ptr_C, (matrix.rows + 1) * sizeof(I)))
+}
+
+template <typename I, typename T>
+void copy_results_from_device(csr_mtx<I, T> &matrix, const bool opB, const size_t A_rows, const size_t A_cols,
+                              const size_t C_nnz, I *const &drow_ptr, I *const &dcol_idx, T *const &dval) {
+  size_t C_cols = A_cols;
+  if (opB) {
+    C_cols = A_rows;
+  }
+  matrix.alloc(A_rows, A_cols, C_nnz);
+  HIP_CHECK(hipMemcpy(matrix.row_ptr, drow_ptr, (A_rows + 1) * sizeof(I), hipMemcpyDeviceToHost))
+  HIP_CHECK(hipMemcpy(matrix.col_index, dcol_idx, C_nnz * sizeof(I), hipMemcpyDeviceToHost))
+  HIP_CHECK(hipMemcpy(matrix.values, dval, C_nnz * sizeof(T), hipMemcpyDeviceToHost))
 }
 
 #endif // SPGEMM_BENCHMARK_MEMORY_MANAGEMENT_HPP

@@ -6,10 +6,10 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <vector>
-#include "common.h"
 #include "api/spgemm_hip_api.h"
 #include "cli/matrix_market_reader.hpp"
 #include "cli/sparse_format.h"
+#include "common.h"
 #include "memory_copy.hpp"
 
 int main(int argc, char **argv) {
@@ -26,6 +26,7 @@ int main(int argc, char **argv) {
   data_type alpha = rand() / 10000000.0;
   data_type beta = 0.0;
   bool opB = false;
+  const int DCU_ROUND = 10;
 
   char filename[1024];
   strcpy(filename, argv[1]);
@@ -54,7 +55,7 @@ int main(int argc, char **argv) {
   std::cout << "Host Data Created Successfully!" << std::endl;
   std::cout << "==================================================================" << std::endl;
   std::cout << "Input Matrix Data Info:" << std::endl;
-  std::cout << "alpha = " << alpha << ", beta = " << beta << std::endl;
+  std::cout << "alpha=" << alpha << ", beta=" << beta << std::endl;
   std::cout << "rows of matrix_in=" << matrix_in.rows << std::endl;
   std::cout << "cols of matrix_in=" << matrix_in.cols << std::endl;
   std::cout << "nnz of matrix_in=" << matrix_in.nnz << std::endl;
@@ -64,9 +65,9 @@ int main(int argc, char **argv) {
   hipSetDevice(0);
 
   // Device variable declaration
-  idx_type *drow_ptr_A, *drow_ptr_B, *drow_ptr_C;
-  idx_type *dcol_idx_A, *dcol_idx_B, *dcol_idx_C;
-  data_type *dval_A, *dval_B, *dval_C;
+  idx_type *drow_ptr_A, *drow_ptr_B, *drow_ptr_C, *compare_drow_ptr_C;
+  idx_type *dcol_idx_A, *dcol_idx_B, *dcol_idx_C, *compare_dcol_idx_C;
+  data_type *dval_A, *dval_B, *dval_C, *compare_dval_C;
 
   create_deivce_data<idx_type, data_type>(matrix_in, drow_ptr_A, dcol_idx_A, dval_A, opB, drow_ptr_B, dcol_idx_B,
                                           dval_B, drow_ptr_C);
@@ -76,10 +77,10 @@ int main(int argc, char **argv) {
 
   size_t C_nnz = 0;
 
-  std::cout << "Runing Warmup ... " << std::endl;
+  std::cout << "Runing USTB-SpGEMM Warmup ... " << std::endl;
 
   // Start timer kernel
-  // common::timer[ustb_spgemm_warmup_timer].start();
+  common::timer[ustb_spgemm_warmup_timer].start();
 
   // Execute Device spgemm
   sparse_gemm_hip<data_type, idx_type>(hip_operation_none, hip_operation_none, alpha, beta, matrix_in.rows,
@@ -90,13 +91,85 @@ int main(int argc, char **argv) {
   hipDeviceSynchronize();
 
   // Stop timer kernel
-  // common::timer[ustb_spgemm_warmup_timer].stop();
+  common::timer[ustb_spgemm_warmup_timer].stop();
+
+  copy_results_from_device<idx_type, data_type>(matrix_c, opB, matrix_in.rows, matrix_in.cols, C_nnz, drow_ptr_C,
+                                                dcol_idx_C, dval_C);
 
   HIP_CHECK(hipFree(dcol_idx_C))
 
-  std::cout << "non zero num of matrix C : " << C_nnz << std::endl;
-  // std::cout << "Warmup finished!  elapsed time:" << common::timer[ustb_spgemm_warmup_timer].time_use.count() <<
-  // "(us)" << std::endl;
+  std::cout << "USTB-SpGEMM warmup non zero num of matrix C:" << C_nnz << std::endl;
+  std::cout << "USTB-SpGEMM Warmup finished! elapsed time:" << common::timer[ustb_spgemm_warmup_timer].time_use.count()
+            << "(us)" << std::endl;
+  std::cout << "==================================================================" << std::endl;
+
+  std::cout << "Runing USTB-SpGEMM ... " << std::endl;
+
+  double ustb_spgemm_timer_mean = 0.0;
+
+  for (int i = 0; i < DCU_ROUND; i++) {
+    // Start timer kernel
+    common::timer[ustb_spgemm_timer].start();
+
+    // Execute Device spgemm
+    sparse_gemm_hip<data_type, idx_type>(hip_operation_none, hip_operation_none, alpha, beta, matrix_in.rows,
+                                         matrix_in.rows, matrix_in.cols, matrix_in.nnz, drow_ptr_A, dcol_idx_A, dval_A,
+                                         matrix_in.nnz, drow_ptr_B, dcol_idx_B, dval_B, &C_nnz, drow_ptr_C, &dcol_idx_C,
+                                         &dval_C);
+
+    hipDeviceSynchronize();
+
+    // Stop timer kernel
+    common::timer[ustb_spgemm_timer].stop();
+
+    HIP_CHECK(hipFree(dcol_idx_C))
+
+    ustb_spgemm_timer_mean += common::timer[ustb_spgemm_timer].time_use.count();
+
+    std::cout << "Round: " << i + 1 << "  elapsed time:" << common::timer[ustb_spgemm_timer].time_use.count() << "(us)"
+              << std::endl;
+  }
+  std::cout << "==================================================================" << std::endl;
+
+  HIP_CHECK(hipFree(drow_ptr_C))
+
+  if (DCU_ROUND > 0) {
+    ustb_spgemm_timer_mean = ustb_spgemm_timer_mean / (DCU_ROUND * 1.0);
+  }
+
+  std::cout << "USTB-SpGEMM Test Execution Result:" << std::endl;
+  std::cout << "USTB-SpGEMM calculate non zero num of matrix C:" << C_nnz << std::endl;
+  std::cout << "USTB-SpGEMM calculation finished! Total elapsed time (mean):" << ustb_spgemm_timer_mean << "(us)"
+            << std::endl;
+  std::cout << "==================================================================" << std::endl;
+
+  size_t compare_C_nnz = 0;
+
+  std::cout << "Runing Rocsparse-SpGEMM Warmup ... " << std::endl;
+
+  // Start timer kernel
+  common::timer[rocsparse_spgemm_warmup_timer].start();
+
+  // Execute rocsparse spgemm
+  compare_C_nnz = rocsparse_spgemm<idx_type, data_type>(
+      alpha, beta, opB, matrix_in.rows, matrix_in.cols, matrix_in.nnz, drow_ptr_A, dcol_idx_A, dval_A, matrix_in.nnz,
+      drow_ptr_B, dcol_idx_B, dval_B, compare_drow_ptr_C, compare_dcol_idx_C, compare_dval_C);
+
+  hipDeviceSynchronize();
+
+  // Stop timer kernel
+  common::timer[rocsparse_spgemm_warmup_timer].stop();
+
+  copy_results_from_device<idx_type, data_type>(compare_matrix_c, opB, matrix_in.rows, matrix_in.cols, compare_C_nnz,
+                                                compare_drow_ptr_C, compare_dcol_idx_C, compare_dval_C);
+
+  HIP_CHECK(hipFree(compare_drow_ptr_C))
+  HIP_CHECK(hipFree(compare_dcol_idx_C))
+  HIP_CHECK(hipFree(compare_dval_C))
+
+  std::cout << "Rocsparse-SpGEMM warmup non zero num of matrix C:" << compare_C_nnz << std::endl;
+  std::cout << "Rocsparse-SpGEMM Warmup finished! elapsed time:"
+            << common::timer[rocsparse_spgemm_warmup_timer].time_use.count() << "(us)" << std::endl;
   std::cout << "==================================================================" << std::endl;
 
   return 0;
