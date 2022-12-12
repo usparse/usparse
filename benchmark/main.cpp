@@ -11,6 +11,7 @@
 #include "cli/sparse_format.h"
 #include "common.h"
 #include "memory_copy.hpp"
+#include "vertify.hpp"
 
 int main(int argc, char **argv) {
   std::cout << "==========================USTB-SpGEMM=============================" << std::endl;
@@ -99,8 +100,7 @@ int main(int argc, char **argv) {
   HIP_CHECK(hipFree(dcol_idx_C))
 
   std::cout << "USTB-SpGEMM warmup non zero num of matrix C:" << C_nnz << std::endl;
-  std::cout << "USTB-SpGEMM Warmup finished! elapsed time:" << common::timer[ustb_spgemm_warmup_timer].time_use.count()
-            << "(us)" << std::endl;
+  std::cout << "USTB-SpGEMM Warmup finished! elapsed time:" << common::timer[ustb_spgemm_warmup_timer].time_use.count() << "(us)" << std::endl;
   std::cout << "==================================================================" << std::endl;
 
   std::cout << "Runing USTB-SpGEMM ... " << std::endl;
@@ -126,7 +126,7 @@ int main(int argc, char **argv) {
 
     ustb_spgemm_timer_mean += common::timer[ustb_spgemm_timer].time_use.count();
 
-    std::cout << "Round: " << i + 1 << "  elapsed time:" << common::timer[ustb_spgemm_timer].time_use.count() << "(us)"
+    std::cout << "Round: " << i << "  elapsed time:" << common::timer[ustb_spgemm_timer].time_use.count() << "(us)"
               << std::endl;
   }
   std::cout << "==================================================================" << std::endl;
@@ -139,8 +139,7 @@ int main(int argc, char **argv) {
 
   std::cout << "USTB-SpGEMM Test Execution Result:" << std::endl;
   std::cout << "USTB-SpGEMM calculate non zero num of matrix C:" << C_nnz << std::endl;
-  std::cout << "USTB-SpGEMM calculation finished! Total elapsed time (mean):" << ustb_spgemm_timer_mean << "(us)"
-            << std::endl;
+  std::cout << "USTB-SpGEMM calculation finished! Total elapsed time (mean):" << ustb_spgemm_timer_mean << "(us)" << std::endl;
   std::cout << "==================================================================" << std::endl;
 
   size_t compare_C_nnz = 0;
@@ -168,9 +167,44 @@ int main(int argc, char **argv) {
   HIP_CHECK(hipFree(compare_dval_C))
 
   std::cout << "Rocsparse-SpGEMM warmup non zero num of matrix C:" << compare_C_nnz << std::endl;
-  std::cout << "Rocsparse-SpGEMM Warmup finished! elapsed time:"
-            << common::timer[rocsparse_spgemm_warmup_timer].time_use.count() << "(us)" << std::endl;
+  std::cout << "Rocsparse-SpGEMM Warmup finished! elapsed time:" << common::timer[rocsparse_spgemm_warmup_timer].time_use.count() << "(us)" << std::endl;
   std::cout << "==================================================================" << std::endl;
+
+  std::cout << "Runing Rocsparse-SpGEMM ... " << std::endl;
+
+  double rocsparse_spgemm_timer_mean = 0.0;
+
+  for (int i = 0; i < DCU_ROUND; i++) {
+
+    // Execute Device spgemm
+    compare_C_nnz = rocsparse_spgemm<idx_type, data_type>(
+        alpha, beta, opB, matrix_in.rows, matrix_in.cols, matrix_in.nnz, drow_ptr_A, dcol_idx_A, dval_A, matrix_in.nnz,
+        drow_ptr_B, dcol_idx_B, dval_B, compare_drow_ptr_C, compare_dcol_idx_C, compare_dval_C);
+
+    hipDeviceSynchronize();
+
+    HIP_CHECK(hipFree(compare_drow_ptr_C))
+    HIP_CHECK(hipFree(compare_dcol_idx_C))
+    HIP_CHECK(hipFree(compare_dval_C))
+
+    rocsparse_spgemm_timer_mean += common::timer[rocsparse_spgemm_timer].time_use.count();
+
+    std::cout << "Round: " << i << "  elapsed time:" << common::timer[rocsparse_spgemm_timer].time_use.count() << "(us)"
+              << std::endl;
+  }
+  std::cout << "==================================================================" << std::endl;
+
+
+  if (DCU_ROUND > 0) {
+    rocsparse_spgemm_timer_mean = rocsparse_spgemm_timer_mean / (DCU_ROUND * 1.0);
+  }
+
+  std::cout << "Rocsparse-SpGEMM Test Execution Result:" << std::endl;
+  std::cout << "Rocsparse-SpGEMM calculate non zero num of matrix C:" << compare_C_nnz << std::endl;
+  std::cout << "Rocsparse-SpGEMM calculation finished! Total elapsed time (mean):" << rocsparse_spgemm_timer_mean << "(us)" << std::endl;
+  std::cout << "==================================================================" << std::endl;
+
+  vertify<idx_type, data_type>(matrix_c, compare_matrix_c);
 
   return 0;
 }

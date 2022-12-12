@@ -60,24 +60,6 @@ size_t rocsparse_spgemm(const T alpha, const T beta, const bool opB, const size_
   if (opB) {
     B_cols = A_rows;
   }
-  rocsparse_handle handle = NULL;
-  ROCSPARSE_CHECK(rocsparse_create_handle(&handle));
-  ROCSPARSE_CHECK(rocsparse_set_pointer_mode(handle, rocsparse_pointer_mode_host));
-
-  rocsparse_mat_descr descr_A;
-  rocsparse_mat_descr descr_B;
-  rocsparse_mat_descr descr_C;
-  rocsparse_mat_descr descr_D;
-
-  ROCSPARSE_CHECK(rocsparse_create_mat_descr(&descr_A));
-  ROCSPARSE_CHECK(rocsparse_create_mat_descr(&descr_B));
-  ROCSPARSE_CHECK(rocsparse_create_mat_descr(&descr_C));
-  ROCSPARSE_CHECK(rocsparse_create_mat_descr(&descr_D));
-
-  rocsparse_mat_info info_C;
-  ROCSPARSE_CHECK(rocsparse_create_mat_info(&info_C));
-
-  ROCSPARSE_CHECK(rocsparse_set_pointer_mode(handle, rocsparse_pointer_mode_host));
 
   I D_nnz = 1;
 
@@ -103,6 +85,28 @@ size_t rocsparse_spgemm(const T alpha, const T beta, const bool opB, const size_
   delete[] hrow_ptr_D;
 
   HIP_CHECK(hipMalloc((void **)&drow_ptr_C, sizeof(I) * (A_rows + 1)))
+
+  // Start timer kernel
+  common::timer[rocsparse_spgemm_timer].start();
+
+  rocsparse_handle handle = NULL;
+  ROCSPARSE_CHECK(rocsparse_create_handle(&handle));
+  ROCSPARSE_CHECK(rocsparse_set_pointer_mode(handle, rocsparse_pointer_mode_host));
+
+  rocsparse_mat_descr descr_A;
+  rocsparse_mat_descr descr_B;
+  rocsparse_mat_descr descr_C;
+  rocsparse_mat_descr descr_D;
+
+  ROCSPARSE_CHECK(rocsparse_create_mat_descr(&descr_A));
+  ROCSPARSE_CHECK(rocsparse_create_mat_descr(&descr_B));
+  ROCSPARSE_CHECK(rocsparse_create_mat_descr(&descr_C));
+  ROCSPARSE_CHECK(rocsparse_create_mat_descr(&descr_D));
+
+  rocsparse_mat_info info_C;
+  ROCSPARSE_CHECK(rocsparse_create_mat_info(&info_C));
+
+  ROCSPARSE_CHECK(rocsparse_set_pointer_mode(handle, rocsparse_pointer_mode_host));
 
 #if T == double
   size_t buffer_size;
@@ -133,6 +137,9 @@ size_t rocsparse_spgemm(const T alpha, const T beta, const bool opB, const size_
   std::cout << "float rocsparse calls are not supported yet!" << std::endl;
   exit(0);
 #endif
+
+  // Stop timer kernel
+  common::timer[rocsparse_spgemm_timer].stop();
 
   HIP_CHECK(hipFree(dval_D))
   HIP_CHECK(hipFree(dcol_idx_D))
