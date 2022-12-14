@@ -109,6 +109,8 @@ size_t rocsparse_spgemm(const T alpha, const T beta, const bool opB, const size_
   ROCSPARSE_CHECK(rocsparse_set_pointer_mode(handle, rocsparse_pointer_mode_host));
 
 #if T == double
+  // Start symbolic timer
+  common::timer[rocsparse_spgemm_symbolic_timer].start();
   size_t buffer_size;
   ROCSPARSE_CHECK(rocsparse_dcsrgemm_buffer_size(handle, rocsparse_operation_none, rocsparse_operation_none, A_rows,
                                                  B_cols, A_cols, &alpha, descr_A, A_nnz, drow_ptr_A, dcol_idx_A,
@@ -123,15 +125,21 @@ size_t rocsparse_spgemm(const T alpha, const T beta, const bool opB, const size_
                                         A_cols, descr_A, A_nnz, drow_ptr_A, dcol_idx_A, descr_B, B_nnz, drow_ptr_B,
                                         dcol_idx_B, descr_D, D_nnz, drow_ptr_D, dcol_idx_D, descr_C, drow_ptr_C, &C_nnz,
                                         info_C, buffer))
+  // Stop symbolic timer
+  common::timer[rocsparse_spgemm_symbolic_timer].stop();
 
   HIP_CHECK(hipMalloc((void **)&dcol_idx_C, sizeof(I) * C_nnz))
   HIP_CHECK(hipMalloc((void **)&dval_C, sizeof(T) * C_nnz))
 
+  // Start numeric timer
+  common::timer[rocsparse_spgemm_numeric_timer].start();
   ROCSPARSE_CHECK(rocsparse_dcsrgemm(handle, rocsparse_operation_none, rocsparse_operation_none, A_rows, B_cols, A_cols,
                                      &alpha, descr_A, A_nnz, dval_A, drow_ptr_A, dcol_idx_A, descr_B, B_nnz, dval_B,
                                      drow_ptr_B, dcol_idx_B, &beta, descr_D, D_nnz, dval_D, drow_ptr_D, dcol_idx_D,
                                      descr_C, dval_C, drow_ptr_C, dcol_idx_C, info_C, buffer))
   HIP_CHECK(hipFree(buffer))
+  // Stop numeric timer
+  common::timer[rocsparse_spgemm_numeric_timer].stop();
 
 #elif T == float
   std::cout << "float rocsparse calls are not supported yet!" << std::endl;

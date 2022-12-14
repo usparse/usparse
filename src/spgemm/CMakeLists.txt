@@ -41,6 +41,7 @@ set(ACC_HIP_HEADER_FILES ${COMMON_HEADER_FILES} ${ACC_HEADER_FILES}
 
 set(ACC_HIP_SOURCE_FILES ${ACC_SOURCE_FILES}
         api/spgemm_hip_api.cc
+        common/timer/timer.cpp
         )
 
 # set_source_files_properties(${ACC_HIP_SOURCE_FILES} PROPERTIES HIP_SOURCE_PROPERTY_FORMAT 1)

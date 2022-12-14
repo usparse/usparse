@@ -106,6 +106,8 @@ int main(int argc, char **argv) {
   std::cout << "Runing USTB-SpGEMM ... " << std::endl;
 
   double ustb_spgemm_timer_mean = 0.0;
+  double ustb_spgemm_symbolic_timer_mean = 0.0;
+  double ustb_spgemm_numeric_timer_mean = 0.0;
 
   for (int i = 0; i < DCU_ROUND; i++) {
     // Start timer kernel
@@ -125,6 +127,8 @@ int main(int argc, char **argv) {
     HIP_CHECK(hipFree(dcol_idx_C))
 
     ustb_spgemm_timer_mean += common::timer[ustb_spgemm_timer].time_use.count();
+    ustb_spgemm_symbolic_timer_mean += common::timer[ustb_spgemm_symbolic_timer].time_use.count();
+    ustb_spgemm_numeric_timer_mean += common::timer[ustb_spgemm_numeric_timer].time_use.count();
 
     std::cout << "Round: " << i << "  elapsed time:" << common::timer[ustb_spgemm_timer].time_use.count() << "(us)"
               << std::endl;
@@ -135,11 +139,15 @@ int main(int argc, char **argv) {
 
   if (DCU_ROUND > 0) {
     ustb_spgemm_timer_mean = ustb_spgemm_timer_mean / (DCU_ROUND * 1.0);
+    ustb_spgemm_symbolic_timer_mean = ustb_spgemm_symbolic_timer_mean / (DCU_ROUND * 1.0);
+    ustb_spgemm_numeric_timer_mean = ustb_spgemm_numeric_timer_mean / (DCU_ROUND * 1.0);
   }
 
   std::cout << "USTB-SpGEMM Test Execution Result:" << std::endl;
   std::cout << "USTB-SpGEMM calculate non zero num of matrix C:" << C_nnz << std::endl;
   std::cout << "USTB-SpGEMM calculation finished! Total elapsed time (mean):" << ustb_spgemm_timer_mean << "(us)" << std::endl;
+  std::cout << "USTB-SpGEMM calculation finished! Symbolic elapsed time (mean):" << ustb_spgemm_symbolic_timer_mean << "(us)" << std::endl;
+  std::cout << "USTB-SpGEMM calculation finished! Numeric elapsed time (mean):" << ustb_spgemm_numeric_timer_mean << "(us)" << std::endl;
   std::cout << "==================================================================" << std::endl;
 
   size_t compare_C_nnz = 0;
@@ -173,6 +181,8 @@ int main(int argc, char **argv) {
   std::cout << "Runing Rocsparse-SpGEMM ... " << std::endl;
 
   double rocsparse_spgemm_timer_mean = 0.0;
+  double rocsparse_spgemm_symbolic_timer_mean = 0.0;
+  double rocsparse_spgemm_numeric_timer_mean = 0.0;
 
   for (int i = 0; i < DCU_ROUND; i++) {
 
@@ -188,6 +198,8 @@ int main(int argc, char **argv) {
     HIP_CHECK(hipFree(compare_dval_C))
 
     rocsparse_spgemm_timer_mean += common::timer[rocsparse_spgemm_timer].time_use.count();
+    rocsparse_spgemm_symbolic_timer_mean += common::timer[rocsparse_spgemm_symbolic_timer].time_use.count();
+    rocsparse_spgemm_numeric_timer_mean += common::timer[rocsparse_spgemm_numeric_timer].time_use.count();
 
     std::cout << "Round: " << i << "  elapsed time:" << common::timer[rocsparse_spgemm_timer].time_use.count() << "(us)"
               << std::endl;
@@ -197,11 +209,15 @@ int main(int argc, char **argv) {
 
   if (DCU_ROUND > 0) {
     rocsparse_spgemm_timer_mean = rocsparse_spgemm_timer_mean / (DCU_ROUND * 1.0);
+    rocsparse_spgemm_symbolic_timer_mean = rocsparse_spgemm_symbolic_timer_mean / (DCU_ROUND * 1.0);
+    rocsparse_spgemm_numeric_timer_mean = rocsparse_spgemm_numeric_timer_mean / (DCU_ROUND * 1.0);
   }
 
   std::cout << "Rocsparse-SpGEMM Test Execution Result:" << std::endl;
   std::cout << "Rocsparse-SpGEMM calculate non zero num of matrix C:" << compare_C_nnz << std::endl;
   std::cout << "Rocsparse-SpGEMM calculation finished! Total elapsed time (mean):" << rocsparse_spgemm_timer_mean << "(us)" << std::endl;
+  std::cout << "Rocsparse-SpGEMM calculation finished! Symbolic elapsed time (mean):" << rocsparse_spgemm_symbolic_timer_mean << "(us)" << std::endl;
+  std::cout << "Rocsparse-SpGEMM calculation finished! Numeric elapsed time (mean):" << rocsparse_spgemm_numeric_timer_mean << "(us)" << std::endl;
   std::cout << "==================================================================" << std::endl;
 
   vertify<idx_type, data_type>(matrix_c, compare_matrix_c);

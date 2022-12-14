@@ -11,7 +11,7 @@
 #endif
 
 #include "common/check/hip_check.hpp"
-#include "common/timer/timer.h"
+#include "common/timer/timer.hpp"
 
 #define ROCSPARSE_CHECK(stat)                                                                                          \
   {                                                                                                                    \
