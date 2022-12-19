@@ -7,6 +7,7 @@
 #include <sys/time.h>
 #include <vector>
 #include "api/spgemm_hip_api.h"
+#include "cli/csr_binary_reader.hpp"
 #include "cli/matrix_market_reader.hpp"
 #include "cli/sparse_format.h"
 #include "common.h"
@@ -45,12 +46,19 @@ int main(int argc, char **argv) {
 
   std::cout << "Preparing Host Memory for matrixA & matrixB ... " << std::endl;
   if (strcmp(filetype, "mtx") == 0) {
-    matrix_market_reader<idx_type, data_type> mtr;
-    matrix_market<idx_type, data_type> csr_mm = mtr.load_mat(filename);
-    matrix_in = csr_mm.to_csr();
+    matrix_market_reader<idx_type, data_type> mm_reader;
+    matrix_market<idx_type, data_type> csr_mm_reader = mm_reader.load_mat(filename);
+    matrix_in = csr_mm_reader.to_csr();
   } else if (strcmp(filetype, "bin") == 0) {
-    std::cout << "Reading binary files is not supported!" << std::endl;
-    return 0;
+    csr_binary_reader<idx_type, data_type> csr_bin_reader;
+    csr_bin_reader.load_mat(filename);
+    csr_bin_reader.close_stream();
+
+    matrix_in.rows = csr_bin_reader.rows();
+    matrix_in.cols = csr_bin_reader.cols();
+    matrix_in.nnz = csr_bin_reader.nnz();
+    // just reuse memory in file reading step.
+    csr_bin_reader.as_raw_ptr(matrix_in.values, matrix_in.col_index, matrix_in.row_ptr);
   }
 
   std::cout << "Host Data Created Successfully!" << std::endl;
