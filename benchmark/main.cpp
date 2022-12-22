@@ -229,6 +229,7 @@ int main(int argc, char **argv) {
   std::cout << "==================================================================" << std::endl;
 
   vertify<idx_type, data_type>(matrix_c, compare_matrix_c);
+  std::cout << "==================================================================" << std::endl;
 
   return 0;
 }

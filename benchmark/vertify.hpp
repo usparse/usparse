@@ -147,7 +147,6 @@ void vertify(csr_mtx<I, T> &matrix, csr_mtx<I, T> &compare_matrix) {
   }
 
   std::cout << "Congratulations, verification pass! " << std::endl;
-  std::cout << "==================================================================" << std::endl;
 }
 
 #endif // SPGEMM_BENCHMARK_VERTIFY_HPP
