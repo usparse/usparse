@@ -58,7 +58,7 @@ __global__ void __launch_bounds__(THREADS)
     for (I idx_a = row_idx_begin + block_vec_id; idx_a < row_idx_end; idx_a += block_vec_num) {
       const I col_a = col_idx_ptr_a[idx_a];
       const I row_b = col_a;
-      const T val_A = values_ptr_a[idx_a];
+      const T val_A = alpha * values_ptr_a[idx_a];
 
       I idx_begin_b = bp[row_b * BP_IDX_PER_ROW + bp_idx];
       I idx_end_b = bp[row_b * BP_IDX_PER_ROW + bp_idx + 1];
@@ -97,7 +97,7 @@ __global__ void __launch_bounds__(THREADS)
 
       if (has_nnz) {
         ids[idx] = chunk_begin + i;
-        values[idx] = alpha * value;
+        values[idx] = value;
       }
 
       if (block_thread_id == block_thread_num - 1) {

@@ -29,9 +29,9 @@ void vertify(csr_mtx<I, T> &matrix, csr_mtx<I, T> &compare_matrix) {
           double fab_diff = fabs(matrix.values[off1_l + num1] - compare_matrix.values[off2_l + num2]);
           double fab_mat = fabs(compare_matrix.values[off2_l + num2]);
 
-          if ((fab_mat > 1.0) && (fab_diff >= fab_mat * 1e-9)) {
+          if ((fab_mat > 1.0) && (fab_diff >= fab_mat * 1e-7)) {
             bEqual = false;
-          } else if ((fab_mat <= 1.0) && (fab_diff >= 1e-9)) {
+          } else if ((fab_mat <= 1.0) && (fab_diff >= 1e-7)) {
             bEqual = false;
           }
 
@@ -54,7 +54,7 @@ void vertify(csr_mtx<I, T> &matrix, csr_mtx<I, T> &compare_matrix) {
         } else if (col1 < col2) {
           double fab_diff = fabs(matrix.values[off1_l + num1]);
 
-          if (fab_diff >= 1e-9) {
+          if (fab_diff >= 1e-7) {
             bEqual = false;
           }
 
@@ -77,7 +77,7 @@ void vertify(csr_mtx<I, T> &matrix, csr_mtx<I, T> &compare_matrix) {
         } else if (col1 > col2) {
           double fab_diff = fabs(compare_matrix.values[off2_l + num2]);
 
-          if (fab_diff >= 1e-9) {
+          if (fab_diff >= 1e-7) {
             bEqual = false;
           }
 
@@ -100,7 +100,7 @@ void vertify(csr_mtx<I, T> &matrix, csr_mtx<I, T> &compare_matrix) {
       } else if (num1 >= num1_max) {
         double fab_diff = fabs(compare_matrix.values[off2_l + num2]);
 
-        if (fab_diff >= 1e-9) {
+        if (fab_diff >= 1e-7) {
           bEqual = false;
         }
 
@@ -122,7 +122,7 @@ void vertify(csr_mtx<I, T> &matrix, csr_mtx<I, T> &compare_matrix) {
       } else if (num2 >= num2_max) {
         double fab_diff = fabs(matrix.values[off1_l + num1]);
 
-        if (fab_diff >= 1e-9) {
+        if (fab_diff >= 1e-7) {
           bEqual = false;
         }
 

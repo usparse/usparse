@@ -33,8 +33,10 @@ public:
     size_t buffer_size = 0;
     size_t alloc_size = 0;
 
-    alloc_size = bp_buffer_size<T, I, CHUNK_SIZE>(matrix_b);
-    buffer_size += ALIGN_256_BYTES(alloc_size);
+    if (matrix_b.cols > CHUNK_SIZE){
+      alloc_size = bp_buffer_size<T, I, CHUNK_SIZE>(matrix_b);
+      buffer_size += ALIGN_256_BYTES(alloc_size);
+    }
 
     return buffer_size;
   }
@@ -42,38 +44,71 @@ public:
   template <typename T, typename I>
   static void spgemm_numeric(const T alpha, const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b,
                              CsrMatrix<T, I> &matrix_c, void *temp_buffer) {
-    const int GLOBAL_BLOCK_NUM = matrix_c.rows;
-
-    const int BPS_PER_ROW = matrix_b.cols / CHUNK_SIZE + (matrix_b.cols % CHUNK_SIZE == 0 ? 0 : 1);
-    const int BP_IDX_PER_ROW = BPS_PER_ROW + 1;
-
-    char *ptr = reinterpret_cast<char *>(temp_buffer);
-    size_t alloc_size = 0;
-    size_t align_size = 0;
-
-    I *bp = reinterpret_cast<I *>(ptr);
-    alloc_size = bp_buffer_size<T, I, CHUNK_SIZE>(matrix_b);
-    align_size = ALIGN_256_BYTES(alloc_size);
-    ptr += align_size;
-
-    create_bp<T, I, CHUNK_SIZE>(matrix_b, bp, BP_IDX_PER_ROW);
-
-    const double sparseness_c = static_cast<double>(matrix_c.nnz) / static_cast<double>(matrix_c.rows * matrix_c.cols);
-
-    if (sparseness_c < 0.2) {
-      constexpr int VEC_SIZE = 16;
-      (spgemm_numeric_block_per_row_sorted_bp_kernel<T, I, CHUNK_SIZE, BLOCK_THREAD_NUM,
-                                                     VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
-          alpha, matrix_c.rows, matrix_c.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
-          matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
-          matrix_c.values_ptr, bp, BPS_PER_ROW, BP_IDX_PER_ROW);
-    } else {
+    if (matrix_b.cols <= CHUNK_SIZE) {
+      const int GLOBAL_BLOCK_NUM = matrix_c.rows;
       constexpr int VEC_SIZE = 64;
-      (spgemm_numeric_block_per_row_sorted_bp_kernel<T, I, CHUNK_SIZE, BLOCK_THREAD_NUM,
-                                                     VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
-          alpha, matrix_c.rows, matrix_c.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
-          matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
-          matrix_c.values_ptr, bp, BPS_PER_ROW, BP_IDX_PER_ROW);
+      const int BPS_PER_ROW = 1;
+      const int BP_IDX_PER_ROW = 1;
+      I *bp = matrix_b.row_ptr;
+      if (matrix_b.cols > (CHUNK_SIZE / 2)) {
+        (spgemm_numeric_block_per_row_sorted_bp_kernel<T, I, CHUNK_SIZE, BLOCK_THREAD_NUM,
+                                                      VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+            alpha, matrix_c.rows, matrix_c.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
+            matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
+            matrix_c.values_ptr, bp, BPS_PER_ROW, BP_IDX_PER_ROW);
+      } else if (matrix_b.cols > (CHUNK_SIZE / 4)) {
+        (spgemm_numeric_block_per_row_sorted_bp_kernel<T, I, (CHUNK_SIZE / 2), BLOCK_THREAD_NUM,
+                                                      VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+            alpha, matrix_c.rows, matrix_c.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
+            matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
+            matrix_c.values_ptr, bp, BPS_PER_ROW, BP_IDX_PER_ROW);
+      } else if (matrix_b.cols > (CHUNK_SIZE / 8)) {
+        (spgemm_numeric_block_per_row_sorted_bp_kernel<T, I, (CHUNK_SIZE / 4), BLOCK_THREAD_NUM,
+                                                      VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+            alpha, matrix_c.rows, matrix_c.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
+            matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
+            matrix_c.values_ptr, bp, BPS_PER_ROW, BP_IDX_PER_ROW);
+      } else {
+        (spgemm_numeric_block_per_row_sorted_bp_kernel<T, I, (CHUNK_SIZE / 8), (CHUNK_SIZE / 8),
+                                                      VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, (CHUNK_SIZE / 8)>>>(
+            alpha, matrix_c.rows, matrix_c.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
+            matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
+            matrix_c.values_ptr, bp, BPS_PER_ROW, BP_IDX_PER_ROW);
+      }
+    } else {
+      const int GLOBAL_BLOCK_NUM = matrix_c.rows;
+
+      const int BPS_PER_ROW = matrix_b.cols / CHUNK_SIZE + (matrix_b.cols % CHUNK_SIZE == 0 ? 0 : 1);
+      const int BP_IDX_PER_ROW = BPS_PER_ROW + 1;
+
+      char *ptr = reinterpret_cast<char *>(temp_buffer);
+      size_t alloc_size = 0;
+      size_t align_size = 0;
+
+      I *bp = reinterpret_cast<I *>(ptr);
+      alloc_size = bp_buffer_size<T, I, CHUNK_SIZE>(matrix_b);
+      align_size = ALIGN_256_BYTES(alloc_size);
+      ptr += align_size;
+
+      create_bp<T, I, CHUNK_SIZE>(matrix_b, bp, BP_IDX_PER_ROW);
+
+      const double sparseness_c = static_cast<double>(matrix_c.nnz) / static_cast<double>(matrix_c.rows * matrix_c.cols);
+
+      if (sparseness_c < 0.2) {
+        constexpr int VEC_SIZE = 16;
+        (spgemm_numeric_block_per_row_sorted_bp_kernel<T, I, CHUNK_SIZE, BLOCK_THREAD_NUM,
+                                                      VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+            alpha, matrix_c.rows, matrix_c.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
+            matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
+            matrix_c.values_ptr, bp, BPS_PER_ROW, BP_IDX_PER_ROW);
+      } else {
+        constexpr int VEC_SIZE = 64;
+        (spgemm_numeric_block_per_row_sorted_bp_kernel<T, I, CHUNK_SIZE, BLOCK_THREAD_NUM,
+                                                      VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+            alpha, matrix_c.rows, matrix_c.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
+            matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
+            matrix_c.values_ptr, bp, BPS_PER_ROW, BP_IDX_PER_ROW);
+      }
     }
   }
 };
