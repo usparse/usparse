@@ -137,7 +137,7 @@ public:
     size_t align_size = 0;
 
     I *group_row_num_ptr = reinterpret_cast<I *>(ptr);
-    alloc_size = split_group_row_size<I>(matrix_a.rows);
+    alloc_size = split_group_row_size<I>(matrix_c.rows);
     align_size = ALIGN_256_BYTES(alloc_size);
     ptr += align_size;
 
