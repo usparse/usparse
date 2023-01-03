@@ -1,27 +1,18 @@
 #ifndef USTB_SPARSE_SPGEMM_SPGEMM_NUMERIC_IMPL_HPP
 #define USTB_SPARSE_SPGEMM_SPGEMM_NUMERIC_IMPL_HPP
 
+#include <cstddef>
+#include <hip/hip_runtime.h>
 #include "../common/check/hip_check.hpp"
 #include "align.h"
 #include "create_bp_impl.hpp"
 #include "csr_matrix.h"
+#include "spgemm_numeric_bp_kernel.hpp"
+#include "spgemm_numeric_flag.hpp"
+#include "spgemm_numeric_hash_kernel.hpp"
 #include "spgemm_numeric_kernel.hpp"
 #include "split_config.h"
 #include "split_group_impl.hpp"
-#include <cstddef>
-#include <hip/hip_runtime.h>
-
-template <bool IS_SINGLE_SCAN> struct FlashSortDispatchTrait;
-
-template <> struct FlashSortDispatchTrait<true> { using Tag = FlashSortSingleScanTag; };
-
-template <> struct FlashSortDispatchTrait<false> { using Tag = FlashSortMultipleScanTag; };
-
-static constexpr bool is_single_vec_scan(size_t n, size_t items_per_bucket) { return n <= items_per_bucket; }
-
-static constexpr bool is_single_wf_scan(size_t n, size_t items_per_bucket, size_t threads) {
-  return threads * n <= items_per_bucket * __WF_SIZE__;
-}
 
 class BreakPointNumericPolicy {
 public:
@@ -33,7 +24,7 @@ public:
     size_t buffer_size = 0;
     size_t alloc_size = 0;
 
-    if (matrix_b.cols > CHUNK_SIZE){
+    if (matrix_b.cols > CHUNK_SIZE) {
       alloc_size = bp_buffer_size<T, I, CHUNK_SIZE>(matrix_b);
       buffer_size += ALIGN_256_BYTES(alloc_size);
     }
@@ -46,31 +37,31 @@ public:
                              CsrMatrix<T, I> &matrix_c, void *temp_buffer) {
     if (matrix_b.cols <= CHUNK_SIZE) {
       const int GLOBAL_BLOCK_NUM = matrix_c.rows;
-      constexpr int VEC_SIZE = 64;
+      constexpr int VEC_SIZE = __WF_SIZE__;
       const int BPS_PER_ROW = 1;
       const int BP_IDX_PER_ROW = 1;
       I *bp = matrix_b.row_ptr;
       if (matrix_b.cols > (CHUNK_SIZE / 2)) {
         (spgemm_numeric_block_per_row_sorted_bp_kernel<T, I, CHUNK_SIZE, BLOCK_THREAD_NUM,
-                                                      VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+                                                       VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
             alpha, matrix_c.rows, matrix_c.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
             matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
             matrix_c.values_ptr, bp, BPS_PER_ROW, BP_IDX_PER_ROW);
       } else if (matrix_b.cols > (CHUNK_SIZE / 4)) {
         (spgemm_numeric_block_per_row_sorted_bp_kernel<T, I, (CHUNK_SIZE / 2), BLOCK_THREAD_NUM,
-                                                      VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+                                                       VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
             alpha, matrix_c.rows, matrix_c.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
             matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
             matrix_c.values_ptr, bp, BPS_PER_ROW, BP_IDX_PER_ROW);
       } else if (matrix_b.cols > (CHUNK_SIZE / 8)) {
         (spgemm_numeric_block_per_row_sorted_bp_kernel<T, I, (CHUNK_SIZE / 4), BLOCK_THREAD_NUM,
-                                                      VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+                                                       VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
             alpha, matrix_c.rows, matrix_c.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
             matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
             matrix_c.values_ptr, bp, BPS_PER_ROW, BP_IDX_PER_ROW);
       } else {
         (spgemm_numeric_block_per_row_sorted_bp_kernel<T, I, (CHUNK_SIZE / 8), (CHUNK_SIZE / 8),
-                                                      VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, (CHUNK_SIZE / 8)>>>(
+                                                       VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, (CHUNK_SIZE / 8)>>>(
             alpha, matrix_c.rows, matrix_c.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
             matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
             matrix_c.values_ptr, bp, BPS_PER_ROW, BP_IDX_PER_ROW);
@@ -92,19 +83,20 @@ public:
 
       create_bp<T, I, CHUNK_SIZE>(matrix_b, bp, BP_IDX_PER_ROW);
 
-      const double sparseness_c = static_cast<double>(matrix_c.nnz) / static_cast<double>(matrix_c.rows * matrix_c.cols);
+      const double sparseness_c =
+          static_cast<double>(matrix_c.nnz) / static_cast<double>(matrix_c.rows * matrix_c.cols);
 
       if (sparseness_c < 0.2) {
-        constexpr int VEC_SIZE = 16;
+        constexpr size_t VEC_SIZE = 16;
         (spgemm_numeric_block_per_row_sorted_bp_kernel<T, I, CHUNK_SIZE, BLOCK_THREAD_NUM,
-                                                      VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+                                                       VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
             alpha, matrix_c.rows, matrix_c.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
             matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
             matrix_c.values_ptr, bp, BPS_PER_ROW, BP_IDX_PER_ROW);
       } else {
-        constexpr int VEC_SIZE = 64;
+        constexpr size_t VEC_SIZE = __WF_SIZE__;
         (spgemm_numeric_block_per_row_sorted_bp_kernel<T, I, CHUNK_SIZE, BLOCK_THREAD_NUM,
-                                                      VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+                                                       VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
             alpha, matrix_c.rows, matrix_c.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
             matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, matrix_c.row_ptr, matrix_c.col_idx_ptr,
             matrix_c.values_ptr, bp, BPS_PER_ROW, BP_IDX_PER_ROW);
@@ -115,6 +107,8 @@ public:
 
 class HashMapNumericPolicy {
 public:
+  constexpr static size_t CHUNK_SIZE = 2048;
+
   template <typename T, typename I>
   static size_t buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b) {
     size_t buffer_size = 0;
@@ -239,6 +233,28 @@ public:
               matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 6,
               hgroup_num[6], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr,
               typename FlashSortDispatchTrait<is_single_wf_scan(N, ITEMS_PER_BUCKET, BLOCK_THREAD_NUM)>::Tag{});
+    }
+    if (hgroup_num[7] > 0) {
+      const size_t GLOBAL_BLOCK_NUM = hgroup_num[7];
+      constexpr size_t BLOCK_THREAD_NUM = 512;
+      constexpr size_t VEC_SIZE = __WF_SIZE__;
+
+      const int BPS_PER_ROW = matrix_b.cols / CHUNK_SIZE + (matrix_b.cols % CHUNK_SIZE == 0 ? 0 : 1);
+      const int BP_IDX_PER_ROW = BPS_PER_ROW + 1;
+
+      I *bp = nullptr;
+      size_t bp_size = bp_buffer_size<T, I, 2048>(matrix_b);
+      HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&bp), ALIGN_256_BYTES(bp_size)))
+
+      create_bp<T, I, CHUNK_SIZE>(matrix_b, bp, BP_IDX_PER_ROW);
+
+      (spgemm_numeric_block_per_row_sorted_bp_kernel<T, I, CHUNK_SIZE, BLOCK_THREAD_NUM,
+                                                     VEC_SIZE>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+          alpha, matrix_c.rows, matrix_c.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
+          matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 7,
+          hgroup_num[7], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr, bp, BPS_PER_ROW, BP_IDX_PER_ROW);
+
+      HIP_CHECK(hipFree(bp));
     }
   }
 };
