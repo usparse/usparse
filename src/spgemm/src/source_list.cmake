@@ -10,9 +10,9 @@ set(ACC_HEADER_FILES ${ACC_HEADER_FILES}
         ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm_core_impl.hpp
         ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm_numeric_impl.hpp
         ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm_numeric_flag.hpp
-        ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm_numeric_kernel.hpp
         ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm_numeric_hash_kernel.hpp
         ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm_numeric_bp_kernel.hpp
+        ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm_numeric_esc_kernel.hpp
         ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm_symbolic_impl.hpp
         ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm_symbolic_kernel.hpp
         ${CURRENT_ACC_HIP_SOURCE_DIR}/spgemm_compress_impl.hpp

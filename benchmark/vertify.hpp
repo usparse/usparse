@@ -136,8 +136,7 @@ void vertify(csr_mtx<I, T> &matrix, csr_mtx<I, T> &compare_matrix) {
           exit(0);
 #endif
           std::cout << "off " << off1_l << " " << off1_r << " " << off2_l << " " << off2_r << std::endl;
-          std::cout << "col " << col1 << " no_compare_col"
-                    << " index " << num1 << " " << num2 << std::endl;
+          std::cout << "col " << col1 << " no_compare_col" << " index " << num1 << " " << num2 << std::endl;
           std::cout << "Failed verification, please check your code!" << std::endl;
           return;
         }

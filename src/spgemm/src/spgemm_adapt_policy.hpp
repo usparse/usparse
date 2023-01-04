@@ -82,6 +82,9 @@ public:
                             void *&temp_buffer, const size_t temp_buffer_size) {
     policyflag.SetNumericPolicyFlag(row_nnz_max, matrix_a, matrix_b, matrix_c, temp_buffer, temp_buffer_size);
     if (policyflag.NumericEscFlag) {
+#ifdef DEVICE_MALLOC_INITILIZE
+      HIP_CHECK(hipMemset(matrix_c.col_idx_ptr, 0, ALIGN_256_BYTES(matrix_c.nnz * sizeof(I)) + ALIGN_256_BYTES(matrix_c.nnz * sizeof(T))))
+#endif
       spgemm_numeric<T, I, EscNumericPolicy>(alpha, matrix_a, matrix_b, matrix_c, temp_buffer);
     } else if (policyflag.NumericHashFlag) {
       spgemm_numeric<T, I, HashMapNumericPolicy>(alpha, matrix_a, matrix_b, matrix_c, temp_buffer);
