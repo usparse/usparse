@@ -138,6 +138,7 @@ size_t rocsparse_spgemm(const T alpha, const T beta, const bool opB, const size_
                                      drow_ptr_B, dcol_idx_B, &beta, descr_D, D_nnz, dval_D, drow_ptr_D, dcol_idx_D,
                                      descr_C, dval_C, drow_ptr_C, dcol_idx_C, info_C, buffer))
   HIP_CHECK(hipFree(buffer))
+  hipDeviceSynchronize();
   // Stop numeric timer
   common::timer[rocsparse_spgemm_numeric_timer].stop();
 

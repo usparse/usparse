@@ -16,30 +16,37 @@
 
 int main(int argc, char **argv) {
   std::cout << "==========================USTB-SpGEMM=============================" << std::endl;
-  std::cout << "Instructions: Calculate A*AT" << std::endl;
+  std::cout << "Instructions: Calculate A*A A*AT or A*randomB" << std::endl;
   std::cout << "[1] Read matrix from mtx file, input args should be: " << std::endl;
   std::cout << "    mtx file path, opB(0/1), mtx, " << std::endl;
   std::cout << "[2] Read matrix from bin file, input args should be: " << std::endl;
   std::cout << "    bin file path, opB(0/1), bin" << std::endl;
+  std::cout << "[3] Read matrix from file & creat random matrixB, input args should be: " << std::endl;
+  std::cout << "    file path, opB(2), sparsityB, bin/mtx" << std::endl;
   std::cout << "==================================================================" << std::endl;
 
   // Set random alpha
   srand((unsigned)time(NULL));
-  data_type alpha = rand() / 10000000.0;
+  // data_type alpha = rand() / 10000000.0;
+  data_type alpha = 1.0;
   data_type beta = 0.0;
-  bool opB = false;
-  const int DCU_ROUND = 10;
+  data_type sparsityB = 0.0;
+  idx_type opB = 2;
+  const int DCU_ROUND = 1;
 
   char filename[1024];
   strcpy(filename, argv[1]);
 
-  int operator_B = atoi(argv[2]);
-  if (operator_B == 1) {
-    opB = true;
-  }
+  opB = atoi(argv[2]);
 
   char filetype[128];
-  strcpy(filetype, argv[3]);
+
+  if (opB == 2) {
+    sparsityB = atof(argv[3]);
+    strcpy(filetype, argv[4]);
+  } else {
+    strcpy(filetype, argv[3]);
+  }
 
   // Host variable declaration
   csr_mtx<idx_type, data_type> matrix_in, matrix_c, compare_matrix_c;
@@ -78,7 +85,7 @@ int main(int argc, char **argv) {
   idx_type *dcol_idx_A, *dcol_idx_B, *dcol_idx_C, *compare_dcol_idx_C;
   data_type *dval_A, *dval_B, *dval_C, *compare_dval_C;
 
-  create_deivce_data<idx_type, data_type>(matrix_in, drow_ptr_A, dcol_idx_A, dval_A, opB, drow_ptr_B, dcol_idx_B,
+  create_deivce_data<idx_type, data_type>(matrix_in, drow_ptr_A, dcol_idx_A, dval_A, opB, sparsityB, drow_ptr_B, dcol_idx_B,
                                           dval_B, drow_ptr_C);
 
   std::cout << "Device Data Created Successfully!" << std::endl;

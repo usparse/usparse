@@ -1,6 +1,8 @@
 #ifndef USTB_SPARSE_SPGEMM_SPGEMM_NUMERIC_ESC_KERNEL_HPP
 #define USTB_SPARSE_SPGEMM_SPGEMM_NUMERIC_ESC_KERNEL_HPP
 
+#include "../common/scan/scan_in_device.hpp"
+
 template <typename T, typename I, size_t N, size_t THREADS, size_t VEC_SIZE>
 __global__ void __launch_bounds__(THREADS)
     spgemm_numeric_esc_vector_per_row_sorted_one_pass_kernel(const T alpha, const size_t m, const size_t n,

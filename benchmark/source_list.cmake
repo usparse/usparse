@@ -9,6 +9,7 @@ set(BENCKMARK_HEADER_FILES ${BENCHMARK_HEADER_FILES}
         ${CMAKE_CURRENT_SOURCE_DIR}/memory_copy.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/rocsparse_call.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/vertify.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/creat_random_matrix.hpp
 )
 
 include_directories(
