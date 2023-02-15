@@ -1,0 +1,6 @@
+#ifndef USTB_SPARSE_SPGEMM_ALIGN_H
+#define USTB_SPARSE_SPGEMM_ALIGN_H
+
+#define ALIGN_256_BYTES(n) ((n / 256 + (n % 256 == 0 ? 0 : 1)) * 256)
+
+#endif // USTB_SPARSE_SPGEMM_ALIGN_H

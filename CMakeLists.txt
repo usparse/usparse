@@ -6,3 +6,5 @@ set(CMAKE_CXX_STANDARD 14)
 include(config.cmake)
 
 add_subdirectory(src)
+add_subdirectory(benchmark)
+add_subdirectory(tools)
