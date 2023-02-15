@@ -13,6 +13,7 @@
 #include "common.h"
 #include "memory_copy.hpp"
 #include "vertify.hpp"
+#include "count.hpp"
 
 int main(int argc, char **argv) {
   std::cout << "==========================USTB-SpGEMM=============================" << std::endl;
@@ -238,5 +239,12 @@ int main(int argc, char **argv) {
   vertify<idx_type, data_type>(matrix_c, compare_matrix_c);
   std::cout << "==================================================================" << std::endl;
 
+  std::cout << "===========================     COUNT   ==========================" << std::endl;
+  int symbolic_operations = symbolic_num_of_operations<idx_type>(matrix_in.cols, matrix_in.nnz, dcol_idx_A, drow_ptr_B);
+  std::cout << "Number of symbol phase operations:" << symbolic_operations << std::endl;
+  int numeric_add_counts =  numeric_nums_of_add<idx_type>(matrix_in.cols, matrix_in.nnz, dcol_idx_A, drow_ptr_B);
+  std::cout << "Number of additions in numeric phase:" << numeric_add_counts << std::endl;
+  int numeric_mul_counts =  numeric_nums_of_mul<idx_type>(matrix_in.cols, matrix_in.nnz, dcol_idx_A, drow_ptr_B, compare_C_nnz);
+  std::cout << "Number of multiplications in numeric phase:" << numeric_mul_counts << std::endl;
   return 0;
 }
