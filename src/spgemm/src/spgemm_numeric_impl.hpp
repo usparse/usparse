@@ -13,6 +13,8 @@
 #include "spgemm_numeric_esc_kernel.hpp"
 #include "split_config.h"
 #include "split_group_impl.hpp"
+#include "split_single_element_impl.hpp"
+#include "spgemm_numeric_single_element_kernel.hpp"
 
 class BreakPointNumericPolicy {
 public:
@@ -140,8 +142,26 @@ public:
     align_size = ALIGN_256_BYTES(alloc_size);
     ptr += align_size;
 
+   {
+      constexpr size_t ROW_NNZ_BEGIN_VALUE = 0;
+      int hgroup_one_num[GROUP_ONE_NUM];
+      split_one_element<I>(matrix_c.rows, matrix_c.row_ptr, group_row_num_ptr, hgroup_one_num, split_group_temp_buffer, ROW_NNZ_BEGIN_VALUE);
+      constexpr size_t N = 2;
+      constexpr size_t VEC_SIZE = 128 / N;
+      constexpr size_t BLOCK_THREAD_NUM = 256;
+      constexpr size_t BLOCK_VEC_NUM = BLOCK_THREAD_NUM / VEC_SIZE;
+      const size_t GLOBAL_BLOCK_NUM = hgroup_one_num[0] / BLOCK_VEC_NUM + (hgroup_one_num[0] % BLOCK_VEC_NUM == 0 ? 0 : 1);
+
+      spgemm_numeric_vector_per_row_single_element_kernel<T, I, BLOCK_THREAD_NUM, VEC_SIZE>
+          <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+              alpha, matrix_a.rows, matrix_b.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
+              matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr, hgroup_one_num[0],
+              matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr);
+   }
+
+    constexpr size_t ROW_NNZ_BEGIN_VALUE = 1;
     int hgroup_num[GROUP_NUM];
-    split_group<I>(matrix_c.rows, matrix_c.row_ptr, group_row_num_ptr, hgroup_num, split_group_temp_buffer);
+    split_group<I>(matrix_c.rows, matrix_c.row_ptr, group_row_num_ptr, hgroup_num, split_group_temp_buffer, ROW_NNZ_BEGIN_VALUE);
 
     if (hgroup_num[0] > 0) {
       constexpr size_t N = 2;
@@ -295,7 +315,7 @@ public:
     ptr += align_size;
 
     int hgroup_num[GROUP_NUM];
-    split_group<I>(matrix_c.rows, matrix_c.row_ptr, group_row_num_ptr, hgroup_num, split_group_temp_buffer);
+    split_group<I>(matrix_c.rows, matrix_c.row_ptr, group_row_num_ptr, hgroup_num, split_group_temp_buffer, 0);
 
     if (hgroup_num[0] > 0) {
       constexpr size_t N = 2;
