@@ -18,45 +18,45 @@ template <typename T, typename I> struct PolicyFlag {
   bool NumericEscFlag = false;
 
   PolicyFlag(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b) {
-    sparseness_a = static_cast<double>(matrix_a.nnz) / static_cast<double>(matrix_a.rows * matrix_a.cols);
-    sparseness_b = static_cast<double>(matrix_b.nnz) / static_cast<double>(matrix_b.rows * matrix_b.cols);
-    if (sparseness_b < 0.005) {
-      SymbolicUpboundFlag = true;
-    } else {
-      if (matrix_b.cols <= 2048 * CompressMatrix<I>::BitsLen) {
+    // sparseness_a = static_cast<double>(matrix_a.nnz) / static_cast<double>(matrix_a.rows * matrix_a.cols);
+    // sparseness_b = static_cast<double>(matrix_b.nnz) / static_cast<double>(matrix_b.rows * matrix_b.cols);
+    // if (sparseness_b < 0.005) {
+    //   SymbolicUpboundFlag = true;
+    // } else {
+      // if (matrix_b.cols <= 2048 * CompressMatrix<I>::BitsLen) {
         SymbolicCompressBitMapFlag = true;
-      } else {
-        SymbolicCompressHashFlag = true;
-      }
-    }
+      // } else {
+      //   SymbolicCompressHashFlag = true;
+      // }
+    // }
   }
 
   void SetNumericPolicyFlag(const I row_nnz_max, const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b,
                             const CsrMatrix<T, I> &matrix_c, void *&temp_buffer, const size_t temp_buffer_size) {
-    sparseness_c = static_cast<double>(matrix_c.nnz) / static_cast<double>(matrix_c.rows * matrix_c.cols);
-    if (row_nnz_max <= 2048) {
-      if (sparseness_b < 0.005) {
-        NumericEscFlag = true;
-      } else {
-        if (sparseness_c <= 0.05) {
+    // sparseness_c = static_cast<double>(matrix_c.nnz) / static_cast<double>(matrix_c.rows * matrix_c.cols);
+  //   if (row_nnz_max <= 2048) {
+  //     if (sparseness_b < 0.005) {
+  //       NumericEscFlag = true;
+  //     } else {
+  //       if (sparseness_c <= 0.05) {
           NumericHashFlag = true;
-        } else {
-          NumericBreakpointFlag = true;
-          if (temp_buffer_size < BreakPointNumericPolicy::template buffer_size<T, I>(matrix_a, matrix_b)) {
-            HIP_CHECK(hipFree(temp_buffer));
-            HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&temp_buffer),
-                                BreakPointNumericPolicy::template buffer_size<T, I>(matrix_a, matrix_b)))
-          }
-        }
-      }
-    } else {
-      NumericBreakpointFlag = true;
-      if (temp_buffer_size < BreakPointNumericPolicy::template buffer_size<T, I>(matrix_a, matrix_b)) {
-        HIP_CHECK(hipFree(temp_buffer));
-        HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&temp_buffer),
-                            BreakPointNumericPolicy::template buffer_size<T, I>(matrix_a, matrix_b)))
-      }
-    }
+  //       } else {
+  //         NumericBreakpointFlag = true;
+  //         if (temp_buffer_size < BreakPointNumericPolicy::template buffer_size<T, I>(matrix_a, matrix_b)) {
+  //           HIP_CHECK(hipFree(temp_buffer));
+  //           HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&temp_buffer),
+  //                               BreakPointNumericPolicy::template buffer_size<T, I>(matrix_a, matrix_b)))
+  //         }
+  //       }
+  //     }
+  //   } else {
+  //     NumericBreakpointFlag = true;
+  //     if (temp_buffer_size < BreakPointNumericPolicy::template buffer_size<T, I>(matrix_a, matrix_b)) {
+  //       HIP_CHECK(hipFree(temp_buffer));
+  //       HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&temp_buffer),
+  //                           BreakPointNumericPolicy::template buffer_size<T, I>(matrix_a, matrix_b)))
+  //     }
+  //   }
   }
 };
 

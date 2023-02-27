@@ -208,12 +208,18 @@ public:
       constexpr size_t ITEMS_PER_BUCKET = 8;
       const size_t GLOBAL_BLOCK_NUM = hgroup_num[3];
 
-      spgemm_numeric_block_per_row_flash_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, ITEMS_PER_BUCKET>
-          <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
-              alpha, matrix_a.rows, matrix_b.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
-              matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 3,
-              hgroup_num[3], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr,
-              typename FlashSortDispatchTrait<is_single_wf_scan(N, ITEMS_PER_BUCKET, BLOCK_THREAD_NUM)>::Tag{});
+      // spgemm_numeric_block_per_row_flash_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, ITEMS_PER_BUCKET>
+      //     <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+      //         alpha, matrix_a.rows, matrix_b.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
+      //         matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 3,
+      //         hgroup_num[3], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr,
+      //         typename FlashSortDispatchTrait<is_single_wf_scan(N, ITEMS_PER_BUCKET, BLOCK_THREAD_NUM)>::Tag{});
+
+      spgemm_numeric_linear_chain_hashmap_block_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>
+          <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(alpha, matrix_a.rows, matrix_b.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr,
+                                 matrix_a.values_ptr, matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr,
+                                 group_row_num_ptr + matrix_c.rows * 3, hgroup_num[3], matrix_c.row_ptr,
+                                 matrix_c.col_idx_ptr, matrix_c.values_ptr);
     }
     if (hgroup_num[4] > 0) {
       constexpr size_t N = 2;
@@ -221,12 +227,17 @@ public:
       constexpr size_t ITEMS_PER_BUCKET = 8;
       const size_t GLOBAL_BLOCK_NUM = hgroup_num[4];
 
-      spgemm_numeric_block_per_row_flash_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, ITEMS_PER_BUCKET>
-          <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
-              alpha, matrix_a.rows, matrix_b.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
-              matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 4,
-              hgroup_num[4], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr,
-              typename FlashSortDispatchTrait<is_single_wf_scan(N, ITEMS_PER_BUCKET, BLOCK_THREAD_NUM)>::Tag{});
+      // spgemm_numeric_block_per_row_flash_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, ITEMS_PER_BUCKET>
+      //     <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+      //         alpha, matrix_a.rows, matrix_b.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
+      //         matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 4,
+      //         hgroup_num[4], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr,
+      //         typename FlashSortDispatchTrait<is_single_wf_scan(N, ITEMS_PER_BUCKET, BLOCK_THREAD_NUM)>::Tag{});
+
+      spgemm_numeric_linear_chain_hashmap_block_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>
+            <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(alpha, matrix_a.rows, matrix_b.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
+                  matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 4,
+                  hgroup_num[4], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr);
     }
     if (hgroup_num[5] > 0) {
       constexpr size_t N = 2;
@@ -234,12 +245,17 @@ public:
       constexpr size_t ITEMS_PER_BUCKET = 8;
       const size_t GLOBAL_BLOCK_NUM = hgroup_num[5];
 
-      spgemm_numeric_block_per_row_flash_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, ITEMS_PER_BUCKET>
-          <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
-              alpha, matrix_a.rows, matrix_b.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
-              matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 5,
-              hgroup_num[5], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr,
-              typename FlashSortDispatchTrait<is_single_wf_scan(N, ITEMS_PER_BUCKET, BLOCK_THREAD_NUM)>::Tag{});
+      // spgemm_numeric_block_per_row_flash_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, ITEMS_PER_BUCKET>
+      //     <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+      //         alpha, matrix_a.rows, matrix_b.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
+      //         matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 5,
+      //         hgroup_num[5], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr,
+      //         typename FlashSortDispatchTrait<is_single_wf_scan(N, ITEMS_PER_BUCKET, BLOCK_THREAD_NUM)>::Tag{});
+
+      spgemm_numeric_linear_chain_hashmap_block_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>
+            <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(alpha, matrix_a.rows, matrix_b.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
+                  matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 5,
+                  hgroup_num[5], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr);
     }
     if (hgroup_num[6] > 0) {
       constexpr size_t N = 2;
@@ -247,12 +263,17 @@ public:
       constexpr size_t ITEMS_PER_BUCKET = 8;
       const size_t GLOBAL_BLOCK_NUM = hgroup_num[6];
 
-      spgemm_numeric_block_per_row_flash_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, ITEMS_PER_BUCKET>
-          <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
-              alpha, matrix_a.rows, matrix_b.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
-              matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 6,
-              hgroup_num[6], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr,
-              typename FlashSortDispatchTrait<is_single_wf_scan(N, ITEMS_PER_BUCKET, BLOCK_THREAD_NUM)>::Tag{});
+      // spgemm_numeric_block_per_row_flash_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM, ITEMS_PER_BUCKET>
+      //     <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+      //         alpha, matrix_a.rows, matrix_b.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
+      //         matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 6,
+      //         hgroup_num[6], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr,
+      //         typename FlashSortDispatchTrait<is_single_wf_scan(N, ITEMS_PER_BUCKET, BLOCK_THREAD_NUM)>::Tag{});
+
+      spgemm_numeric_linear_chain_hashmap_block_per_row_sorted_one_pass_kernel<T, I, N, BLOCK_THREAD_NUM>
+            <<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(alpha, matrix_a.rows, matrix_b.cols, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_a.values_ptr,
+                  matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 6,
+                  hgroup_num[6], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr);
     }
     if (hgroup_num[7] > 0) {
       const size_t GLOBAL_BLOCK_NUM = hgroup_num[7];

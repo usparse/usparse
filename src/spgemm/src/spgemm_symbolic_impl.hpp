@@ -9,6 +9,7 @@
 #include "csr_matrix.h"
 #include "spgemm_compress_impl.hpp"
 #include "spgemm_symbolic_kernel.hpp"
+#include "spgemm_symbolic_bitmap_kernel.hpp"
 #include <cstddef>
 #include <hip/hip_runtime.h>
 
@@ -303,6 +304,8 @@ public:
 
 class CompressBitMapSymbolicPolicy {
 public:
+  static constexpr int CHUNK_SIZE = 2048;
+
   template <typename T, typename I>
   static size_t buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b) {
     size_t buffer_size = 0;
@@ -310,6 +313,16 @@ public:
 
     alloc_size = spgemm_compress_buffer_size(matrix_b);
     buffer_size += ALIGN_256_BYTES(alloc_size);
+
+    I max_bits_num =
+        matrix_b.cols / CompressMatrix<I>::BitsLen + (matrix_b.cols % CompressMatrix<I>::BitsLen == 0 ? 0 : 1);
+
+    if (max_bits_num > CHUNK_SIZE) {
+      const int BP_IDX_PER_ROW = max_bits_num / CHUNK_SIZE + (max_bits_num % CHUNK_SIZE == 0 ? 0 : 1) + 1;
+
+      alloc_size = sizeof(I) * matrix_b.rows * BP_IDX_PER_ROW;
+      buffer_size += ALIGN_256_BYTES(alloc_size);
+    }
 
     return buffer_size;
   }
@@ -402,6 +415,25 @@ public:
                                                      BLOCK_THREAD_NUM>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
           matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
           compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_nnz_ptr_c);
+    } else {
+      constexpr size_t N = 2;
+      constexpr size_t BLOCK_THREAD_NUM = 2048 / N;
+      const size_t GLOBAL_BLOCK_NUM = matrix_a.rows;
+
+      const int BPS_PER_ROW = max_bits_num / CHUNK_SIZE + (max_bits_num % CHUNK_SIZE == 0 ? 0 : 1);
+      const int BP_IDX_PER_ROW = BPS_PER_ROW + 1;
+
+      I *bp = reinterpret_cast<I *>(ptr);
+      alloc_size = sizeof(I) * matrix_b.rows * BP_IDX_PER_ROW;
+      ptr += ALIGN_256_BYTES(alloc_size);
+
+      (create_compress_bp_wf_per_row_kernel<I, CHUNK_SIZE>)<<<512, 256>>>(compress_matrix_b.rows, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr, compress_matrix_b.use_count, bp, BP_IDX_PER_ROW);
+
+      (spgemm_symbolic_block_per_row_multi_pass_kernel<T, I, N, 
+                      BLOCK_THREAD_NUM>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+                      matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr, compress_matrix_b.ids_ptr,
+                      compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, bp, BP_IDX_PER_ROW, BPS_PER_ROW, row_nnz_ptr_c);
+
     }
   }
 };
