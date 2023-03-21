@@ -12,6 +12,8 @@
 #include "spgemm_symbolic_bitmap_kernel.hpp"
 #include <cstddef>
 #include <hip/hip_runtime.h>
+#include "spgemm_symbolic_single_element_kernel.hpp"
+#include "string.h"
 
 class BreakPointSymbolicPolicy {
 public:
@@ -477,6 +479,23 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
 
   // reuse row_ptr_c
   I *row_nnz_ptr_c = reinterpret_cast<I *>(row_ptr_c);
+  memset(row_nnz_ptr_c, 0, (matrix_a.rows + 1) * sizeof(I));
+
+  // Calculate the rows with the number of non-zero elements being 1 in matrix A
+  constexpr size_t ROW_NNZ_BEGIN_VALUE = 0;
+  int hgroup_one_num[GROUP_ONE_NUM];
+  I *group_row_num_ptr = reinterpret_cast<I *>(scan_temp_buffer);
+  I *split_group_temp_buffer = reinterpret_cast<I *>(max_temp_buffer);
+
+  split_one_element<I>(matrix_a.rows, matrix_a.row_ptr, group_row_num_ptr, hgroup_one_num, split_group_temp_buffer, ROW_NNZ_BEGIN_VALUE);
+
+  const size_t BLOCK_THREAD_NUM = 512;
+  const size_t GLOBAL_BLOCK_NUM = hgroup_one_num[0] / BLOCK_THREAD_NUM + (hgroup_one_num[0] % BLOCK_THREAD_NUM == 0 ? 0 : 1);
+  spgemm_symbolic_thread_per_row_single_element_kernel<T,I><<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+      matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr, matrix_b.col_idx_ptr, 
+      group_row_num_ptr, hgroup_one_num[0], row_nnz_ptr_c);
+
+  // Calculate other rows
   Policy::template symbolic_row_nnz<T, I>(matrix_a, matrix_b, row_nnz_ptr_c, max_temp_buffer,
                                           reinterpret_cast<void *>(ptr));
 
