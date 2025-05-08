@@ -1,0 +1,21 @@
+//
+// Created by genshen on 2025/05/08.
+//
+
+#ifndef USPARSE_HIP_USPARSE_TYPES_H
+#define USPARSE_HIP_USPARSE_TYPES_H
+
+namespace usparse {
+  enum usparse_operation { operation_none = 0, operation_transpose = 1 };
+
+  enum usparse_status {
+    usparse_status_success = 0,
+    usparse_status_not_implemented = 1,
+    usparse_status_invalid_pointer = 2,
+    usparse_status_invalid_size = 3,
+  };
+
+  typedef int usparse_int;
+} // namespace usparse
+
+#endif // USPARSE_HIP_USPARSE_TYPES_H
