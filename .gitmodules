@@ -1,0 +1,3 @@
+[submodule "third-party/spmv-acc"]
+	path = third-party/spmv-acc
+	url = https://github.com/hpcde/spmv-acc.git
