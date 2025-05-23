@@ -25,7 +25,10 @@ set(USPARSE_HEADER_FILES ${USPARSE_HEADER_FILES}
         include/usparse_types.h
         )
 
-set(USPARSE_SOURCE_FILES ${USPARSE_SOURCE_FILES} level2/csrmv.cpp)
+set(USPARSE_SOURCE_FILES ${USPARSE_SOURCE_FILES}
+        level2/csrmv.cpp
+        level3/csrsm_kernels.cpp
+        )
 
 # build static lib
 set_source_files_properties(${USPARSE_SOURCE_FILES} PROPERTIES HIP_SOURCE_PROPERTY_FORMAT 1)
