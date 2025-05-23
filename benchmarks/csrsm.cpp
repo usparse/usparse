@@ -5,11 +5,12 @@
 #include <sys/time.h>
 #include <vector>
 
-#include "include/common.h"
-#include "include/kernels.h"
-#include "include/matrix_utils.h"
-#include "include/rocsparse_test.h"
-#include "include/verification.h"
+#include "csrsm/common.h"
+#include "csrsm/matrix_utils.h"
+#include "csrsm/rocsparse_test.h"
+#include "csrsm/verification.h"
+
+#include "level3/csrsm_kernels.h"
 
 int main(int argc, char *argv[]) {
   int k = 3;            // 迭代次数

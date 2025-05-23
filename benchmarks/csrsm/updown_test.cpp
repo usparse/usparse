@@ -1,5 +1,8 @@
-#include "kernels.h"
 #include <hip/hip_runtime.h>
+
+#include "common.h"
+
+#include "level3/csrsm_kernels.h"
 
 template <typename T>
 T *test_updown_matrix(const MatrixData<T> &matrix_in, const T *h_b, int k, int h_rhs, int *n_out, bool is_lower,

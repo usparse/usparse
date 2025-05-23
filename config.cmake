@@ -5,3 +5,6 @@ option(UPSARSE_BUILD_FOR_ROCSPARSE "build lib for rocsparse" OFF)
 set(UPSARSE_WAVEFRONT_SIZE "64" CACHE STRING "threads number in a wavefront")
 
 set(USPARSE_LIB_NAME usparse)
+
+## variable from spmv-acc
+set(SPMV_ACC_CLI_LIB sparse_cli)

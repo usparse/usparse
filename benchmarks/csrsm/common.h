@@ -12,9 +12,11 @@
 #include <sys/time.h>
 #include <vector>
 
-#include "cli/csr_binary_reader.hpp"
-#include "cli/matrix_market_reader.hpp"
-#include "cli/sparse_format.h"
+#include "csr_binary_reader.hpp"
+#include "matrix_market_reader.hpp"
+#include "sparse_format.h"
+
+#include "level3/csrsm_kernels.h"
 
 #define WARP_SIZE 64
 
