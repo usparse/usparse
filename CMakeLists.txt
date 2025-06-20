@@ -5,4 +5,4 @@ set(CMAKE_CXX_STANDARD 11)
 
 include(config.cmake)
 
-add_subdirectory(src)
+add_subdirectory(library)
