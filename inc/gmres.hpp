@@ -5,6 +5,8 @@
 #include <tuple>
 #include <vector>
 
+#include "sparseMatrix.hpp"
+
 using RESULT = std::tuple<int, float, double>;
 
 void initialize(SpM<double> *A, double *x, double *b);
