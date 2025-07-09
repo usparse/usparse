@@ -9,38 +9,61 @@
 #include <tuple>
 #include <vector>
 
+#include "init.hpp"
+#include <hip/hip_runtime.h>
+#include <hipsparse.h> // cusparseSpMV
+#include <rocsparse/rocsparse.h>
+
 using namespace std;
 
 const int RESTART_TIMES = 20;        // 禁止修改
 const double REL_RESID_LIMIT = 1e-6; // 禁止修改
 const int ITERATION_LIMIT = 10000;   // 禁止修改
 
-void applyRotation(double &dx, double &dy, double &cs, double &sn) {
+__device__ void applyRotation(double &dx, double &dy, double &cs, double &sn) {
   double temp = cs * dx + sn * dy;
   dy = (-sn) * dx + cs * dy;
   dx = temp;
 }
 
-void generateRotation(double &dx, double &dy, double &cs, double &sn) {
+__device__ void generateRotation(double &dx, double &dy, double &cs, double &sn) {
   if (dx == double(0)) {
     cs = double(0);
     sn = double(1);
   } else {
     double scale = fabs(dx) + fabs(dy);
-    double norm = scale * std::sqrt(fabs(dx / scale) * fabs(dx / scale) + fabs(dy / scale) * fabs(dy / scale));
+    double norm = scale * sqrt(fabs(dx / scale) * fabs(dx / scale) + fabs(dy / scale) * fabs(dy / scale));
     double alpha = dx / fabs(dx);
     cs = fabs(dx) / norm;
     sn = alpha * dy / norm;
   }
 }
 
-void rotation2(uint Am, double *H, double *cs, double *sn, double *s, uint i) {
+__global__ void rotation2_kernel(uint Am, double *H, double *cs, double *sn, double *s, uint i) {
   for (uint k = 0; k < i; k++) {
     applyRotation(H[k * Am + i], H[(k + 1) * Am + i], cs[k], sn[k]);
   }
   generateRotation(H[i * Am + i], H[(i + 1) * Am + i], cs[i], sn[i]);
   applyRotation(H[i * Am + i], H[(i + 1) * Am + i], cs[i], sn[i]);
   applyRotation(s[i], s[i + 1], cs[i], sn[i]);
+}
+
+void device_rotation2(uint Am, double *d_H, double *d_cs, double *d_sn, double *d_s, uint i) {
+  rotation2_kernel<<<1, 1>>>(Am, d_H, d_cs, d_sn, d_s, i);
+  hipDeviceSynchronize();
+}
+
+__global__ void calculateNorm_kernel(const double *vec, uint N, double *result) {
+  double sum = 0.0;
+  for (uint i = 0; i < N; ++i) {
+    sum += vec[i] * vec[i];
+  }
+  *result = sqrt(sum);
+}
+
+void device_calculateNorm(const double *d_vec, uint N, double *d_result) {
+  calculateNorm_kernel<<<1, 1>>>(d_vec, N, d_result);
+  hipDeviceSynchronize();
 }
 
 double calculateNorm(const double *vec, uint N) {
@@ -61,33 +84,65 @@ void spmv(const uint *rowPtr, const uint *colInd, const double *values, const do
   }
 }
 
-double dotProduct(const double *x, const double *y, uint N) {
+void device_spmv(SpM<double> *dec_A, const double *dev_x, double *dev_y, rocsparse_handle *handle,
+                 rocsparse_mat_descr *descrA, rocsparse_mat_info *info) {
+  /**
+   * device computer
+   */
+  double hip_alpha = 1.0;
+  double hip_beta = 0.0;
+  rocsparse_dcsrmv(*handle, rocsparse_operation_none, dec_A->nrows, dec_A->ncols, dec_A->nnz, &hip_alpha, *descrA,
+                   dec_A->vals, (int *)dec_A->rows, (int *)dec_A->cols, *info, dev_x, &hip_beta, dev_y);
+  hipDeviceSynchronize();
+}
+
+__global__ void dotProduct_kernel(const double *x, const double *y, uint N, double *result) {
   double sum = 0.0;
   for (uint i = 0; i < N; ++i) {
     sum += x[i] * y[i];
   }
-  return sum;
+  *result = sum;
 }
 
-void daxpy(double alpha, const double *x, double *y, uint N) {
+void device_dotProduct(const double *d_x, const double *d_y, uint N, double *d_result) {
+  dotProduct_kernel<<<1, 1>>>(d_x, d_y, N, d_result);
+  hipDeviceSynchronize();
+}
+
+__global__ void daxpy_kernel(double alpha, const double *x, double *y, uint N) {
   for (uint i = 0; i < N; ++i) {
     y[i] += alpha * x[i];
   }
 }
 
-void dscal(double alpha, double *x, uint N) {
+void device_daxpy(double alpha, const double *x, double *y, uint N) {
+  daxpy_kernel<<<1, 1>>>(alpha, x, y, N);
+  hipDeviceSynchronize();
+}
+
+__global__ void dscal_kernel(double alpha, double *x, uint N) {
   for (uint i = 0; i < N; ++i) {
     x[i] *= alpha;
   }
 }
 
-void dcopy(const double *src, double *dst, uint N) {
+void device_dscal(double alpha, double *x, uint N) {
+  dscal_kernel<<<1, 1>>>(alpha, x, N);
+  hipDeviceSynchronize();
+}
+
+__global__ void dcopy_kernel(const double *src, double *dst, uint N) {
   for (uint i = 0; i < N; ++i) {
     dst[i] = src[i];
   }
 }
 
-void sovlerTri(int Am, int i, double *H, double *s) {
+void device_dcopy(const double *src, double *dst, uint N) {
+  dcopy_kernel<<<1, 1>>>(src, dst, N);
+  hipDeviceSynchronize();
+}
+
+__global__ void sovlerTri_kernel(int Am, int i, double *H, double *s) {
   for (int j = i; j >= 0; j--) {
     s[j] /= H[Am * j + j];
     for (int k = j - 1; k >= 0; k--) {
@@ -96,7 +151,12 @@ void sovlerTri(int Am, int i, double *H, double *s) {
   }
 }
 
-RESULT gmres(SpM<double> *A_d, double *x_d, double *_b) {
+void device_sovlerTri(int Am, int i, double *H, double *s) {
+  sovlerTri_kernel<<<1, 1>>>(Am, i, H, s);
+  hipDeviceSynchronize();
+}
+
+RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, double *dev_x, double *dev_y) {
   // 稀疏矩阵A_d需默认以CSR格式压缩存储，使用DCU优化时，该矩阵A和右端向量b传输到DCU端的开销，以及结果向量x传输到CPU端的开销可不算在计时范围
   // 若要采用其他的稀疏矩阵压缩格式，需从DCU端的CSR矩阵开始转换，且格式转换的代码必须包含到计时范围内
   const uint N = A_d->nrows;
@@ -121,35 +181,68 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b) {
 
   int i, j, k;
   double resid;
+  double tmp;
   int iteration = 0;
 
-  auto start = std::chrono::high_resolution_clock::now(); // 禁止修改
+  // Apply for memory on the device
+  double *d_r0 = nullptr;
+  double *d_H = nullptr;
+  double *d_V = nullptr;
+  double *d_s = nullptr;
+  double *d_cs = nullptr;
+  double *d_sn = nullptr;
+  double *d_vi = nullptr;
+  double *d_beta = nullptr;
+  double *d_b = nullptr;
+  init_device_matrix(&d_r0, &d_V, &d_s, &d_H, &d_cs, &d_sn, &d_vi, N, RESTART_TIMES);
+  // std::cout << "d_r0 =" << d_r0 << std::endl;
+  // std::cout << "d_H =" << d_H << std::endl;
+  // std::cout << "d_V =" << d_V << std::endl;
+  // std::cout << "d_s =" << d_s << std::endl;
+  // std::cout << "d_cs =" << d_cs << std::endl;
+  // std::cout << "d_sn =" << d_sn << std::endl;
+  // std::cout << "d_vi =" << d_vi << std::endl;
+
+  HIP_CHECK(hipMalloc(&d_beta, sizeof(double)));
+  HIP_CHECK(hipMalloc(&d_b, N * sizeof(double)));
+  HIP_CHECK(hipMemcpy(dev_x, x_d, N * sizeof(double), hipMemcpyHostToDevice));
+  HIP_CHECK(hipMemcpy(d_b, _b, N * sizeof(double), hipMemcpyHostToDevice));
+  // initialize info descrA handle
+  rocsparse_mat_descr descrA;
+  rocsparse_handle handle;
+  rocsparse_mat_info info;
+  init_matrix_info(dev_A, &handle, &descrA, &info);
+
+  // auto start = std::chrono::high_resolution_clock::now(); // 禁止修改
   // =======如果已移植为DCU代码，请更换为下列计时==========
-  // hipEvent_t test_start_event, test_stop_event;
-  // hipEventCreate(&test_start_event);
-  // hipEventCreate(&test_stop_event);
-  // hipEventRecord(test_start_event, 0);
+  hipEvent_t test_start_event, test_stop_event;
+  hipEventCreate(&test_start_event);
+  hipEventCreate(&test_stop_event);
+  hipEventRecord(test_start_event, 0);
 
   // 任何对稀疏矩阵的预处理操作，如稀疏矩阵压缩格式转换、非零元数组或向量的精度转换、稀疏矩阵的非零元特征计算等，均需放在计时范围内，相关内存申请和释放除外
 
   /****GMRES计算过程****/
   do {
     // ==========外迭代============
-    spmv(A_d->rows, A_d->cols, A_d->vals, x_d, r0.data(), N); // 不可修改此步操作中相关数据的存储精度和SpMV计算精度
+    // spmv(A_d->rows, A_d->cols, A_d->vals, x_d, r0.data(), N); // 不可修改此步操作中相关数据的存储精度和SpMV计算精度
+    // copy x from host to device
 
-    alpha = -1.0;
-    daxpy(alpha, _b, r0.data(), N);
+    // compute y = AX
+    device_spmv(dev_A, dev_x, dev_y, &handle, &descrA, &info);
 
-    beta = calculateNorm(r0.data(), N);
+    device_daxpy(-1.0, d_b, dev_y, N);
 
-    alpha = -1.0 / beta;
-    dscal(alpha, r0.data(), N);
+    device_calculateNorm(dev_y, N, d_beta);
 
-    dcopy(r0.data(), V.data(), N);
+    beta = *d_beta;
 
-    // 初始化残差向量
-    fill(s.begin(), s.end(), 0.0);
-    s[0] = beta;
+    device_dscal(-1.0 / beta, dev_y, N);
+
+    device_dcopy(dev_y, d_V, N);
+
+    HIP_CHECK(hipMemset(d_s, 0.0, (RESTART_TIMES + 1) * sizeof(double)));
+    HIP_CHECK(hipMemcpy(&d_s[0], d_beta, sizeof(double), hipMemcpyDeviceToDevice));
 
     resid = std::abs(beta);
     i = -1;
@@ -163,25 +256,24 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b) {
       iteration++;
 
       std::vector<double> V_i(N);
-      dcopy(V.data() + i * N, V_i.data(), N);
+      device_dcopy(d_V + i * N, d_vi, N);
 
-      spmv(A_d->rows, A_d->cols, A_d->vals, V_i.data(), r0.data(), N);
+      device_spmv(dev_A, d_vi, dev_y, &handle, &descrA, &info);
 
       for (k = 0; k <= i; k++) {
-        H[k * RESTART_TIMES + i] = dotProduct(r0.data(), V.data() + k * N, N);
-
-        alpha = -H[k * RESTART_TIMES + i];
-        daxpy(alpha, V.data() + N * k, r0.data(), N);
+        device_dotProduct(dev_y, d_V + k * N, N, &d_H[k * RESTART_TIMES + i]);
+        alpha = -d_H[k * RESTART_TIMES + i];
+        device_daxpy(alpha, d_V + N * k, dev_y, N);
       }
-      H[(i + 1) * RESTART_TIMES + i] = calculateNorm(r0.data(), N);
+      device_calculateNorm(dev_y, N, &d_H[(i + 1) * RESTART_TIMES + i]);
 
-      alpha = 1.0 / H[(i + 1) * RESTART_TIMES + i];
-      dscal(alpha, r0.data(), N);
-      dcopy(r0.data(), V.data() + N * (i + 1), N);
+      alpha = 1.0 / d_H[(i + 1) * RESTART_TIMES + i];
+      device_dscal(alpha, dev_y, N);
+      device_dcopy(dev_y, d_V + N * (i + 1), N);
 
-      rotation2(RESTART_TIMES, H.data(), cs.data(), sn.data(), s.data(), i);
-
-      resid = std::abs(s[i + 1]);
+      device_rotation2(RESTART_TIMES, d_H, d_cs, d_sn, d_s, i);
+      tmp = d_s[i + 1];
+      resid = std::abs(tmp);
       // std::cout << "iteration " << iteration << ", resid = " << resid/init_res << std::endl;
 
       if (resid <= RESID_LIMIT || iteration >= ITERATION_LIMIT) {
@@ -190,23 +282,30 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b) {
     } while (i + 1 < RESTART_TIMES && iteration <= ITERATION_LIMIT);
 
     // 求解上三角系统
-    sovlerTri(RESTART_TIMES, i, H.data(), s.data());
+    device_sovlerTri(RESTART_TIMES, i, d_H, d_s);
 
     // 更新解
     for (j = 0; j <= i; j++) {
-      daxpy(s[j], V.data() + j * N, x_d, N);
+      tmp = d_s[j];
+      device_daxpy(tmp, d_V + j * N, dev_x, N);
     }
   } while (resid > RESID_LIMIT && iteration <= ITERATION_LIMIT);
 
-  auto stop = std::chrono::high_resolution_clock::now();            // 禁止修改
-  std::chrono::duration<float, std::milli> duration = stop - start; // 禁止修改
-  float test_time = duration.count();                               // 禁止修改
+  // auto stop = std::chrono::high_resolution_clock::now();            // 禁止修改
+  // std::chrono::duration<float, std::milli> duration = stop - start; // 禁止修改
+  // float test_time = duration.count();                               // 禁止修改
   // =======如果已移植为DCU代码，请更换为下列计时==========
-  // hipEventRecord(test_stop_event, 0);                                  //禁止修改
-  // hipEventSynchronize(test_stop_event);                                //禁止修改
-  // float test_time = 0.0;                                               //禁止修改
-  // hipEventElapsedTime(&test_time, test_start_event, test_stop_event);  //禁止修改
+  hipEventRecord(test_stop_event, 0);                                 // 禁止修改
+  hipEventSynchronize(test_stop_event);                               // 禁止修改
+  float test_time = 0.0;                                              // 禁止修改
+  hipEventElapsedTime(&test_time, test_start_event, test_stop_event); // 禁止修改
 
+  // destory data
+  destory_descr_info(info, handle, descrA);
+  destory_device_matrix(d_r0, d_V, d_s, d_H, d_cs, d_sn, d_vi);
+
+  HIP_CHECK(hipFree(d_beta));
+  HIP_CHECK(hipFree(d_b));
   return make_tuple(iteration, test_time, resid / init_res); // 禁止修改
 }
 
