@@ -3,7 +3,6 @@
 
 #include <cassert>
 #include <cmath>
-#include <hipsparse.h> // cusparseSpMV
 #include <iostream>
 #include <rocsparse/rocsparse.h>
 #include <string.h>
