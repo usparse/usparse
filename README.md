@@ -9,6 +9,7 @@ The code is implementaed in HIP. Make sure you have following env:
 - C/C++ compiler supporting C++11
 
 ```bash
+export CC=hipcc CXX=hipcc
 cmake -B ./build -S ./
 cmake --build ./build
 ```

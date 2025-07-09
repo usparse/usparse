@@ -9,62 +9,16 @@
 #include <tuple>
 #include <vector>
 
-#include "init.hpp"
 #include <hip/hip_runtime.h>
-#include <hipsparse.h> // cusparseSpMV
-#include <rocsparse/rocsparse.h>
+
+#include "init.hpp"
+#include "usparse_gmres.h"
 
 using namespace std;
 
 const int RESTART_TIMES = 20;        // 禁止修改
 const double REL_RESID_LIMIT = 1e-6; // 禁止修改
 const int ITERATION_LIMIT = 10000;   // 禁止修改
-
-__device__ void applyRotation(double &dx, double &dy, double &cs, double &sn) {
-  double temp = cs * dx + sn * dy;
-  dy = (-sn) * dx + cs * dy;
-  dx = temp;
-}
-
-__device__ void generateRotation(double &dx, double &dy, double &cs, double &sn) {
-  if (dx == double(0)) {
-    cs = double(0);
-    sn = double(1);
-  } else {
-    double scale = fabs(dx) + fabs(dy);
-    double norm = scale * sqrt(fabs(dx / scale) * fabs(dx / scale) + fabs(dy / scale) * fabs(dy / scale));
-    double alpha = dx / fabs(dx);
-    cs = fabs(dx) / norm;
-    sn = alpha * dy / norm;
-  }
-}
-
-__global__ void rotation2_kernel(uint Am, double *H, double *cs, double *sn, double *s, uint i) {
-  for (uint k = 0; k < i; k++) {
-    applyRotation(H[k * Am + i], H[(k + 1) * Am + i], cs[k], sn[k]);
-  }
-  generateRotation(H[i * Am + i], H[(i + 1) * Am + i], cs[i], sn[i]);
-  applyRotation(H[i * Am + i], H[(i + 1) * Am + i], cs[i], sn[i]);
-  applyRotation(s[i], s[i + 1], cs[i], sn[i]);
-}
-
-void device_rotation2(uint Am, double *d_H, double *d_cs, double *d_sn, double *d_s, uint i) {
-  rotation2_kernel<<<1, 1>>>(Am, d_H, d_cs, d_sn, d_s, i);
-  hipDeviceSynchronize();
-}
-
-__global__ void calculateNorm_kernel(const double *vec, uint N, double *result) {
-  double sum = 0.0;
-  for (uint i = 0; i < N; ++i) {
-    sum += vec[i] * vec[i];
-  }
-  *result = sqrt(sum);
-}
-
-void device_calculateNorm(const double *d_vec, uint N, double *d_result) {
-  calculateNorm_kernel<<<1, 1>>>(d_vec, N, d_result);
-  hipDeviceSynchronize();
-}
 
 double calculateNorm(const double *vec, uint N) {
   double sum = 0.0;
@@ -82,78 +36,6 @@ void spmv(const uint *rowPtr, const uint *colInd, const double *values, const do
     }
     y[i] = sum;
   }
-}
-
-void device_spmv(SpM<double> *dec_A, const double *dev_x, double *dev_y, rocsparse_handle *handle,
-                 rocsparse_mat_descr *descrA, rocsparse_mat_info *info) {
-  /**
-   * device computer
-   */
-  double hip_alpha = 1.0;
-  double hip_beta = 0.0;
-  rocsparse_dcsrmv(*handle, rocsparse_operation_none, dec_A->nrows, dec_A->ncols, dec_A->nnz, &hip_alpha, *descrA,
-                   dec_A->vals, (int *)dec_A->rows, (int *)dec_A->cols, *info, dev_x, &hip_beta, dev_y);
-  hipDeviceSynchronize();
-}
-
-__global__ void dotProduct_kernel(const double *x, const double *y, uint N, double *result) {
-  double sum = 0.0;
-  for (uint i = 0; i < N; ++i) {
-    sum += x[i] * y[i];
-  }
-  *result = sum;
-}
-
-void device_dotProduct(const double *d_x, const double *d_y, uint N, double *d_result) {
-  dotProduct_kernel<<<1, 1>>>(d_x, d_y, N, d_result);
-  hipDeviceSynchronize();
-}
-
-__global__ void daxpy_kernel(double alpha, const double *x, double *y, uint N) {
-  for (uint i = 0; i < N; ++i) {
-    y[i] += alpha * x[i];
-  }
-}
-
-void device_daxpy(double alpha, const double *x, double *y, uint N) {
-  daxpy_kernel<<<1, 1>>>(alpha, x, y, N);
-  hipDeviceSynchronize();
-}
-
-__global__ void dscal_kernel(double alpha, double *x, uint N) {
-  for (uint i = 0; i < N; ++i) {
-    x[i] *= alpha;
-  }
-}
-
-void device_dscal(double alpha, double *x, uint N) {
-  dscal_kernel<<<1, 1>>>(alpha, x, N);
-  hipDeviceSynchronize();
-}
-
-__global__ void dcopy_kernel(const double *src, double *dst, uint N) {
-  for (uint i = 0; i < N; ++i) {
-    dst[i] = src[i];
-  }
-}
-
-void device_dcopy(const double *src, double *dst, uint N) {
-  dcopy_kernel<<<1, 1>>>(src, dst, N);
-  hipDeviceSynchronize();
-}
-
-__global__ void sovlerTri_kernel(int Am, int i, double *H, double *s) {
-  for (int j = i; j >= 0; j--) {
-    s[j] /= H[Am * j + j];
-    for (int k = j - 1; k >= 0; k--) {
-      s[k] -= H[k * Am + j] * s[j];
-    }
-  }
-}
-
-void device_sovlerTri(int Am, int i, double *H, double *s) {
-  sovlerTri_kernel<<<1, 1>>>(Am, i, H, s);
-  hipDeviceSynchronize();
 }
 
 RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, double *dev_x, double *dev_y) {
@@ -229,17 +111,19 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
     // copy x from host to device
 
     // compute y = AX
-    device_spmv(dev_A, dev_x, dev_y, &handle, &descrA, &info);
+    usparse::device_csrmv<uint, double>(dev_A->nrows, dev_A->ncols, dev_A->nnz, dev_A->rows, dev_A->cols, dev_A->vals,
+                                        dev_x, dev_y, &handle, &descrA, &info);
 
-    device_daxpy(-1.0, d_b, dev_y, N);
+    usparse::device_daxpy(-1.0, d_b, dev_y, N);
 
-    device_calculateNorm(dev_y, N, d_beta);
+    usparse::device_calculateNorm(dev_y, N, d_beta);
+    hipDeviceSynchronize();
 
     beta = *d_beta;
 
-    device_dscal(-1.0 / beta, dev_y, N);
+    usparse::device_dscal(-1.0 / beta, dev_y, N);
 
-    device_dcopy(dev_y, d_V, N);
+    usparse::device_dcopy(dev_y, d_V, N);
 
     HIP_CHECK(hipMemset(d_s, 0.0, (RESTART_TIMES + 1) * sizeof(double)));
     HIP_CHECK(hipMemcpy(&d_s[0], d_beta, sizeof(double), hipMemcpyDeviceToDevice));
@@ -256,22 +140,26 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
       iteration++;
 
       std::vector<double> V_i(N);
-      device_dcopy(d_V + i * N, d_vi, N);
+      usparse::device_dcopy(d_V + i * N, d_vi, N);
 
-      device_spmv(dev_A, d_vi, dev_y, &handle, &descrA, &info);
+      usparse::device_csrmv<uint, double>(dev_A->nrows, dev_A->ncols, dev_A->nnz, dev_A->rows, dev_A->cols, dev_A->vals,
+                                          d_vi, dev_y, &handle, &descrA, &info);
 
       for (k = 0; k <= i; k++) {
-        device_dotProduct(dev_y, d_V + k * N, N, &d_H[k * RESTART_TIMES + i]);
+        usparse::device_dotProduct(dev_y, d_V + k * N, N, &d_H[k * RESTART_TIMES + i]);
+        hipDeviceSynchronize();
         alpha = -d_H[k * RESTART_TIMES + i];
-        device_daxpy(alpha, d_V + N * k, dev_y, N);
+        usparse::device_daxpy(alpha, d_V + N * k, dev_y, N);
       }
-      device_calculateNorm(dev_y, N, &d_H[(i + 1) * RESTART_TIMES + i]);
+      usparse::device_calculateNorm(dev_y, N, &d_H[(i + 1) * RESTART_TIMES + i]);
+      hipDeviceSynchronize();
 
       alpha = 1.0 / d_H[(i + 1) * RESTART_TIMES + i];
-      device_dscal(alpha, dev_y, N);
-      device_dcopy(dev_y, d_V + N * (i + 1), N);
+      usparse::device_dscal(alpha, dev_y, N);
+      usparse::device_dcopy(dev_y, d_V + N * (i + 1), N);
 
-      device_rotation2(RESTART_TIMES, d_H, d_cs, d_sn, d_s, i);
+      usparse::device_rotation2((uint)(RESTART_TIMES), d_H, d_cs, d_sn, d_s, (uint)(i)); // todo: uint to int
+      hipDeviceSynchronize();
       tmp = d_s[i + 1];
       resid = std::abs(tmp);
       // std::cout << "iteration " << iteration << ", resid = " << resid/init_res << std::endl;
@@ -282,12 +170,13 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
     } while (i + 1 < RESTART_TIMES && iteration <= ITERATION_LIMIT);
 
     // 求解上三角系统
-    device_sovlerTri(RESTART_TIMES, i, d_H, d_s);
+    usparse::device_sovlerTri(RESTART_TIMES, i, d_H, d_s);
+    hipDeviceSynchronize();
 
     // 更新解
     for (j = 0; j <= i; j++) {
       tmp = d_s[j];
-      device_daxpy(tmp, d_V + j * N, dev_x, N);
+      usparse::device_daxpy(tmp, d_V + j * N, dev_x, N);
     }
   } while (resid > RESID_LIMIT && iteration <= ITERATION_LIMIT);
 
