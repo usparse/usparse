@@ -1,7 +1,9 @@
 #include "gmres.hpp"
+#include "init.hpp"
 #include "sparseMatrix.hpp"
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <vector>
 
 using RESULT = std::tuple<int, float, double>;
@@ -42,10 +44,23 @@ int main(int argc, char *argv[]) {
   std::vector<double> b_double(A_double.nrows, 1);
   initialize(&A_double, &x_double[0], &b_double[0]);
 
-  std::cout << "start running gmres" << std::endl;
+  // init device
+  initDCU(0);
+
+  /**
+   * initialize deivce data
+   */
+  SpM<double> dev_A;
+  double *dev_x = nullptr;
+  double *dev_y = nullptr; // result = A * X
+
+  init_device_data(&A_double, &x_double[0], &dev_A, &dev_x, &dev_y); // 申请内存
   // ==============禁止修改上列代码==============
 
-  auto res = gmres(&A_double, &x_double[0], &b_double[0]); // GMRES算法核心，需重点优化
+  auto res = gmres(&A_double, &x_double[0], &b_double[0], &dev_A, dev_x, dev_y); // GMRES算法核心，需重点优化
+
+  // destory data
+  destory_device_data(&dev_A, dev_y, dev_x);
 
   // ==============禁止修改下列结果输出==============
   std::cout << "iters = " << std::get<0>(res) << ", time = " << std::get<1>(res) << "ms, resid = " << std::get<2>(res)
@@ -59,6 +74,5 @@ int main(int argc, char *argv[]) {
   outfile << mtx_name << " " << std::get<0>(res) << " " << std::get<1>(res) << " " << std::get<2>(res) << "\n";
   outfile.close();
   // ==============禁止修改上列结果输出==============
-
   return 0;
 }
