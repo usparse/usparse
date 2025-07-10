@@ -1,5 +1,5 @@
 option(USPARSE_ENABLE_HIP "Enable HIP" ON)
-option(UPSARSE_BUILD_BENCHMARK "build benchmark" OFF)
+option(USPARSE_BUILD_BENCHMARK "build usparse benchmark" OFF)
 option(UPSARSE_DEVICE_SIDE_VERIFY "Verify result of device side" OFF)
 option(UPSARSE_BUILD_FOR_ROCSPARSE "build lib for rocsparse" OFF)
 set(UPSARSE_WAVEFRONT_SIZE "64" CACHE STRING "threads number in a wavefront")
@@ -15,7 +15,6 @@ set(SPMV_ACC_CLI_LIB sparse_cli)
 # enable to use hip to accelerate on GPU side, currently, it must be `ON`.
 option(HIP_ENABLE_FLAG "Enable HIP" ON)
 option(SPMV_BUILD_TOOLS "build tools" OFF)
-option(SPMV_BUILD_BENCHMARK "build benchmark" OFF)
 option(SPMV_OMP_ENABLED_FLAG "Enable OpenMP to parse input file" OFF)
 
 # default: perform result verification on CPU side.
