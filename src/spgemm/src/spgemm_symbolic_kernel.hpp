@@ -156,6 +156,8 @@ __global__ void __launch_bounds__(THREADS)
   }
   const I row_idx_begin = row_ptr_a[row_a];
   const I row_idx_end = row_ptr_a[row_a + 1];
+  if(row_idx_end - row_idx_begin <= static_cast<I>(1)) return;
+
   for (int idx_a = row_idx_begin; idx_a < row_idx_end; ++idx_a) {
     const I col_a = col_idx_ptr_a[idx_a];
 
@@ -231,6 +233,7 @@ __global__ void __launch_bounds__(THREADS)
   }
   const I row_idx_begin = row_ptr_a[row_a];
   const I row_idx_end = row_ptr_a[row_a + 1];
+  if(row_idx_end - row_idx_begin <= static_cast<I>(1)) return;
   __syncthreads();
 
   for (int idx_a = row_idx_begin + block_wf_id; idx_a < row_idx_end; idx_a += block_wf_num) {

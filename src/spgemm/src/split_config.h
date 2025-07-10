@@ -1,7 +1,12 @@
 #ifndef USTB_SPARSE_SPGEMM_SPLIT_CONFIG_H
 #define USTB_SPARSE_SPGEMM_SPLIT_CONFIG_H
 
-static constexpr size_t GROUP_NUM = 7;
-static constexpr int GROUP_THRESHOLD[GROUP_NUM] = {16, 32, 128, 256, 512, 1024, 2048};
+static constexpr size_t GROUP_NUM = 8;
+static constexpr size_t CLASSIFICATION_GROUP_NUM = 7;
+static constexpr int GROUP_THRESHOLD[CLASSIFICATION_GROUP_NUM] = {16, 32, 128, 256, 512, 1024, 2048};
+
+static constexpr size_t GROUP_ONE_NUM = 2;
+static constexpr size_t CLASSIFICATION_GROUP_ONE_NUM = 1;
+static constexpr int GROUP_ONE_THRESHOLD[CLASSIFICATION_GROUP_ONE_NUM] = {1};
 
 #endif // USTB_SPARSE_SPGEMM_SPLIT_CONFIG_H

@@ -19,11 +19,10 @@ template <typename I> size_t split_group_buffer_size(const size_t rows) {
 }
 
 template <typename I>
-void split_group(const size_t rows, const I *row_ptr, I *group_row_ptr, int *hgroup_num_ptr, void *temp_buffer) {
+void split_group(const size_t rows, const I *row_ptr, I *group_row_ptr, int *hgroup_num_ptr, void *temp_buffer, const size_t ROW_NNZ_BEGIN_VALUE) {
   constexpr size_t THREADS = 256;
   constexpr size_t R = 2;
   const size_t BLOCKS = rows / (THREADS * R) + (rows % (THREADS * R) == 0 ? 0 : 1);
-  const size_t BUFFER_SIZE = BLOCKS * GROUP_NUM * sizeof(int);
 
   char *ptr = reinterpret_cast<char *>(temp_buffer);
   int *split_buffer = reinterpret_cast<int *>(ptr);
@@ -31,8 +30,8 @@ void split_group(const size_t rows, const I *row_ptr, I *group_row_ptr, int *hgr
 
   int *split_num_buffer = reinterpret_cast<int *>(ptr);
   // part 1
-  (split_group_part1_kernel<I, GROUP_NUM, GROUP_THRESHOLD, R, THREADS>)<<<BLOCKS, THREADS>>>(rows, row_ptr,
-                                                                                             split_buffer);
+  (split_group_part1_kernel<I, GROUP_NUM, CLASSIFICATION_GROUP_NUM, GROUP_THRESHOLD, R, THREADS>)<<<BLOCKS, THREADS>>>(rows, row_ptr,
+                                                                                             split_buffer, ROW_NNZ_BEGIN_VALUE);
   // part 2 scan
   const size_t SCAN_SIZE = BLOCKS;
   const size_t STEP_WIDTH = BLOCKS;
@@ -42,7 +41,7 @@ void split_group(const size_t rows, const I *row_ptr, I *group_row_ptr, int *hgr
   if (SCAN_SIZE <= PART2_THREADS) {
     constexpr size_t BLOCKS = GROUP_NUM;
     constexpr size_t THREADS = PART2_THREADS;
-    constexpr size_t VEC_SIZE = 64;
+    constexpr size_t VEC_SIZE = __WF_SIZE__;
     (split_group_part2_kernel<I, VEC_SIZE, THREADS>)<<<BLOCKS, THREADS>>>(SCAN_SIZE, STEP_WIDTH, split_buffer,
                                                                           split_num_buffer);
 
@@ -64,8 +63,8 @@ void split_group(const size_t rows, const I *row_ptr, I *group_row_ptr, int *hgr
     }
   }
   // part 3
-  (split_group_part3_kernel<I, GROUP_NUM, GROUP_THRESHOLD, R, THREADS>)<<<BLOCKS, THREADS>>>(
-      rows, row_ptr, group_row_ptr, split_buffer);
+  (split_group_part3_kernel<I, GROUP_NUM, CLASSIFICATION_GROUP_NUM, GROUP_THRESHOLD, R, THREADS>)<<<BLOCKS, THREADS>>>(
+      rows, row_ptr, group_row_ptr, split_buffer, ROW_NNZ_BEGIN_VALUE);
   if (SCAN_SIZE <= PART2_THREADS) {
     hipDeviceSynchronize();
     for (int i = 0; i < GROUP_NUM; ++i) {

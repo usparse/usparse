@@ -3,19 +3,18 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <vector>
-#include "./common_function.hpp"
-#include "./Csrsparse.hpp"
+#include "common_function.hpp"
+#include "api/spgemm_hip_api.h"
 
 using namespace std;
 
 int main(int argc, char **argv) {
   cout << "==================================================================" << endl;
   cout << "Instructions:" << endl;
-  cout << "[1] If using local file to creat matrix A, input args shold be: " << endl;
-  cout << "    1, CSR file path, sparsity of B, random seed of generating matrix " << endl;
-  cout << "[2] If generating matrix A randomly, input args shold be: " << endl;
+  cout << "[1] If generating matrix A randomly, input args should be: " << endl;
   cout << "    0, rows of A, columns of A, sparsity of A, sparsity of B, random seed of generating matrix " << endl;
-
+  cout << "[2] If using local file to creat matrix A, input args should be: " << endl;
+  cout << "    1, CSR file path, sparsity of B, random seed of generating matrix " << endl;
   cout << "==================================================================" << endl;
 
   // Set random alpha
@@ -53,7 +52,6 @@ int main(int argc, char **argv) {
     B_num_rows = A_num_cols;
     B_num_cols = B_num_rows;
   }
-
   // Set random seed for generating sparse matrix
   srand(random_seed);
 
@@ -96,9 +94,10 @@ int main(int argc, char **argv) {
   timer_kernel_warmup.start();
 
   // Execute Device spgemm
-  call_device_spgemm(opA, opB, alpha, A_num_rows, B_num_cols, A_num_cols, A_nnz, device_offsetA, device_colindexA,
-                     device_valueA, B_nnz, device_offsetB, device_colindexB, device_valueB, &C_nnz, device_offsetC,
-                     &device_colindexC, &device_valueC);
+  sparse_gemm_hip<dtype, csrIdxType>(hip_operation_none, hip_operation_none, alpha, beta, A_num_rows, B_num_cols,
+                                     A_num_cols, A_nnz, device_offsetA, device_colindexA, device_valueA, B_nnz,
+                                     device_offsetB, device_colindexB, device_valueB, &C_nnz, device_offsetC,
+                                     &device_colindexC, &device_valueC);
 
   hipDeviceSynchronize();
 
@@ -109,7 +108,7 @@ int main(int argc, char **argv) {
   // HIP_CHECK( hipFree(device_valueC) )
 
   cout << "non zero num of matrix C : " << C_nnz << endl;
-  cout << "Warmup finished!  elapsed time: " << timer_kernel_warmup.time_use << "(us)" << endl;
+  cout << "Warmup finished!  elapsed time:" << timer_kernel_warmup.time_use << "(us)" << endl;
   cout << "==================================================================" << endl;
 
   cout << "Runing device spgemm ... " << endl;
@@ -126,9 +125,10 @@ int main(int argc, char **argv) {
     timer_kernel.start();
 
     // Execute Device spgemm
-    call_device_spgemm(opA, opB, alpha, A_num_rows, B_num_cols, A_num_cols, A_nnz, device_offsetA, device_colindexA,
-                       device_valueA, B_nnz, device_offsetB, device_colindexB, device_valueB, &C_nnz, device_offsetC,
-                       &device_colindexC, &device_valueC);
+    sparse_gemm_hip<dtype, csrIdxType>(hip_operation_none, hip_operation_none, alpha, beta, A_num_rows, B_num_cols,
+                                       A_num_cols, A_nnz, device_offsetA, device_colindexA, device_valueA, B_nnz,
+                                       device_offsetB, device_colindexB, device_valueB, &C_nnz, device_offsetC,
+                                       &device_colindexC, &device_valueC);
 
     hipDeviceSynchronize();
 
@@ -157,7 +157,7 @@ int main(int argc, char **argv) {
     HIP_CHECK(hipFree(device_colindexC))
     // HIP_CHECK( hipFree(device_valueC) )
 
-    cout << "Round: " << i + 1 << "  elapsed time: " << timer_kernel.time_use << "(us)" << endl;
+    cout << "Round: " << i + 1 << "  elapsed time:" << timer_kernel.time_use << "(us)" << endl;
   }
 
   HIP_CHECK(hipFree(device_offsetC))
@@ -167,13 +167,13 @@ int main(int argc, char **argv) {
   }
 
   cout << "non zero num of matrix C : " << C_nnz << endl;
-  cout << "Device calculation finished!  elapsed time (mean): " << time_use_kernel_mean << "(us)" << endl;
+  cout << "Device calculation finished!  elapsed time (mean):" << time_use_kernel_mean << "(us)" << endl;
   cout << "==================================================================" << endl;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   size_t C_nnz_compare = 0; // None zero num of C calculated by compare function
 
-#ifdef gpu
+#ifdef DEVICE_SIDE_VERIFY_FLAG
   cout << "Runing rocsparse spgemm ... " << endl;
   // Create timer_rocsparse
   my_timer timer_rocsparse;
@@ -189,7 +189,7 @@ int main(int argc, char **argv) {
   // Stop timer_rocsparse
   timer_rocsparse.stop();
 
-  cout << "Rocsparse calculation finished!  elapsed time: " << timer_rocsparse.time_use << "(us)" << endl;
+  cout << "Rocsparse calculation finished!  elapsed time:" << timer_rocsparse.time_use << "(us)" << endl;
 #else
   cout << "Runing host spgemm ... " << endl;
   // Create timer_hostcpu
@@ -204,7 +204,7 @@ int main(int argc, char **argv) {
   // Stop timer_hostcpu
   timer_hostcpu.stop();
 
-  cout << "Host calculation finished!  elspsed time: " << timer_hostcpu.time_use << "(us)" << endl;
+  cout << "Host calculation finished!  elspsed time:" << timer_hostcpu.time_use << "(us)" << endl;
 #endif
   cout << "==================================================================" << endl;
 

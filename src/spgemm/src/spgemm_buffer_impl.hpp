@@ -44,7 +44,7 @@ size_t spgemm_buffer_size(const PolicyFlag<T, I> &policyflag, const CsrMatrix<T,
     symbolic_buffer_size = spgemm_symbolic_buffer_size<T, I, CompressHashSymbolicPolicy>(matrix_a, matrix_b);
   }
 
-  numeric_buffer_size = spgemm_numeric_buffer_size<T, I, EscNumericPolicy>(matrix_a, matrix_b);
+  numeric_buffer_size = spgemm_numeric_buffer_size<T, I, HashMapNumericPolicy>(matrix_a, matrix_b);
 
   return std::max<size_t>(symbolic_buffer_size, numeric_buffer_size);
 }

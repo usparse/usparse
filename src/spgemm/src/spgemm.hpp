@@ -5,6 +5,7 @@
 #include "../common/tools/set_val.hpp"
 #include "api/spgemm_hip_types.h"
 #include "spgemm_core_impl.hpp"
+#include "compress_matrix.h"
 
 template <typename T, typename I>
 void ustb_sparse_spgemm(const T alpha, const size_t m, const size_t n, const size_t k, const size_t nnzA,
@@ -12,8 +13,11 @@ void ustb_sparse_spgemm(const T alpha, const size_t m, const size_t n, const siz
                         const I *pColIndexB, const T *pValueB, size_t *pNnzC, I *pOffsetC, I **ppColIndexC,
                         T **ppValueC) {
 #ifdef DEVICE_MALLOC_INITILIZE
-  // HIP_CHECK(hipMemset(pOffsetC, static_cast<I>(0), (m + 1) * sizeof(I)))
-  common::set_val<I, 0>(pOffsetC);
+  if (n <= 2048 * CompressMatrix<I>::BitsLen) {
+    common::set_val<I, 0>(pOffsetC);
+  } else {
+    HIP_CHECK(hipMemset(pOffsetC, static_cast<I>(0), (m + 1) * sizeof(I)))
+  }
 #endif
   CsrMatrix<T, I> matrix_a(m, k, nnzA, const_cast<I *>(pOffsetA), const_cast<I *>(pColIndexA),
                            const_cast<T *>(pValueA));

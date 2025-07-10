@@ -22,7 +22,7 @@ __global__ void create_bp_wf_per_row_kernel(const size_t m, const I *row_ptr, co
   for (int row = global_wf_id; row < m; row += global_wf_num) {
     I *row_bp_ptr = bp + BP_IDX_PER_ROW * row;
     I base_bp = CHUNK_SIZE;
-    int bp_idx = 0;
+    int bp_idx = 1;
     const I row_idx_begin = row_ptr[row];
     const I row_idx_end = row_ptr[row + 1];
     const int WF_ROUNDS = (row_idx_end - row_idx_begin + __WF_SIZE__ - 1) / __WF_SIZE__;

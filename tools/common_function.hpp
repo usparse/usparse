@@ -2,7 +2,7 @@
 
 using namespace std;
 
-#ifdef gpu
+#ifdef DEVICE_SIDE_VERIFY_FLAG
 #include <hipsparse.h>
 #include <rocsparse.h>
 #endif
@@ -404,7 +404,7 @@ void verify(size_t nnz_kernel, size_t nnz_compare) {
           }
 
           if (!bEqual) {
-#ifdef gpu
+#ifdef DEVICE_SIDE_VERIFY_FLAG
             cout << "[" << row << "," << col1 << "] : "
                  << "fab_diff " << fab_diff << " device_value " << host_valueC[off1_l + num1] << " rocsparse_value "
                  << host_compare_valueC[off2_l + num2] << endl;
@@ -431,7 +431,7 @@ void verify(size_t nnz_kernel, size_t nnz_compare) {
           }
 
           if (!bEqual) {
-#ifdef gpu
+#ifdef DEVICE_SIDE_VERIFY_FLAG
             cout << "[" << row << "," << col1 << "] : "
                  << "fab_diff " << fab_diff << " device_value " << host_valueC[off1_l + num1] << " rocsparse_value "
                  << host_compare_valueC[off2_l + num2] << endl;
@@ -457,7 +457,7 @@ void verify(size_t nnz_kernel, size_t nnz_compare) {
           }
 
           if (!bEqual) {
-#ifdef gpu
+#ifdef DEVICE_SIDE_VERIFY_FLAG
             cout << "[" << row << "," << col1 << "] : "
                  << "fab_diff " << fab_diff << " device_value " << host_valueC[off1_l + num1] << " rocsparse_value "
                  << host_compare_valueC[off2_l + num2] << endl;
@@ -484,7 +484,7 @@ void verify(size_t nnz_kernel, size_t nnz_compare) {
         }
 
         if (!bEqual) {
-#ifdef gpu
+#ifdef DEVICE_SIDE_VERIFY_FLAG
           cout << "[" << row << "," << col1 << "] : "
                << "fab_diff " << fab_diff << " device_value no_value  rocsparse_value "
                << host_compare_valueC[off2_l + num2] << endl;
@@ -510,7 +510,7 @@ void verify(size_t nnz_kernel, size_t nnz_compare) {
         }
 
         if (!bEqual) {
-#ifdef gpu
+#ifdef DEVICE_SIDE_VERIFY_FLAG
           cout << "[" << row << "," << col1 << "] : "
                << "fab_diff " << fab_diff << " device_value " << host_valueC[off1_l + num1]
                << " rocsparse_value no_value" << endl;
@@ -603,7 +603,7 @@ size_t host_spgemm() {
 
 //=============================================================================
 
-#ifdef gpu
+#ifdef DEVICE_SIDE_VERIFY_FLAG
 size_t rocsparse_spgemm() {
   rocsparse_handle handle = NULL;
   ROCSPARSE_CHECK(rocsparse_create_handle(&handle));

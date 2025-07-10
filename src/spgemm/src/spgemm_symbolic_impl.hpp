@@ -9,8 +9,11 @@
 #include "csr_matrix.h"
 #include "spgemm_compress_impl.hpp"
 #include "spgemm_symbolic_kernel.hpp"
+#include "spgemm_symbolic_bitmap_kernel.hpp"
 #include <cstddef>
 #include <hip/hip_runtime.h>
+#include "spgemm_symbolic_single_element_kernel.hpp"
+#include "string.h"
 
 class BreakPointSymbolicPolicy {
 public:
@@ -303,6 +306,8 @@ public:
 
 class CompressBitMapSymbolicPolicy {
 public:
+  static constexpr int CHUNK_SIZE = 2048;
+
   template <typename T, typename I>
   static size_t buffer_size(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &matrix_b) {
     size_t buffer_size = 0;
@@ -310,6 +315,16 @@ public:
 
     alloc_size = spgemm_compress_buffer_size(matrix_b);
     buffer_size += ALIGN_256_BYTES(alloc_size);
+
+    I max_bits_num =
+        matrix_b.cols / CompressMatrix<I>::BitsLen + (matrix_b.cols % CompressMatrix<I>::BitsLen == 0 ? 0 : 1);
+
+    if (max_bits_num > CHUNK_SIZE) {
+      const int BP_IDX_PER_ROW = max_bits_num / CHUNK_SIZE + (max_bits_num % CHUNK_SIZE == 0 ? 0 : 1) + 1;
+
+      alloc_size = sizeof(I) * matrix_b.rows * BP_IDX_PER_ROW;
+      buffer_size += ALIGN_256_BYTES(alloc_size);
+    }
 
     return buffer_size;
   }
@@ -402,6 +417,25 @@ public:
                                                      BLOCK_THREAD_NUM>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
           matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr,
           compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, row_nnz_ptr_c);
+    } else {
+      constexpr size_t N = 2;
+      constexpr size_t BLOCK_THREAD_NUM = 2048 / N;
+      const size_t GLOBAL_BLOCK_NUM = matrix_a.rows;
+
+      const int BPS_PER_ROW = max_bits_num / CHUNK_SIZE + (max_bits_num % CHUNK_SIZE == 0 ? 0 : 1);
+      const int BP_IDX_PER_ROW = BPS_PER_ROW + 1;
+
+      I *bp = reinterpret_cast<I *>(ptr);
+      alloc_size = sizeof(I) * matrix_b.rows * BP_IDX_PER_ROW;
+      ptr += ALIGN_256_BYTES(alloc_size);
+
+      (create_compress_bp_wf_per_row_kernel<I, CHUNK_SIZE>)<<<512, 256>>>(compress_matrix_b.rows, compress_matrix_b.row_ptr, compress_matrix_b.ids_ptr, compress_matrix_b.use_count, bp, BP_IDX_PER_ROW);
+
+      (spgemm_symbolic_block_per_row_multi_pass_kernel<T, I, N, 
+                      BLOCK_THREAD_NUM>)<<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+                      matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr, compress_matrix_b.ids_ptr,
+                      compress_matrix_b.col_idx_ptr, compress_matrix_b.use_count, bp, BP_IDX_PER_ROW, BPS_PER_ROW, row_nnz_ptr_c);
+
     }
   }
 };
@@ -445,6 +479,23 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
 
   // reuse row_ptr_c
   I *row_nnz_ptr_c = reinterpret_cast<I *>(row_ptr_c);
+  memset(row_nnz_ptr_c, 0, (matrix_a.rows + 1) * sizeof(I));
+
+  // Calculate the rows with the number of non-zero elements being 1 in matrix A
+  constexpr size_t ROW_NNZ_BEGIN_VALUE = 0;
+  int hgroup_one_num[GROUP_ONE_NUM];
+  I *group_row_num_ptr = reinterpret_cast<I *>(scan_temp_buffer);
+  I *split_group_temp_buffer = reinterpret_cast<I *>(max_temp_buffer);
+
+  split_one_element<I>(matrix_a.rows, matrix_a.row_ptr, group_row_num_ptr, hgroup_one_num, split_group_temp_buffer, ROW_NNZ_BEGIN_VALUE);
+
+  const size_t BLOCK_THREAD_NUM = 512;
+  const size_t GLOBAL_BLOCK_NUM = hgroup_one_num[0] / BLOCK_THREAD_NUM + (hgroup_one_num[0] % BLOCK_THREAD_NUM == 0 ? 0 : 1);
+  spgemm_symbolic_thread_per_row_single_element_kernel<T,I><<<GLOBAL_BLOCK_NUM, BLOCK_THREAD_NUM>>>(
+      matrix_a.rows, matrix_a.row_ptr, matrix_a.col_idx_ptr, matrix_b.row_ptr, matrix_b.col_idx_ptr, 
+      group_row_num_ptr, hgroup_one_num[0], row_nnz_ptr_c);
+
+  // Calculate other rows
   Policy::template symbolic_row_nnz<T, I>(matrix_a, matrix_b, row_nnz_ptr_c, max_temp_buffer,
                                           reinterpret_cast<void *>(ptr));
 

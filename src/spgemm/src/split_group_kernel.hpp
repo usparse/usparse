@@ -6,9 +6,9 @@
 #include <hip/hip_runtime.h>
 
 // since C++17
-template <typename I, size_t GROUP_NUM, const I (&GROUP_THRESHOLD)[GROUP_NUM], size_t N, size_t THREADS>
+template <typename I, size_t GROUP_NUM, size_t CLASSIFICATION_GROUP_NUM, const I (&GROUP_THRESHOLD)[CLASSIFICATION_GROUP_NUM], size_t N, size_t THREADS>
 __global__ void __launch_bounds__(THREADS)
-    split_group_part1_kernel(const size_t m, const I *row_ptr, int *temp_buffer) {
+    split_group_part1_kernel(const size_t m, const I *row_ptr, int *temp_buffer, const size_t ROW_NNZ_BEGIN_VALUE) {
   // block id in global
   const int global_block_id = blockIdx.x;
   // block num in global
@@ -41,12 +41,16 @@ __global__ void __launch_bounds__(THREADS)
 
   for (int row = block_row_begin + block_thread_id; row < block_row_end; row += block_thread_num) {
     I row_nnz = row_ptr[row + 1] - row_ptr[row];
-    if (row_nnz > 0) {
-#pragma unroll GROUP_NUM
-      for (int i = 0; i < GROUP_NUM; ++i) {
-        if (row_nnz <= GROUP_THRESHOLD[i]) {
-          local_split_count[i]++;
-          break;
+    if (row_nnz > ROW_NNZ_BEGIN_VALUE) {
+      if (row_nnz > GROUP_THRESHOLD[CLASSIFICATION_GROUP_NUM - 1]){
+        local_split_count[CLASSIFICATION_GROUP_NUM]++;
+      } else {
+#pragma unroll CLASSIFICATION_GROUP_NUM
+        for (int i = 0; i < CLASSIFICATION_GROUP_NUM; ++i) {
+          if (row_nnz <= GROUP_THRESHOLD[i]) {
+            local_split_count[i]++;
+            break;
+          }
         }
       }
     }
@@ -127,9 +131,9 @@ __global__ void __launch_bounds__(THREADS)
   }
 }
 
-template <typename I, size_t GROUP_NUM, const I (&GROUP_THRESHOLD)[GROUP_NUM], size_t N, size_t THREADS>
+template <typename I, size_t GROUP_NUM, size_t CLASSIFICATION_GROUP_NUM, const I (&GROUP_THRESHOLD)[CLASSIFICATION_GROUP_NUM], size_t N, size_t THREADS>
 __global__ void __launch_bounds__(THREADS)
-    split_group_part3_kernel(const size_t m, const I *row_ptr, I *group_row_ptr, int *temp_buffer) {
+    split_group_part3_kernel(const size_t m, const I *row_ptr, I *group_row_ptr, int *temp_buffer, const size_t ROW_NNZ_BEGIN_VALUE) {
   // block id in global
   const int global_block_id = blockIdx.x;
   // block num in global
@@ -171,13 +175,18 @@ __global__ void __launch_bounds__(THREADS)
     __syncthreads();
     for (int row = block_round_begin + block_thread_id; row < block_round_end; row += block_thread_num) {
       I row_nnz = row_ptr[row + 1] - row_ptr[row];
-      if (row_nnz > 0) {
-#pragma unroll GROUP_NUM
-        for (int i = 0; i < GROUP_NUM; ++i) {
-          if (row_nnz <= GROUP_THRESHOLD[i]) {
-            const int idx = atomicAdd(&block_insert_idx[i], 1);
-            block_group_row[THREADS * i + idx] = row;
-            break;
+      if (row_nnz > ROW_NNZ_BEGIN_VALUE) {
+        if (row_nnz > GROUP_THRESHOLD[CLASSIFICATION_GROUP_NUM - 1]) {
+          const int idx = atomicAdd(&block_insert_idx[CLASSIFICATION_GROUP_NUM], 1);
+          block_group_row[THREADS * CLASSIFICATION_GROUP_NUM + idx] = row;
+        } else {
+#pragma unroll CLASSIFICATION_GROUP_NUM
+          for (int i = 0; i < CLASSIFICATION_GROUP_NUM; ++i) {
+            if (row_nnz <= GROUP_THRESHOLD[i]) {
+              const int idx = atomicAdd(&block_insert_idx[i], 1);
+              block_group_row[THREADS * i + idx] = row;
+              break;
+            }
           }
         }
       }
