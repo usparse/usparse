@@ -78,3 +78,23 @@ endif ()
 if (DEVICE_SIDE_VERIFY_FLAG AND (NOT USPARSE_ENABLE_HIP))
     message(FATAL_ERROR "To perform device side verification, we must enable `USPARSE_ENABLE_HIP`")
 endif ()
+
+## floowing cmake comes from spgemm (https://git.hpcer.dev/PRA/spgemm/sparse): todo: merge it.
+option(HIP_ENABLE_FLAG "Enable HIP" ON)
+option(DEVICE_MALLOC_INITILIZE_FLAG "Perform device side malloc initialization" ON)
+
+if(DEVICE_SIDE_VERIFY_FLAG)
+    add_definitions(-DDEVICE_SIDE_VERIFY_FLAG)
+endif()
+
+set(WAVEFRONT_SIZE "64" CACHE STRING "threads number in a wavefront")
+set(KERNEL_STRATEGY "DEFAULT" CACHE STRING "SpGEMM strategy")
+
+set(SPGEMM_BIN_NAME spgemm-hip)
+set(SPGEMM_BENCHMARK_NAME spgemm-benchmark)
+set(SPGEMM_KERNEL_LIB_NAME spgemm-kernels)
+set(ACC_LIBS ${ACC_LIBS} ${SPGEMM_KERNEL_LIB_NAME})
+
+if (DEVICE_SIDE_VERIFY_FLAG)
+    set(ACC_LIBS ${ACC_LIBS} rocsparse)
+endif()
