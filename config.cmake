@@ -13,7 +13,6 @@ set(SPMV_ACC_CLI_LIB sparse_cli)
 ### floowing cmake comes from spmv-acc: todo: merge it.
 
 # enable to use hip to accelerate on GPU side, currently, it must be `ON`.
-option(HIP_ENABLE_FLAG "Enable HIP" ON)
 option(SPMV_BUILD_TOOLS "build tools" OFF)
 option(SPMV_OMP_ENABLED_FLAG "Enable OpenMP to parse input file" OFF)
 
@@ -63,7 +62,7 @@ endif ()
 # flat reduce strategy
 option(FLAT_SEGMENT_SUM_REDUCE "flat reducting strategy is segement sum" OFF)
 
-if (HIP_ENABLE_FLAG)
+if (USPARSE_ENABLE_HIP)
     set(SPMV_CLI_LIB sparse_cli)
     set(SPMV_KERNEL_LIB_NAME spmv-acc-kernels)
     # add linked libs
@@ -76,6 +75,6 @@ if (DEVICE_SIDE_VERIFY_FLAG)
     set(ACC_LIBS ${ACC_LIBS} rocsparse)
 endif ()
 
-if (DEVICE_SIDE_VERIFY_FLAG AND (NOT HIP_ENABLE_FLAG))
-    message(FATAL_ERROR "To perform device side verification, we must enable `HIP_ENABLE_FLAG`")
+if (DEVICE_SIDE_VERIFY_FLAG AND (NOT USPARSE_ENABLE_HIP))
+    message(FATAL_ERROR "To perform device side verification, we must enable `USPARSE_ENABLE_HIP`")
 endif ()

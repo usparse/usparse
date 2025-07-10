@@ -8,7 +8,6 @@ include(deps.cmake)
 include(pkg.dep.cmake)
 
 add_subdirectory(library)
-add_subdirectory(src)
 add_subdirectory(cli)
 
 if(USPARSE_BUILD_BENCHMARK)
