@@ -11,6 +11,7 @@ endif ()
 if (DEVICE_SIDE_VERIFY_FLAG)
     set(DEVICE_SIDE_VERIFY ON)
     set(gpu ON)
+    MESSAGE(STATUS "verify in device side")
 endif ()
 
 # verify kernel strategies
@@ -47,6 +48,11 @@ elseif (WF_REDUCE_LOWER MATCHES "lds")
     set(WF_REDUCE_LDS ON)
 elseif (WF_REDUCE_LOWER MATCHES "reg")
     set(WF_REDUCE_REG ON)
+endif ()
+
+if (DEVICE_MALLOC_INITILIZE_FLAG)
+    set(DEVICE_MALLOC_INITILIZE ON)
+    MESSAGE(STATUS "device side malloc initialization")
 endif ()
 
 set(__WF_SIZE__ ${WAVEFRONT_SIZE})

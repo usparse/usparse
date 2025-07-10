@@ -1,8 +1,8 @@
 #ifndef USTB_SPARSE_SPGEMM_SPLIT_GROUP_IMPL_HPP
 #define USTB_SPARSE_SPGEMM_SPLIT_GROUP_IMPL_HPP
 
-#include "../common/check/hip_check.hpp"
-#include "../common/scan/scan_impl.hpp"
+#include "spgemm_common/check/hip_check.hpp"
+#include "spgemm_common/scan/scan_impl.hpp"
 #include "align.h"
 #include "split_config.h"
 #include "split_group_kernel.hpp"

@@ -23,6 +23,8 @@ endif ()
 # set variable ACC_FILES for architecture source files.
 # set variable ACC_LIBS to link if some architecture is enabled.
 add_subdirectory(level2/spmv-acc-csrmv)
+# spgemm
+add_subdirectory(level3/)
 
 set(USPARSE_HEADER_FILES ${USPARSE_HEADER_FILES}
         ${USPARSE_HEADER_PATH}/usparse.h

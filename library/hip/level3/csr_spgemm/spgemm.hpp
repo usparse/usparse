@@ -1,8 +1,8 @@
 #ifndef USTB_SPARSE_SPGEMM_SPGEMM_HPP
 #define USTB_SPARSE_SPGEMM_SPGEMM_HPP
 
-#include "../common/check/hip_check.hpp"
-#include "../common/tools/set_val.hpp"
+#include "spgemm_common/check/hip_check.hpp"
+#include "spgemm_common/tools/set_val.hpp"
 #include "api/spgemm_hip_types.h"
 #include "spgemm_core_impl.hpp"
 #include "compress_matrix.h"

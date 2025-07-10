@@ -80,7 +80,6 @@ if (DEVICE_SIDE_VERIFY_FLAG AND (NOT USPARSE_ENABLE_HIP))
 endif ()
 
 ## floowing cmake comes from spgemm (https://git.hpcer.dev/PRA/spgemm/sparse): todo: merge it.
-option(HIP_ENABLE_FLAG "Enable HIP" ON)
 option(DEVICE_MALLOC_INITILIZE_FLAG "Perform device side malloc initialization" ON)
 
 if(DEVICE_SIDE_VERIFY_FLAG)

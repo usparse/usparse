@@ -3,7 +3,7 @@
 
 #include <cstddef>
 #include <hip/hip_runtime.h>
-#include "../common/check/hip_check.hpp"
+#include "spgemm_common/check/hip_check.hpp"
 #include "align.h"
 #include "create_bp_impl.hpp"
 #include "csr_matrix.h"
