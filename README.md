@@ -4,16 +4,15 @@ ustb-sparse (short name: usparse), a sparse library for multiple backends: hip a
 
 ## Build for HIP
 ```bash
-# build spmv-acc
-cd third-party/spmv-acc
-pkg fetch
+pkg fetch --features=rocm
 pkg install
-cd ../../
 
-# build usparse
-cmake -B ./build -S ./ -DUSPARSE_ENABLE_HIP=ON -DCMAKE_BUILD_TYPE=Release
-cmake --build ./build -j 4
-cmake install ./build # install lib
+cmake --preset=rocm-hipcc
+cmake --build --preset=rocm-hipcc
+
+# or: build usparse with benchmark feature.
+cmake --preset=rocm-hipcc-benchmark
+cmake --build --preset=rocm-hipcc-benchmark
 ```
 
 ## Ecosystem
