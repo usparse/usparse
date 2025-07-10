@@ -19,10 +19,15 @@ if (USPARSE_ENABLE_HIP)
     set(USPARSE_HIPCC_OPTIONS) # set hipcc arguments
 endif ()
 
+# spmv-acc
+# set variable ACC_FILES for architecture source files.
+# set variable ACC_LIBS to link if some architecture is enabled.
+add_subdirectory(level2/spmv-acc-csrmv)
+
 set(USPARSE_HEADER_FILES ${USPARSE_HEADER_FILES}
-        include/usparse.h
-        include/usparse_matrix.h
-        include/usparse_types.h
+        ${USPARSE_HEADER_PATH}/usparse.h
+        ${USPARSE_HEADER_PATH}/usparse_matrix.h
+        ${USPARSE_HEADER_PATH}/usparse_types.h
         )
 
 set(USPARSE_SOURCE_FILES ${USPARSE_SOURCE_FILES}
@@ -36,7 +41,7 @@ hip_add_library(${USPARSE_LIB_NAME} STATIC ${USPARSE_SOURCE_FILES} ${USPARSE_HEA
 target_include_directories(
         ${USPARSE_LIB_NAME}
         PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}$<SEMICOLON>${PROJECT_BINARY_DIR}/generated>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}$<SEMICOLON>${USPARSE_HEADER_PATH}/../$<SEMICOLON>${PROJECT_BINARY_DIR}/generated>
         $<INSTALL_INTERFACE:include>
 )
 

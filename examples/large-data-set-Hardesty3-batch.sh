@@ -22,4 +22,4 @@ ulimit -c unlimited
 
 # rows, cols, non-zeros, percent of non-zeros, average non-zeros per row
 echo "Hardesty3: (381,689	381,689	37,464,962	0.02572%	98.15573)"
-${BIN_PATH} ./large-data-set/Hardesty3.csr -f csr 
+${BIN_PATH} ./large-data-set/Hardesty3.bin2 -f bin2 

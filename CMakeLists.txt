@@ -8,11 +8,9 @@ include(deps.cmake)
 include(pkg.dep.cmake)
 
 add_subdirectory(library)
-add_subdirectory(src)
 add_subdirectory(cli)
 
-if(SPMV_BUILD_BENCHMARK)
-    add_subdirectory(benchmark) # spmv-acc benchmark
+if(USPARSE_BUILD_BENCHMARK)
     add_subdirectory(benchmarks) # usparse benchmark
 endif()
 

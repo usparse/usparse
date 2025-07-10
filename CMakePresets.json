@@ -25,7 +25,7 @@
             "hidden": true,
             "cacheVariables": {
                 "BENCHMARK_FORCE_SYNC_KERNELS": "ON",
-                "SPMV_BUILD_BENCHMARK": "ON",
+                "USPARSE_BUILD_BENCHMARK": "ON",
                 "SPMV_OMP_ENABLED_FLAG": "ON"
             }
         },
