@@ -1,4 +1,11 @@
+# General
+.DS_Store
 .idea/
+cmake-build-debug
+third-party/holaspmv/
+third-party/cub/
+vendor/
+pkg.dep.cmake
 
 ### CUDA template
 *.i
