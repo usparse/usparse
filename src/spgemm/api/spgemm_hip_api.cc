@@ -5,7 +5,7 @@
 #include "spgemm_hip_api.h"
 #include "building_config.h"
 
-#include "hip-kokkos/spgemm.h"
+#include "src/spgemm.hpp"
 
 template <typename T, typename I>
 void sparse_gemm_hip(const hip_sparse_operation transA, const hip_sparse_operation transB, 
@@ -14,7 +14,7 @@ void sparse_gemm_hip(const hip_sparse_operation transA, const hip_sparse_operati
                      const size_t nnzB, const I *pOffsetB, const I *pColIndexB, const T *pValueB, 
                      size_t *pNnzC, I *pOffsetC, I **ppColIndexC, T **ppValueC) {
 
-    kokkos_spgemm<T, I>(alpha, m, n, k, nnzA, pOffsetA, pColIndexA, pValueA, 
+    ustb_sparse_spgemm<T, I>(alpha, m, n, k, nnzA, pOffsetA, pColIndexA, pValueA, 
                       nnzB, pOffsetB, pColIndexB, pValueB, 
                       pNnzC, pOffsetC, ppColIndexC, ppValueC);
 }

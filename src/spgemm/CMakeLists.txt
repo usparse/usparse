@@ -1,6 +1,6 @@
 # all enabled strategies
 set(ENABLED_STRATEGIES
-    kokkos
+    src
     )
 
 # find HIP
@@ -19,9 +19,11 @@ foreach (X_STRATEGY IN LISTS ENABLED_STRATEGIES)
     if (X_STRATEGY_LOWER MATCHES "default")
         set(X_KERNEL_STRATEGY_SRC_DIR_POSTFIX "")
     else ()
-        string(REPLACE "_" "-" X_KERNEL_STRATEGY_SRC_DIR_POSTFIX "-${X_STRATEGY_LOWER}")
+        # string(REPLACE "_" "-" X_KERNEL_STRATEGY_SRC_DIR_POSTFIX "-${X_STRATEGY_LOWER}")
+        set(X_KERNEL_STRATEGY_SRC_DIR_POSTFIX ${X_STRATEGY_LOWER})
     endif ()
-    set (ACC_SRC_PATH "${CMAKE_CURRENT_SOURCE_DIR}/${ARCH_NAME}${X_KERNEL_STRATEGY_SRC_DIR_POSTFIX}")
+    # set (ACC_SRC_PATH "${CMAKE_CURRENT_SOURCE_DIR}/${ARCH_NAME}${X_KERNEL_STRATEGY_SRC_DIR_POSTFIX}")
+    set (ACC_SRC_PATH "${CMAKE_CURRENT_SOURCE_DIR}/${X_KERNEL_STRATEGY_SRC_DIR_POSTFIX}")
     # check ACC_SRC_PATH and add_subdirectory
     if (NOT EXISTS "${ACC_SRC_PATH}" OR NOT IS_DIRECTORY "${ACC_SRC_PATH}")
         MESSAGE(FATAL_ERROR "Architecture source files directory not found: ${ACC_SRC_PATH}")
@@ -39,6 +41,7 @@ set(ACC_HIP_HEADER_FILES ${COMMON_HEADER_FILES} ${ACC_HEADER_FILES}
 
 set(ACC_HIP_SOURCE_FILES ${ACC_SOURCE_FILES}
         api/spgemm_hip_api.cc
+        common/timer/timer.cpp
         )
 
 # set_source_files_properties(${ACC_HIP_SOURCE_FILES} PROPERTIES HIP_SOURCE_PROPERTY_FORMAT 1)

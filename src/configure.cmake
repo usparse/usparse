@@ -16,11 +16,6 @@ if (DEVICE_MALLOC_INITILIZE_FLAG)
     MESSAGE(STATUS "device side malloc initialization")
 endif ()
 
-if (CAS_PRA_VERIFY_FLAG)
-    set(CAS_PRA_VERIFY ON)
-    MESSAGE(STATUS "verify by cas-pra")
-endif ()
-
 set(__WF_SIZE__ ${WAVEFRONT_SIZE})
 
 configure_file(

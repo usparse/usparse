@@ -33,10 +33,9 @@
  * @param ppValueC value array of matrix C in CSR format.
  */
 template <typename T, typename I>
-void sparse_gemm_hip(const hip_sparse_operation transA, const hip_sparse_operation transB, 
-                     const T alpha, const T beta, const size_t m, const size_t n, const size_t k, 
-                     const size_t nnzA, const I *pOffsetA, const I *pColIndexA, const T *pValueA,
-                     const size_t nnzB, const I *pOffsetB, const I *pColIndexB, const T *pValueB, 
-                     size_t* pNnzC, I *pOffsetC, I **ppColIndexC, T **ppValueC);
+void sparse_gemm_hip(const hip_sparse_operation transA, const hip_sparse_operation transB, const T alpha, const T beta,
+                     const size_t m, const size_t n, const size_t k, const size_t nnzA, const I *pOffsetA,
+                     const I *pColIndexA, const T *pValueA, const size_t nnzB, const I *pOffsetB, const I *pColIndexB,
+                     const T *pValueB, size_t *pNnzC, I *pOffsetC, I **ppColIndexC, T **ppValueC);
 
 #endif // SPGEMM_HIP_API_H

@@ -11,6 +11,6 @@ set(COMMON_HEADER_FILES ${COMMON_HEADER_FILES}
         ${CURRENT_COMMON_SOURCE_DIR}/scan/single_block_scan.hpp
         ${CURRENT_COMMON_SOURCE_DIR}/max/max_impl.hpp
         ${CURRENT_COMMON_SOURCE_DIR}/max/block_reduce_max.hpp
-        ${CURRENT_COMMON_SOURCE_DIR}/timer/timer.h
+        ${CURRENT_COMMON_SOURCE_DIR}/timer/timer.hpp
         ${CURRENT_COMMON_SOURCE_DIR}/tools/set_val.hpp
         )
