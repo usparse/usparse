@@ -1,8 +1,8 @@
 #ifndef USTB_SPARSE_SPGEMM_SPGEMM_CORE_IMPL_HPP
 #define USTB_SPARSE_SPGEMM_SPGEMM_CORE_IMPL_HPP
 
-#include "../common/check/hip_check.hpp"
-#include "../common/timer/timer.hpp"
+#include "spgemm_common/check/hip_check.hpp"
+#include "spgemm_common/timer/timer.hpp"
 #include "align.h"
 #include "spgemm_adapt_policy.hpp"
 #include "spgemm_buffer_impl.hpp"

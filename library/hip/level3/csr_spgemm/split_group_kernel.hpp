@@ -1,7 +1,7 @@
 #ifndef USTB_SPARSE_SPGEMM_SPLIT_GROUP_KERNEL_HPP
 #define USTB_SPARSE_SPGEMM_SPLIT_GROUP_KERNEL_HPP
 
-#include "../common/scan/scan_in_device.hpp"
+#include "spgemm_common/scan/scan_in_device.hpp"
 #include "split_config.h"
 #include <hip/hip_runtime.h>
 

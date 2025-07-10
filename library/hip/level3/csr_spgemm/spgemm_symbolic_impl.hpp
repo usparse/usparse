@@ -1,9 +1,9 @@
 #ifndef USTB_SPARSE_SPGEMM_SPGEMM_SYMBOLIC_IMPL_HPP
 #define USTB_SPARSE_SPGEMM_SPGEMM_SYMBOLIC_IMPL_HPP
 
-#include "../common/check/hip_check.hpp"
-#include "../common/max/max_impl.hpp"
-#include "../common/scan/scan_impl.hpp"
+#include "spgemm_common/check/hip_check.hpp"
+#include "spgemm_common/max/max_impl.hpp"
+#include "spgemm_common/scan/scan_impl.hpp"
 #include "align.h"
 #include "compress_matrix.h"
 #include "csr_matrix.h"

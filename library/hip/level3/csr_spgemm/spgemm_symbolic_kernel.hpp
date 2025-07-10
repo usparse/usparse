@@ -113,6 +113,7 @@ __global__ void chunk_nnz_kernel(const size_t m, const I *row_ptr_a, const I *co
   }
 }
 
+#if 0
 template <typename T, typename I, size_t N, size_t THREADS, size_t VEC_SIZE>
 __global__ void __launch_bounds__(THREADS)
     spgemm_symbolic_vector_per_row_one_pass_kernel(const size_t m, const I *row_ptr_a, const I *col_idx_ptr_a,
@@ -181,7 +182,9 @@ __global__ void __launch_bounds__(THREADS)
     row_ptr_c[row_a + 1] = nnz_count;
   }
 }
+#endif
 
+#if 0
 template <typename T, typename I, size_t N, size_t THREADS>
 __global__ void __launch_bounds__(THREADS)
     spgemm_symbolic_block_per_row_one_pass_kernel(const size_t m, const I *row_ptr_a, const I *col_idx_ptr_a,
@@ -264,6 +267,7 @@ __global__ void __launch_bounds__(THREADS)
     row_ptr_c[row_a + 1] = shared_nnz_count;
   }
 }
+#endif
 
 template <typename T, typename I, size_t N, size_t THREADS, size_t VEC_SIZE>
 __global__ void __launch_bounds__(THREADS) spgemm_symbolic_open_address_hashmap_vector_per_row_one_pass_kernel(

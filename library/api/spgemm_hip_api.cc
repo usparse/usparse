@@ -5,7 +5,7 @@
 #include "spgemm_hip_api.h"
 #include "building_config.h"
 
-#include "src/spgemm.hpp"
+#include "csr_spgemm/spgemm.hpp"
 
 template <typename T, typename I>
 void sparse_gemm_hip(const hip_sparse_operation transA, const hip_sparse_operation transB, 

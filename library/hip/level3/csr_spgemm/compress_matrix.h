@@ -1,7 +1,7 @@
 #ifndef USTB_SPARSE_SPGEMM_COMPRESS_MATRIX_H
 #define USTB_SPARSE_SPGEMM_COMPRESS_MATRIX_H
 
-#include "../common/check/hip_check.hpp"
+#include "spgemm_common/check/hip_check.hpp"
 #include "align.h"
 #include <cstddef>
 #include <hip/hip_runtime.h>

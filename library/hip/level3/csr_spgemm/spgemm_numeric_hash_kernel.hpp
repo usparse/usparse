@@ -2,7 +2,7 @@
 #define USTB_SPARSE_SPGEMM_SPGEMM_NUMERIC_HASH_KERNEL_HPP
 
 #include "hash_map_insert_kernel.hpp"
-#include "../common/scan/scan_in_device.hpp"
+#include "spgemm_common/scan/scan_in_device.hpp"
 
 template <typename T, typename I, size_t N, size_t THREADS, size_t VEC_SIZE>
 __global__ void __launch_bounds__(THREADS) spgemm_numeric_linear_chain_hashmap_vector_per_row_sorted_one_pass_kernel(

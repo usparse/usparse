@@ -33,4 +33,5 @@ target_link_libraries(
         ${SPGEMM_BENCHMARK_NAME}
         PUBLIC
         ${ACC_LIBS}
+        rocsparse # todo: use rocsparse.
 )

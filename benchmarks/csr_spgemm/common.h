@@ -10,8 +10,8 @@
 #include <rocsparse.h>
 #endif
 
-#include "common/check/hip_check.hpp"
-#include "common/timer/timer.hpp"
+#include "spgemm_common/check/hip_check.hpp"
+#include "spgemm_common/timer/timer.hpp"
 
 #define ROCSPARSE_CHECK(stat)                                                                                          \
   {                                                                                                                    \

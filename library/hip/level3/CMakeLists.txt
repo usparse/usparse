@@ -1,12 +1,12 @@
 # all enabled strategies
 set(ENABLED_STRATEGIES
-    src
+    csr_spgemm
     )
 
 # find HIP
 
 # to include common folder
-set(COMMON_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/common)
+set(COMMON_SRC_PATH ${USPARSE_HIP_SOURCE_PATH}/spgemm_common)
 include(${COMMON_SRC_PATH}/source_list.cmake)
 
 # to include strategies source files.
@@ -35,13 +35,13 @@ foreach (X_STRATEGY IN LISTS ENABLED_STRATEGIES)
 endforeach ()
 
 set(ACC_HIP_HEADER_FILES ${COMMON_HEADER_FILES} ${ACC_HEADER_FILES}
-        api/spgemm_hip_api.h
-        api/spgemm_hip_types.h
+        ${USPARSE_API_PATH}/spgemm_hip_api.h
+        ${USPARSE_API_PATH}/spgemm_hip_types.h
         )
 
 set(ACC_HIP_SOURCE_FILES ${ACC_SOURCE_FILES}
-        api/spgemm_hip_api.cc
-        common/timer/timer.cpp
+        ${USPARSE_API_PATH}/spgemm_hip_api.cc
+        ${COMMON_SRC_PATH}/timer/timer.cpp
         )
 
 # set_source_files_properties(${ACC_HIP_SOURCE_FILES} PROPERTIES HIP_SOURCE_PROPERTY_FORMAT 1)
@@ -52,6 +52,6 @@ add_library(${SPGEMM_KERNEL_LIB_NAME} STATIC ${ACC_HIP_SOURCE_FILES} ${ACC_HIP_H
 target_include_directories(
         ${SPGEMM_KERNEL_LIB_NAME}
         PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}$<SEMICOLON>${PROJECT_BINARY_DIR}/generated>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}$<SEMICOLON>${CMAKE_CURRENT_SOURCE_DIR}/csr_spgemm/$<SEMICOLON>${USPARSE_HIP_SOURCE_PATH}$<SEMICOLON>${USPARSE_API_PATH}/../$<SEMICOLON>${PROJECT_BINARY_DIR}/generated>
         $<INSTALL_INTERFACE:include>
 )
