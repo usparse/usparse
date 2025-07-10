@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string>
 #include <vector>
-
+#include <hip/hip_runtime.h>
 typedef unsigned int uint;
 using namespace std;
 
@@ -20,6 +20,9 @@ public:
   uint *rows;
   uint *cols;
   ValueType *vals;
+  // flag of device, true: device, false: host
+  bool on_device = false;
+
 
   SpM() : nrows(0), ncols(0), nnz(0), rows(NULL), cols(NULL), vals(NULL) {};
   SpM(uint nrows, uint ncols, uint nnz) : nrows(nrows), ncols(ncols), nnz(nnz) {
@@ -46,12 +49,16 @@ public:
     }
   }
   ~SpM() {
-    if (rows)
-      free(rows);
-    if (cols)
-      free(cols);
-    if (vals)
-      free(vals);
+    if (on_device) {
+      if (rows) hipFree(rows);
+      if (cols) hipFree(cols);
+      if (vals) hipFree(vals);
+    } else {
+      if (rows) free(rows);
+      if (cols) free(cols);
+      if (vals) free(vals);
+    }
+
   }
 };
 

@@ -24,6 +24,8 @@ void init_device_data(SpM<double> *h_A, double *h_x, SpM<double> *dev_A, double 
   HIP_CHECK(hipMemcpy(dev_A->cols, h_A->cols, A_nnz * sizeof(int), hipMemcpyHostToDevice));
   HIP_CHECK(hipMemcpy(dev_A->vals, h_A->vals, A_nnz * sizeof(double), hipMemcpyHostToDevice));
   HIP_CHECK(hipMemcpy(*dev_x, h_x, A_num_rows * sizeof(double), hipMemcpyHostToDevice));
+
+  dev_A->on_device = true;
 }
 
 /**
