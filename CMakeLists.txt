@@ -8,3 +8,6 @@ include(dep.cmake)
 
 add_subdirectory(library)
 add_subdirectory(src)
+if(USPARSE_TEST_ENABLE)
+    add_subdirectory(tests)
+endif()
