@@ -2,6 +2,9 @@
 // Created by genshen to 2025-07-13.
 //
 
+#include <cmath>
+#include <random>
+
 #include <gtest/gtest.h>
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
@@ -49,4 +52,44 @@ TEST(Level1Test, dotProduction) {
 
   delete[] h_x;
   delete[] h_y;
+}
+
+TEST(Level1Test, vecNorm) {
+  constexpr int N = 12000000;
+  double *h_vec = nullptr;
+  double h_vec_norm = 0;
+  h_vec = new double[N];
+
+  std::random_device rd;
+  std::default_random_engine eng(rd());
+  std::uniform_real_distribution<double> distr(-1.0, 1.0);
+
+  for (int i = 0; i < N; i++) {
+    h_vec[i] = distr(eng);
+    h_vec_norm += h_vec[i] * h_vec[i];
+  }
+  h_vec_norm = sqrt(h_vec_norm);
+
+  double *d_vec = nullptr;
+  double *d_result = nullptr;
+  TEST_HIP_CHECK(hipMalloc(&d_vec, N * sizeof(double)));
+  TEST_HIP_CHECK(hipMalloc(&d_result, 1 * sizeof(double)));
+  TEST_HIP_CHECK(hipMemset(d_result, 0, 1 * sizeof(double)));
+  TEST_HIP_CHECK(hipMemcpy(d_vec, h_vec, N * sizeof(double), hipMemcpyHostToDevice));
+
+  usparse::device_calculateNorm<uint, double>(d_vec, (uint)N, d_result);
+  hipDeviceSynchronize();
+
+  double dev_result_on_host = 0;
+  TEST_HIP_CHECK(hipMemcpy(&dev_result_on_host, d_result, 1 * sizeof(double), hipMemcpyDeviceToHost));
+
+  // check result.
+  // the default EAPECT_DOUBLE_EQ may not pass.
+  double relative_error = std::abs(dev_result_on_host - h_vec_norm)/dev_result_on_host;
+  EXPECT_NEAR(relative_error, 0.0, 1e-12);
+
+  hipFree(d_vec);
+  hipFree(d_result);
+
+  delete[] h_vec;
 }
