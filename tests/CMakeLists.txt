@@ -1,1 +1,6 @@
-add_subdirectory(unit)
+if(USPARSE_UNIT_TEST_ENABLE)
+    add_subdirectory(unit)
+endif()
+if(USPARSE_BENCHMARK_ENABLE)
+    add_subdirectory(benchmark)
+endif()
