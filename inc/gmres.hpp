@@ -16,7 +16,8 @@ void sovlerTri(int Am, int i, double *H, double *s);
 void rotation2(uint Am, double *H, double *cs, double *sn, double *s, uint i);
 void rotation3(uint Am, double *H, double *cs, double *sn, double *s, uint i);
 
-RESULT gmres(SpM<double> *A_d, double *_x, double *_b, SpM<double> *dev_A, double *dev_x, double *dev_y);
+RESULT gmres(SpM<double> *A_d, double *_x, double *_b, SpM<double> *dev_A, double *dev_x, double *dev_y,
+             csr_desc<int, double> d_csr_desc);
 void assign2(double *a, double *s);
 void fill2(uint Am, double *a, double s);
 

@@ -1,6 +1,7 @@
 #include "gmres.hpp"
 #include "init.hpp"
 #include "sparseMatrix.hpp"
+#include "usparse_gmres.h"
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -54,10 +55,13 @@ int main(int argc, char *argv[]) {
   double *dev_x = nullptr;
   double *dev_y = nullptr; // result = A * X
 
-  init_device_data(&A_double, &x_double[0], &dev_A, &dev_x, &dev_y); // 申请内存
+  var_csr_desc<int, double> d_var_csr_desc;
+  init_device_data(&A_double, &x_double[0], &dev_A, &dev_x, &dev_y, &d_var_csr_desc); // 申请内存
+  auto d_csr_desc = d_var_csr_desc.as_const();
   // ==============禁止修改上列代码==============
 
-  auto res = gmres(&A_double, &x_double[0], &b_double[0], &dev_A, dev_x, dev_y); // GMRES算法核心，需重点优化
+  auto res = gmres(&A_double, &x_double[0], &b_double[0], &dev_A, dev_x, dev_y,
+                   d_csr_desc); // GMRES算法核心，需重点优化
 
   // destory data
   destory_device_data(&dev_A, dev_y, dev_x);

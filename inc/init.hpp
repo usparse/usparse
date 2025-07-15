@@ -12,11 +12,13 @@
 // #include "hip/hip_runtime_api.h"
 
 #include "sparseMatrix.hpp"
+#include "usparse_gmres.h"
 #include "utils.hpp"
 
 using RESULT = std::tuple<int, float, double>;
 
-void init_device_data(SpM<double> *h_A, double *h_x, SpM<double> *dev_A, double **dev_x, double **dev_y);
+void init_device_data(SpM<double> *h_A, double *h_x, SpM<double> *dev_A, double **dev_x, double **dev_y,
+                      var_csr_desc<int, double> *d_csr_dest);
 void init_matrix_info(SpM<double> *dev_A, rocsparse_handle *handle, rocsparse_mat_descr *descrA,
                       rocsparse_mat_info *info);
 
