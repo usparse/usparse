@@ -2,5 +2,5 @@
 	path = third-party/googletest-1.16
 	url = https://github.com/google/googletest.git
 [submodule "third-party/google-benchmark-1.8.5"]
-	path = third-party/google-benchmark-1.8.5
+	path = third-party/google-benchmark-1.9.4
 	url = https://github.com/google/benchmark.git

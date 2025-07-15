@@ -1,6 +1,6 @@
 set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE BOOL "")
 set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "")
-add_subdirectory(${PROJECT_SOURCE_DIR}/third-party/google-benchmark-1.8.5 gbench-1.8.5)
+add_subdirectory(${PROJECT_SOURCE_DIR}/third-party/google-benchmark-1.9.4 gbench-1.9.4)
 
 find_package(rocSPARSE REQUIRED)
 
