@@ -11,7 +11,7 @@ namespace usparse {
 
   // todo: pass THREADS as tparam
   template <typename INDEX_TYPE, typename DATA_TYPE>
-  __global__ void calculateNorm_kernel(const DATA_TYPE *vec, INDEX_TYPE N, DATA_TYPE *result) {
+  __global__ void calculateNorm_kernel(const DATA_TYPE *vec, INDEX_TYPE N, DATA_TYPE *d_temp_buffer) {
     const int global_thread_id = blockDim.x * blockIdx.x + threadIdx.x;
     const int wf_size = 64;
     const int wf_thread_id = threadIdx.x % wf_size;
@@ -38,14 +38,13 @@ namespace usparse {
     }
     __syncthreads();
     if (threadIdx.x == 0) {
-      atomicAdd(result, shared_block_sum);
+      d_temp_buffer[blockIdx.x] = shared_block_sum;
     }
   }
 
-  template <typename DATA_TYPE> __global__ void sqrt_kernel(DATA_TYPE *result) { *result = sqrt(*result); }
-
   template <typename INDEX_TYPE, typename DATA_TYPE>
-  __global__ void dotProduct_kernel(const DATA_TYPE *x, const DATA_TYPE *y, const INDEX_TYPE N, DATA_TYPE *result) {
+  __global__ void dotProduct_kernel(const DATA_TYPE *x, const DATA_TYPE *y, const INDEX_TYPE N,
+                                    DATA_TYPE *d_temp_buffer) {
     const int global_thread_id = blockDim.x * blockIdx.x + threadIdx.x;
     constexpr int wf_size = 64;
     const int wf_thread_id = threadIdx.x % wf_size;
@@ -71,9 +70,41 @@ namespace usparse {
     }
     __syncthreads();
     if (threadIdx.x == 0) {
-      atomicAdd(result, shared_block_sum);
+      d_temp_buffer[blockIdx.x] = shared_block_sum;
     }
   }
+  template <typename INDEX_TYPE, typename DATA_TYPE>
+  __global__ void reduce_kernel(const DATA_TYPE *vec, const INDEX_TYPE N, DATA_TYPE *d_temp_buffer) {
+    const int global_thread_id = blockDim.x * blockIdx.x + threadIdx.x;
+    const int wf_size = 64;
+    const int wf_thread_id = threadIdx.x % wf_size;
+    const int idx_per_block = (N / gridDim.x) + (N % gridDim.x == 0 ? 0 : 1);
+    const int block_idx_begin = blockIdx.x * idx_per_block;
+    const int block_idx_end = min(N, block_idx_begin + idx_per_block);
+
+    __shared__ DATA_TYPE shared_block_sum;
+    if (threadIdx.x == 0) {
+      shared_block_sum = static_cast<DATA_TYPE>(0);
+    }
+    DATA_TYPE local_sum = static_cast<DATA_TYPE>(0);
+
+    for (INDEX_TYPE i = block_idx_begin + threadIdx.x; i < block_idx_end; i += blockDim.x) {
+      local_sum += vec[i];
+    }
+    __syncthreads();
+    for (INDEX_TYPE i = wf_size >> 1; i > 0; i >>= 1) {
+      local_sum += __shfl_down(local_sum, i, wf_size);
+    }
+    __syncthreads();
+    if (wf_thread_id == 0) {
+      atomicAdd(&shared_block_sum, local_sum);
+    }
+    __syncthreads();
+    if (threadIdx.x == 0) {
+      d_temp_buffer[blockIdx.x] = shared_block_sum;
+    }
+  }
+  template <typename DATA_TYPE> __global__ void sqrt_kernel(DATA_TYPE *result) { *result = sqrt(*result); }
 
   template <typename INDEX_TYPE, typename DATA_TYPE>
   __global__ void __launch_bounds__(512)
@@ -99,24 +130,42 @@ namespace usparse {
       dst[tid] = src[tid];
     }
   }
+  template <typename INDEX_TYPE, typename DATA_TYPE>
+  void device_recur(DATA_TYPE *d_temp_buffer, INDEX_TYPE N, const int THREADS, DATA_TYPE *d_result) {
+    if (N == 1) {
+      *d_result = d_temp_buffer[0];
+    } else {
+      INDEX_TYPE BLOCKS = N / THREADS + (N % THREADS == 0 ? 0 : 1);
+      reduce_kernel<<<BLOCKS, THREADS>>>(d_temp_buffer, N, d_temp_buffer);
+      hipDeviceSynchronize();
+      device_recur(d_temp_buffer, BLOCKS, THREADS, d_result);
+    }
+  }
 
 } // namespace usparse
 
 template <typename INDEX_TYPE, typename DATA_TYPE>
 void usparse::device_calculateNorm(const DATA_TYPE *d_vec, INDEX_TYPE N, DATA_TYPE *d_result) {
   constexpr int THREADS = 256;
-  *d_result = 0.0;
-  const int BLOCKS = N / THREADS + (N % THREADS == 0 ? 0 : 1);
-  calculateNorm_kernel<<<BLOCKS, THREADS>>>(d_vec, N, d_result);
+  INDEX_TYPE BLOCKS = N / THREADS + (N % THREADS == 0 ? 0 : 1);
+  DATA_TYPE *d_temp_buffer;
+  hipMalloc(&d_temp_buffer, BLOCKS * sizeof(DATA_TYPE));
+  calculateNorm_kernel<<<BLOCKS, THREADS>>>(d_vec, N, d_temp_buffer);
+  hipDeviceSynchronize();
+  usparse::device_recur(d_temp_buffer, BLOCKS, THREADS, d_result);
+  hipFree(d_temp_buffer);
   sqrt_kernel<DATA_TYPE><<<1, 1>>>(d_result);
 }
-
 template <typename INDEX_TYPE, typename DATA_TYPE>
 void usparse::device_dotProduct(const DATA_TYPE *d_x, const DATA_TYPE *d_y, INDEX_TYPE N, DATA_TYPE *d_result) {
   constexpr int THREADS = 256;
-  const int BLOCKS = N / THREADS + (N % THREADS == 0 ? 0 : 1);
-  *d_result = 0.0;
-  dotProduct_kernel<<<BLOCKS, THREADS>>>(d_x, d_y, N, d_result);
+  INDEX_TYPE BLOCKS = N / THREADS + (N % THREADS == 0 ? 0 : 1);
+  DATA_TYPE *d_temp_buffer;
+  hipMalloc(&d_temp_buffer, BLOCKS * sizeof(DATA_TYPE));
+  dotProduct_kernel<<<BLOCKS, THREADS>>>(d_x, d_y, N, d_temp_buffer);
+  hipDeviceSynchronize();
+  usparse::device_recur(d_temp_buffer, BLOCKS, THREADS, d_result);
+  hipFree(d_temp_buffer);
 }
 
 template <typename INDEX_TYPE, typename DATA_TYPE>
