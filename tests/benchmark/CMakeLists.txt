@@ -23,5 +23,23 @@ target_link_libraries(
         PUBLIC
         benchmark::benchmark
         roc::rocsparse
+        ${USPARSE_KERNEL_LIB_NAME}        
+)
+
+add_executable(
+        ustbSparse_spmv_benchmark
+        usparse/usparse_level2_csrmv_benchmark.cc
+)
+target_include_directories(
+        ustbSparse_spmv_benchmark
+        PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        $<INSTALL_INTERFACE:include>
+)
+target_link_libraries(
+        ustbSparse_spmv_benchmark
+        PUBLIC
+        benchmark::benchmark
+        roc::rocsparse
         ${USPARSE_KERNEL_LIB_NAME}
 )
