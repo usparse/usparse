@@ -14,30 +14,12 @@
 #include "api/handle.h"
 #include "flat/spmv_acc_flat.h"
 #include "hip-adaptive/adaptive.h"
-#include "hip-block-row-ordinary/spmv_hip_acc_imp.h"
 #include "hip-csr-adaptive-plus/csr_adaptive_plus_spmv.h"
 #include "hip-light/spmv_hip_acc_imp.h"
 #include "hip-line-enhance/line_enhance_spmv.h"
 #include "hip-line/line_strategy.h"
 #include "hip-thread-row/thread_row.h"
 #include "hip-vector-row/vector_row.h"
-#include "hip-wf-row/spmv_hip.h"
-#include "hip/spmv_hip_acc_imp.h"
-
-struct SpMVAccDefault : CsrSpMV {
-  void csr_spmv_impl(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                     const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
-    hip::timer::event_timer calc_timer;
-    calc_timer.start();
-    default_sparse_spmv(trans, alpha, beta, d_csr_desc, x, y);
-    calc_timer.stop(true);
-    double calc_time_cost = calc_timer.time_use;
-    if (bmt != nullptr) {
-      bmt->set_time(0., calc_time_cost, 0.0, 0.);
-    }
-  }
-  bool verify_beta_y() { return true; }
-};
 
 struct SpMVAccAdaptive : CsrSpMV {
   void csr_spmv_impl(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
@@ -45,21 +27,6 @@ struct SpMVAccAdaptive : CsrSpMV {
     hip::timer::event_timer calc_timer;
     calc_timer.start();
     adaptive_sparse_spmv(trans, alpha, beta, h_csr_desc, d_csr_desc, x, y);
-    calc_timer.stop(true);
-    double calc_time_cost = calc_timer.time_use;
-    if (bmt != nullptr) {
-      bmt->set_time(0., calc_time_cost, 0.0, 0.);
-    }
-  }
-  bool verify_beta_y() { return true; }
-};
-
-struct SpMVAccBlockRow : CsrSpMV {
-  void csr_spmv_impl(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                     const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
-    hip::timer::event_timer calc_timer;
-    calc_timer.start();
-    block_row_sparse_spmv(trans, alpha, beta, d_csr_desc, x, y);
     calc_timer.stop(true);
     double calc_time_cost = calc_timer.time_use;
     if (bmt != nullptr) {
@@ -144,21 +111,6 @@ struct SpMVAccVecRow : CsrSpMV {
     hip::timer::event_timer calc_timer;
     calc_timer.start();
     vec_row_sparse_spmv(trans, alpha, beta, d_csr_desc, x, y);
-    calc_timer.stop(true);
-    double calc_time_cost = calc_timer.time_use;
-    if (bmt != nullptr) {
-      bmt->set_time(0., calc_time_cost, 0.0, 0.);
-    }
-  }
-  bool verify_beta_y() { return true; }
-};
-
-struct SpMVAccWfRow : CsrSpMV {
-  void csr_spmv_impl(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                     const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
-    hip::timer::event_timer calc_timer;
-    calc_timer.start();
-    wf_row_sparse_spmv(trans, alpha, beta, d_csr_desc, x, y);
     calc_timer.stop(true);
     double calc_time_cost = calc_timer.time_use;
     if (bmt != nullptr) {

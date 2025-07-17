@@ -1,14 +1,11 @@
 # all enabled strategies
 set(ENABLED_STRATEGIES
-        default
         adaptive
-        block_row_ordinary
         flat
         light
         line
         thread_row
         vector_row
-        wf_row
         line_enhance
         csr_adaptive_plus
         )
