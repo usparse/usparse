@@ -35,15 +35,17 @@ BENCHMARK_TEMPLATE_METHOD_F(UsparseLevel1Fixture, CalcNorm)(benchmark::State &st
   TEST_HIP_CHECK(hipFree(d_result));
 
   // calc bandwidth
-  const int mem_size = N * sizeof(T);
-  state.counters["Bandwidth"] = benchmark::Counter(mem_size, benchmark::Counter::kIsRate, benchmark::Counter::kIs1024);
+  const std::size_t mem_size = N * sizeof(T);
+  state.counters["Bandwidth"] =
+      benchmark::Counter(mem_size * state.iterations(), benchmark::Counter::kIsRate, benchmark::Counter::kIs1024);
 }
 
 BENCHMARK_TEMPLATE_INSTANTIATE_F(UsparseLevel1Fixture, CalcNorm, uint, double)
     ->Arg(100000)
     ->Arg(1000000)
     ->Arg(10000000)
-    ->Arg(100000000);
+    ->Arg(100000000)
+    ->UseRealTime();
 
 // benchmarking usparse::device_dotProduct
 BENCHMARK_TEMPLATE_METHOD_F(UsparseLevel1Fixture, dotprod)(benchmark::State &state) {
@@ -71,15 +73,17 @@ BENCHMARK_TEMPLATE_METHOD_F(UsparseLevel1Fixture, dotprod)(benchmark::State &sta
   TEST_HIP_CHECK(hipFree(d_result));
 
   // calc bandwidth
-  const int mem_size = N * sizeof(T) * 2;
-  state.counters["Bandwidth"] = benchmark::Counter(mem_size, benchmark::Counter::kIsRate, benchmark::Counter::kIs1024);
+  const std::size_t mem_size = N * sizeof(T) * 2;
+  state.counters["Bandwidth"] =
+      benchmark::Counter(mem_size * state.iterations(), benchmark::Counter::kIsRate, benchmark::Counter::kIs1024);
 }
 
 BENCHMARK_TEMPLATE_INSTANTIATE_F(UsparseLevel1Fixture, dotprod, uint, double)
     ->Arg(100000)
     ->Arg(1000000)
     ->Arg(10000000)
-    ->Arg(100000000);
+    ->Arg(100000000)
+    ->UseRealTime();
 
 // benchmarking usparse::device_daxpy
 BENCHMARK_TEMPLATE_METHOD_F(UsparseLevel1Fixture, daxpy)(benchmark::State &state) {
@@ -102,15 +106,17 @@ BENCHMARK_TEMPLATE_METHOD_F(UsparseLevel1Fixture, daxpy)(benchmark::State &state
   }
 
   // calc bandwidth
-  const int mem_size = N * sizeof(T) * 3;
-  state.counters["Bandwidth"] = benchmark::Counter(mem_size, benchmark::Counter::kIsRate, benchmark::Counter::kIs1024);
+  const std::size_t mem_size = N * sizeof(T) * 3;
+  state.counters["Bandwidth"] =
+      benchmark::Counter(mem_size * state.iterations(), benchmark::Counter::kIsRate, benchmark::Counter::kIs1024);
 }
 
 BENCHMARK_TEMPLATE_INSTANTIATE_F(UsparseLevel1Fixture, daxpy, uint, double)
     ->Arg(100000)
     ->Arg(1000000)
     ->Arg(10000000)
-    ->Arg(100000000);
+    ->Arg(100000000)
+    ->UseRealTime();
 
 // benchmarking usparse::device_dscal
 BENCHMARK_TEMPLATE_METHOD_F(UsparseLevel1Fixture, dscal)(benchmark::State &state) {
@@ -132,15 +138,17 @@ BENCHMARK_TEMPLATE_METHOD_F(UsparseLevel1Fixture, dscal)(benchmark::State &state
   }
 
   // calc bandwidth
-  const int mem_size = N * sizeof(T) * 2;
-  state.counters["Bandwidth"] = benchmark::Counter(mem_size, benchmark::Counter::kIsRate, benchmark::Counter::kIs1024);
+  const std::size_t mem_size = N * sizeof(T) * 2;
+  state.counters["Bandwidth"] =
+      benchmark::Counter(mem_size * state.iterations(), benchmark::Counter::kIsRate, benchmark::Counter::kIs1024);
 }
 
 BENCHMARK_TEMPLATE_INSTANTIATE_F(UsparseLevel1Fixture, dscal, uint, double)
     ->Arg(100000)
     ->Arg(1000000)
     ->Arg(10000000)
-    ->Arg(100000000);
+    ->Arg(100000000)
+    ->UseRealTime();
 
 // benchmarking usparse::device_dcopy
 BENCHMARK_TEMPLATE_METHOD_F(UsparseLevel1Fixture, dcopy)(benchmark::State &state) {
@@ -159,14 +167,16 @@ BENCHMARK_TEMPLATE_METHOD_F(UsparseLevel1Fixture, dcopy)(benchmark::State &state
   }
 
   // calc bandwidth
-  const int mem_size = N * sizeof(T) * 2;
-  state.counters["Bandwidth"] = benchmark::Counter(mem_size, benchmark::Counter::kIsRate, benchmark::Counter::kIs1024);
+  const std::size_t mem_size = N * sizeof(T) * 2;
+  state.counters["Bandwidth"] =
+      benchmark::Counter(mem_size * state.iterations(), benchmark::Counter::kIsRate, benchmark::Counter::kIs1024);
 }
 
 BENCHMARK_TEMPLATE_INSTANTIATE_F(UsparseLevel1Fixture, dcopy, uint, double)
     ->Arg(100000)
     ->Arg(1000000)
     ->Arg(10000000)
-    ->Arg(100000000);
+    ->Arg(100000000)
+    ->UseRealTime();
 
 BENCHMARK_MAIN();
