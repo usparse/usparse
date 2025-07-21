@@ -25,14 +25,20 @@ BENCHMARK_TEMPLATE_METHOD_F(UsparseLevel1Fixture, CalcNorm)(benchmark::State &st
   TEST_HIP_CHECK(hipMalloc(&d_result, 1 * sizeof(T)));
   TEST_HIP_CHECK(hipMemset(d_result, 0, 1 * sizeof(T)));
 
+  std::size_t buffer_size = 0;
+  double *d_temp_buffer = nullptr;
+  usparse::device_calculateNorm<uint, double>(nullptr, (uint)N, nullptr, d_temp_buffer, &buffer_size);
+  TEST_HIP_CHECK(hipMalloc(&d_temp_buffer, (N / 256 + (N % 256 == 0 ? 0 : 1)) * sizeof(double)));
+
   // benchmark
   for (auto _ : state) {
-    usparse::device_calculateNorm<I, T>(d_x, (I)N, d_result);
+    usparse::device_calculateNorm<I, T>(d_x, (I)N, d_result, d_temp_buffer, 0);
     hipDeviceSynchronize();
   }
 
   // clean
   TEST_HIP_CHECK(hipFree(d_result));
+  TEST_HIP_CHECK(hipFree(d_temp_buffer));
 
   // calc bandwidth
   const std::size_t mem_size = N * sizeof(T);
@@ -63,14 +69,21 @@ BENCHMARK_TEMPLATE_METHOD_F(UsparseLevel1Fixture, dotprod)(benchmark::State &sta
   TEST_HIP_CHECK(hipMalloc(&d_result, 1 * sizeof(T)));
   TEST_HIP_CHECK(hipMemset(d_result, 0, 1 * sizeof(T)));
 
+  // parepare data: temp buffer for reduction.
+  std::size_t buffer_size = 0;
+  double *d_temp_buffer = nullptr;
+  usparse::device_dotProduct<uint, double>(nullptr, nullptr, (uint)N, nullptr, d_temp_buffer, &buffer_size);
+  TEST_HIP_CHECK(hipMalloc(&d_temp_buffer, buffer_size));
+
   // benchmark
   for (auto _ : state) {
-    usparse::device_dotProduct<I, T>(d_x, d_y, (I)N, d_result);
+    usparse::device_dotProduct<I, T>(d_x, d_y, (I)N, d_result, d_temp_buffer, 0);
     hipDeviceSynchronize();
   }
 
   // clean
   TEST_HIP_CHECK(hipFree(d_result));
+  TEST_HIP_CHECK(hipFree(d_temp_buffer));
 
   // calc bandwidth
   const std::size_t mem_size = N * sizeof(T) * 2;

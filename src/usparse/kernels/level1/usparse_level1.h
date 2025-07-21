@@ -8,10 +8,12 @@
 namespace usparse {
 
   template <typename INDEX_TYPE, typename DATA_TYPE>
-  void device_calculateNorm(const DATA_TYPE *d_vec, INDEX_TYPE N, DATA_TYPE *d_result);
+  void device_calculateNorm(const DATA_TYPE *d_vec, INDEX_TYPE N, DATA_TYPE *d_result, DATA_TYPE *d_temp_buffer,
+                            std::size_t *temp_buffer_size_byte);
 
   template <typename INDEX_TYPE, typename DATA_TYPE>
-  void device_dotProduct(const DATA_TYPE *d_x, const DATA_TYPE *d_y, INDEX_TYPE N, DATA_TYPE *d_result);
+  void device_dotProduct(const DATA_TYPE *d_x, const DATA_TYPE *d_y, INDEX_TYPE N, DATA_TYPE *d_result,
+                         DATA_TYPE *d_temp_buffer, std::size_t *temp_buffer_size_byte);
 
   /**
    * perform: y = y + alpha * x, where x and y are both vectors of size N.

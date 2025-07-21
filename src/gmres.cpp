@@ -76,6 +76,7 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
   double *d_vi = nullptr;
   double *d_beta = nullptr;
   double *d_b = nullptr;
+  double *d_temp_buffer = nullptr;
   init_device_matrix(&d_r0, &d_V, &d_s, &d_H, &d_cs, &d_sn, &d_vi, N, RESTART_TIMES);
   // std::cout << "d_r0 =" << d_r0 << std::endl;
   // std::cout << "d_H =" << d_H << std::endl;
@@ -87,6 +88,7 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
 
   HIP_CHECK(hipMalloc(&d_beta, sizeof(double)));
   HIP_CHECK(hipMalloc(&d_b, N * sizeof(double)));
+  HIP_CHECK(hipMalloc(&d_temp_buffer, (N / 256 + (N % 256 == 0 ? 0 : 1)) * sizeof(double)));
   HIP_CHECK(hipMemcpy(dev_x, x_d, N * sizeof(double), hipMemcpyHostToDevice));
   HIP_CHECK(hipMemcpy(d_b, _b, N * sizeof(double), hipMemcpyHostToDevice));
   // initialize info descrA handle
@@ -116,7 +118,7 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
 
     usparse::device_daxpy(-1.0, d_b, dev_y, N);
 
-    usparse::device_calculateNorm(dev_y, N, d_beta);
+    usparse::device_calculateNorm(dev_y, N, d_beta, d_temp_buffer, 0);
     hipDeviceSynchronize();
 
     beta = *d_beta;
@@ -146,12 +148,12 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
                                           d_vi, dev_y, &handle, &descrA, &info);
 
       for (k = 0; k <= i; k++) {
-        usparse::device_dotProduct(dev_y, d_V + k * N, N, &d_H[k * RESTART_TIMES + i]);
+        usparse::device_dotProduct(dev_y, d_V + k * N, N, &d_H[k * RESTART_TIMES + i], d_temp_buffer, 0);
         hipDeviceSynchronize();
         alpha = -d_H[k * RESTART_TIMES + i];
         usparse::device_daxpy(alpha, d_V + N * k, dev_y, N);
       }
-      usparse::device_calculateNorm(dev_y, N, &d_H[(i + 1) * RESTART_TIMES + i]);
+      usparse::device_calculateNorm(dev_y, N, &d_H[(i + 1) * RESTART_TIMES + i], d_temp_buffer, 0);
       hipDeviceSynchronize();
 
       alpha = 1.0 / d_H[(i + 1) * RESTART_TIMES + i];
@@ -195,6 +197,7 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
 
   HIP_CHECK(hipFree(d_beta));
   HIP_CHECK(hipFree(d_b));
+  HIP_CHECK(hipFree(d_temp_buffer));
   return make_tuple(iteration, test_time, resid / init_res); // 禁止修改
 }
 
