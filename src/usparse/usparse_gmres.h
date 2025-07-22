@@ -11,5 +11,10 @@
 #include "kernels/level2/usparse_csrmv.h"
 #include "kernels/level2/usparse_rotation.h"
 #include "kernels/level2/usparse_solver_tri.h"
+#include "kernels/spmv/api/spmv_flat.h"
+#include "kernels/spmv/api/spmv_line_enhance.h"
+#include "kernels/spmv/api/spmv_vec_row.h"
+#include "kernels/spmv/api/types.h"
+#include "kernels/spmv/api/building_config.h"
 
 #endif // USPARSE_KERNELS_LEVEL2_USPARSE_GMRES_H
