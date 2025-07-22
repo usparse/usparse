@@ -36,8 +36,13 @@ TEST(Level1Test, dotProduction) {
   TEST_HIP_CHECK(hipMemset(d_result, 0, 1 * sizeof(double)));
   TEST_HIP_CHECK(hipMemcpy(d_x, h_x, N * sizeof(double), hipMemcpyHostToDevice));
   TEST_HIP_CHECK(hipMemcpy(d_y, h_y, N * sizeof(double), hipMemcpyHostToDevice));
+  
+  std::size_t buffer_size = 0;
+  double *d_temp_buffer = nullptr;
+  usparse::device_dotProduct<uint, double>(nullptr, nullptr, (uint)N, nullptr, d_temp_buffer, &buffer_size);
+  TEST_HIP_CHECK(hipMalloc(&d_temp_buffer, buffer_size));
 
-  usparse::device_dotProduct<uint, double>(d_x, d_y, (uint)N, d_result);
+  usparse::device_dotProduct<uint, double>(d_x, d_y, (uint)N, d_result, d_temp_buffer, 0);
   hipDeviceSynchronize();
 
   double dev_result_on_host = 0;
@@ -49,6 +54,7 @@ TEST(Level1Test, dotProduction) {
   hipFree(d_x);
   hipFree(d_y);
   hipFree(d_result);
+  hipFree(d_temp_buffer);
 
   delete[] h_x;
   delete[] h_y;
@@ -77,7 +83,12 @@ TEST(Level1Test, vecNorm) {
   TEST_HIP_CHECK(hipMemset(d_result, 0, 1 * sizeof(double)));
   TEST_HIP_CHECK(hipMemcpy(d_vec, h_vec, N * sizeof(double), hipMemcpyHostToDevice));
 
-  usparse::device_calculateNorm<uint, double>(d_vec, (uint)N, d_result);
+  std::size_t buffer_size = 0;
+  double *d_temp_buffer = nullptr;
+  usparse::device_calculateNorm<uint, double>(nullptr, (uint)N, nullptr, d_temp_buffer, &buffer_size);
+  TEST_HIP_CHECK(hipMalloc(&d_temp_buffer, (N / 256 + (N % 256 == 0 ? 0 : 1)) * sizeof(double)));
+
+  usparse::device_calculateNorm<uint, double>(d_vec, (uint)N, d_result, d_temp_buffer, 0);
   hipDeviceSynchronize();
 
   double dev_result_on_host = 0;
@@ -90,6 +101,7 @@ TEST(Level1Test, vecNorm) {
 
   hipFree(d_vec);
   hipFree(d_result);
+  hipFree(d_temp_buffer);
 
   delete[] h_vec;
 }

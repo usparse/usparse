@@ -126,29 +126,34 @@ namespace usparse {
 } // namespace usparse
 
 template <typename INDEX_TYPE, typename DATA_TYPE>
-void usparse::device_calculateNorm(const DATA_TYPE *d_vec, INDEX_TYPE N, DATA_TYPE *d_result) {
+void usparse::device_calculateNorm(const DATA_TYPE *d_vec, INDEX_TYPE N, DATA_TYPE *d_result, DATA_TYPE *d_temp_buffer,
+                                   std::size_t *temp_buffer_size_byte) {
   constexpr int THREADS = 256;
   INDEX_TYPE BLOCKS = N / THREADS + (N % THREADS == 0 ? 0 : 1);
-  DATA_TYPE *d_temp_buffer;
-  hipMalloc(&d_temp_buffer, BLOCKS * sizeof(DATA_TYPE));
-  (calculateNorm_kernel<INDEX_TYPE, DATA_TYPE, THREADS>)<<<BLOCKS, THREADS>>>(d_vec, N, d_temp_buffer);
-  usparse::device_recur<INDEX_TYPE, DATA_TYPE, THREADS>(d_temp_buffer, BLOCKS, d_result);
-  hipDeviceSynchronize();
-  hipFree(d_temp_buffer);
-  sqrt_kernel<DATA_TYPE><<<1, 1>>>(d_result);
+  if (d_temp_buffer == nullptr) {
+    *temp_buffer_size_byte = BLOCKS * sizeof(DATA_TYPE);
+    return;
+  } else {
+    (calculateNorm_kernel<INDEX_TYPE, DATA_TYPE, THREADS>)<<<BLOCKS, THREADS>>>(d_vec, N, d_temp_buffer);
+    usparse::device_recur<INDEX_TYPE, DATA_TYPE, THREADS>(d_temp_buffer, BLOCKS, d_result);
+    sqrt_kernel<DATA_TYPE><<<1, 1>>>(d_result);
+    return;
+  }
 }
 
 template <typename INDEX_TYPE, typename DATA_TYPE>
-void usparse::device_dotProduct(const DATA_TYPE *d_x, const DATA_TYPE *d_y, INDEX_TYPE N, DATA_TYPE *d_result) {
+void usparse::device_dotProduct(const DATA_TYPE *d_x, const DATA_TYPE *d_y, INDEX_TYPE N, DATA_TYPE *d_result,
+                                DATA_TYPE *d_temp_buffer, std::size_t *temp_buffer_size_byte) {
   constexpr int THREADS = 256;
   INDEX_TYPE BLOCKS = N / THREADS + (N % THREADS == 0 ? 0 : 1);
-  DATA_TYPE *d_temp_buffer;
-  hipMalloc(&d_temp_buffer, BLOCKS * sizeof(DATA_TYPE));
-  (dotProduct_kernel<INDEX_TYPE, DATA_TYPE, THREADS>)<<<BLOCKS, THREADS>>>(d_x, d_y, N, d_temp_buffer);
-  hipDeviceSynchronize();
-  usparse::device_recur<INDEX_TYPE, DATA_TYPE, THREADS>(d_temp_buffer, BLOCKS, d_result);
-  hipDeviceSynchronize();
-  hipFree(d_temp_buffer);
+  if (d_temp_buffer == nullptr) {
+    *temp_buffer_size_byte = BLOCKS * sizeof(DATA_TYPE);
+    return;
+  } else {
+    (dotProduct_kernel<INDEX_TYPE, DATA_TYPE, THREADS>)<<<BLOCKS, THREADS>>>(d_x, d_y, N, d_temp_buffer);
+    usparse::device_recur<INDEX_TYPE, DATA_TYPE, THREADS>(d_temp_buffer, BLOCKS, d_result);
+    return;
+  }
 }
 
 template <typename INDEX_TYPE, typename DATA_TYPE>
@@ -172,11 +177,15 @@ void usparse::device_dcopy(const DATA_TYPE *src, DATA_TYPE *dst, const INDEX_TYP
   dcopy_kernel<<<BLOCKS, THREADS_PER_BLOCK>>>(src, dst, N);
 }
 
-template void usparse::device_calculateNorm<uint, double>(const double *d_vec, uint N, double *d_result);
-template void usparse::device_calculateNorm<uint, float>(const float *d_vec, uint N, float *d_result);
+template void usparse::device_calculateNorm<uint, double>(const double *d_vec, uint N, double *d_result,
+                                                          double *d_temp_buffer, std::size_t *temp_buffer_size_byte);
+template void usparse::device_calculateNorm<uint, float>(const float *d_vec, uint N, float *d_result,
+                                                         float *d_temp_buffer, std::size_t *temp_buffer_size_byte);
 
-template void usparse::device_dotProduct<uint, double>(const double *d_x, const double *d_y, uint N, double *d_result);
-template void usparse::device_dotProduct<uint, float>(const float *d_x, const float *d_y, uint N, float *d_result);
+template void usparse::device_dotProduct<uint, double>(const double *d_x, const double *d_y, uint N, double *d_result,
+                                                       double *d_temp_buffer, std::size_t *temp_buffer_size_byte);
+template void usparse::device_dotProduct<uint, float>(const float *d_x, const float *d_y, uint N, float *d_result,
+                                                      float *d_temp_buffer, std::size_t *temp_buffer_size_byte);
 
 template void usparse::device_daxpy<uint, double>(const double alpha, const double *x, double *y, const uint N);
 template void usparse::device_daxpy<uint, float>(const float alpha, const float *x, float *y, const uint N);
