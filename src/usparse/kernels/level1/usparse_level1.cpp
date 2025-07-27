@@ -15,7 +15,7 @@ namespace usparse {
   template <typename INDEX_TYPE, typename DATA_TYPE, int THREADS>
   __global__ void calculateNorm_kernel(const DATA_TYPE *vec, INDEX_TYPE N, DATA_TYPE *d_temp_buffer) {
     const int global_thread_id = blockDim.x * blockIdx.x + threadIdx.x;
-    constexpr int wf_size = usparse::WAVEFRONT_SIZE;
+    constexpr int wf_size = usparse::USPARSE_WAVEFRONT_SIZE;
     const int wf_thread_id = threadIdx.x % wf_size;
     const int idx_per_block = (N / gridDim.x) + (N % gridDim.x == 0 ? 0 : 1);
     const int block_idx_begin = blockIdx.x * idx_per_block;
@@ -30,7 +30,8 @@ namespace usparse {
     // reduce value in a block into the first thread of the block.
     const int tid_in_block = threadIdx.x;
     const DATA_TYPE block_sum =
-        usparse::line_enhance_block_reduce<int, DATA_TYPE, THREADS, usparse::WAVEFRONT_SIZE>(local_sum, tid_in_block);
+        usparse::line_enhance_block_reduce<int, DATA_TYPE, THREADS, usparse::USPARSE_WAVEFRONT_SIZE>(local_sum,
+                                                                                                     tid_in_block);
 
     if (tid_in_block == 0) {
       d_temp_buffer[blockIdx.x] = block_sum;
@@ -41,7 +42,7 @@ namespace usparse {
   __global__ void dotProduct_kernel(const DATA_TYPE *x, const DATA_TYPE *y, const INDEX_TYPE N,
                                     DATA_TYPE *d_temp_buffer) {
     const int global_thread_id = blockDim.x * blockIdx.x + threadIdx.x;
-    constexpr int wf_size = usparse::WAVEFRONT_SIZE;
+    constexpr int wf_size = usparse::USPARSE_WAVEFRONT_SIZE;
     const int wf_thread_id = threadIdx.x % wf_size;
     const int idx_per_block = (N / gridDim.x) + (N % gridDim.x == 0 ? 0 : 1);
     const int block_idx_begin = blockIdx.x * idx_per_block;
@@ -55,7 +56,8 @@ namespace usparse {
     // reduce value in a block into the first thread of the block.
     const int tid_in_block = threadIdx.x;
     const DATA_TYPE block_sum =
-        usparse::line_enhance_block_reduce<int, DATA_TYPE, THREADS, usparse::WAVEFRONT_SIZE>(local_sum, tid_in_block);
+        usparse::line_enhance_block_reduce<int, DATA_TYPE, THREADS, usparse::USPARSE_WAVEFRONT_SIZE>(local_sum,
+                                                                                                     tid_in_block);
 
     if (tid_in_block == 0) {
       d_temp_buffer[blockIdx.x] = block_sum;
@@ -64,7 +66,7 @@ namespace usparse {
   template <typename INDEX_TYPE, typename DATA_TYPE, int THREADS>
   __global__ void reduce_kernel(const DATA_TYPE *vec, const INDEX_TYPE N, DATA_TYPE *d_temp_buffer) {
     const int global_thread_id = blockDim.x * blockIdx.x + threadIdx.x;
-    constexpr int wf_size = usparse::WAVEFRONT_SIZE;
+    constexpr int wf_size = usparse::USPARSE_WAVEFRONT_SIZE;
     const int wf_thread_id = threadIdx.x % wf_size;
     const int idx_per_block = (N / gridDim.x) + (N % gridDim.x == 0 ? 0 : 1);
     const int block_idx_begin = blockIdx.x * idx_per_block;
@@ -78,7 +80,8 @@ namespace usparse {
     // reduce value in a block into the first thread of the block.
     const int tid_in_block = threadIdx.x;
     const DATA_TYPE block_sum =
-        usparse::line_enhance_block_reduce<int, DATA_TYPE, THREADS, usparse::WAVEFRONT_SIZE>(local_sum, tid_in_block);
+        usparse::line_enhance_block_reduce<int, DATA_TYPE, THREADS, usparse::USPARSE_WAVEFRONT_SIZE>(local_sum,
+                                                                                                     tid_in_block);
 
     if (tid_in_block == 0) {
       d_temp_buffer[blockIdx.x] = block_sum;
