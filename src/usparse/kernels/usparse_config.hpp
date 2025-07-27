@@ -6,6 +6,6 @@
 #define USPARSE_KERNELS__USPARSE_CONFIG_H
 
 namespace usparse {
-  constexpr int WAVEFRONT_SIZE = 64;
+  constexpr int USPARSE_WAVEFRONT_SIZE = 64;
 }
 #endif // USPARSE_KERNELS__USPARSE_CONFIG_H
