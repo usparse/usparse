@@ -9,19 +9,20 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 add_executable(
         usparse_test
         usparse/usparse_level1.cc
+        usparse/usparse_level2_csrmv.cc
 )
 target_include_directories(
         usparse_test
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-        $<INSTALL_INTERFACE:include>
+        $<INSTALL_INTERFACE:include>        
 )
 
 target_link_libraries(
         usparse_test
         GTest::gtest_main
         roc::rocsparse
-        ${USPARSE_KERNEL_LIB_NAME}
+        ${USPARSE_KERNEL_LIB_NAME}        
 )
 
 include(GoogleTest)

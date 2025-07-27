@@ -1,7 +1,9 @@
 #include "init.hpp"
+#include "usparse_gmres.h"
 #include <sys/types.h>
 
-void init_device_data(SpM<double> *h_A, double *h_x, SpM<double> *dev_A, double **dev_x, double **dev_y) {
+void init_device_data(SpM<double> *h_A, double *h_x, SpM<double> *dev_A, double **dev_x, double **dev_y,
+                      var_csr_desc<int, double> *d_csr_desc) {
   //
   const int A_num_rows = h_A->nrows;
   const int A_num_cols = h_A->ncols;
@@ -26,6 +28,15 @@ void init_device_data(SpM<double> *h_A, double *h_x, SpM<double> *dev_A, double 
   HIP_CHECK(hipMemcpy(*dev_x, h_x, A_num_rows * sizeof(double), hipMemcpyHostToDevice));
 
   dev_A->on_device = true;
+
+  d_csr_desc->rows = A_num_rows;
+  d_csr_desc->cols = A_num_cols;
+  d_csr_desc->nnz = A_nnz;
+  d_csr_desc->row_ptr = reinterpret_cast<int *>(dev_A->rows);
+  d_csr_desc->col_index = reinterpret_cast<int *>(dev_A->cols);
+  d_csr_desc->values = dev_A->vals;
+
+  return;
 }
 
 /**

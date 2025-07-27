@@ -38,7 +38,8 @@ void spmv(const uint *rowPtr, const uint *colInd, const double *values, const do
   }
 }
 
-RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, double *dev_x, double *dev_y) {
+RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, double *dev_x, double *dev_y,
+             csr_desc<int, double> d_csr_desc) {
   // 稀疏矩阵A_d需默认以CSR格式压缩存储，使用DCU优化时，该矩阵A和右端向量b传输到DCU端的开销，以及结果向量x传输到CPU端的开销可不算在计时范围
   // 若要采用其他的稀疏矩阵压缩格式，需从DCU端的CSR矩阵开始转换，且格式转换的代码必须包含到计时范围内
   const uint N = A_d->nrows;
@@ -91,11 +92,6 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
   HIP_CHECK(hipMalloc(&d_temp_buffer, (N / 256 + (N % 256 == 0 ? 0 : 1)) * sizeof(double)));
   HIP_CHECK(hipMemcpy(dev_x, x_d, N * sizeof(double), hipMemcpyHostToDevice));
   HIP_CHECK(hipMemcpy(d_b, _b, N * sizeof(double), hipMemcpyHostToDevice));
-  // initialize info descrA handle
-  rocsparse_mat_descr descrA;
-  rocsparse_handle handle;
-  rocsparse_mat_info info;
-  init_matrix_info(dev_A, &handle, &descrA, &info);
 
   // auto start = std::chrono::high_resolution_clock::now(); // 禁止修改
   // =======如果已移植为DCU代码，请更换为下列计时==========
@@ -113,8 +109,7 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
     // copy x from host to device
 
     // compute y = AX
-    usparse::device_csrmv<uint, double>(dev_A->nrows, dev_A->ncols, dev_A->nnz, dev_A->rows, dev_A->cols, dev_A->vals,
-                                        dev_x, dev_y, &handle, &descrA, &info);
+    spmv_vector_row(0, 1.0, 0.0, d_csr_desc, dev_x, dev_y);
 
     usparse::device_daxpy(-1.0, d_b, dev_y, N);
 
@@ -144,8 +139,7 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
       std::vector<double> V_i(N);
       usparse::device_dcopy(d_V + i * N, d_vi, N);
 
-      usparse::device_csrmv<uint, double>(dev_A->nrows, dev_A->ncols, dev_A->nnz, dev_A->rows, dev_A->cols, dev_A->vals,
-                                          d_vi, dev_y, &handle, &descrA, &info);
+      spmv_vector_row(0, 1.0, 0.0, d_csr_desc, d_vi, dev_y);
 
       for (k = 0; k <= i; k++) {
         usparse::device_dotProduct(dev_y, d_V + k * N, N, &d_H[k * RESTART_TIMES + i], d_temp_buffer, 0);
@@ -192,7 +186,6 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
   hipEventElapsedTime(&test_time, test_start_event, test_stop_event); // 禁止修改
 
   // destory data
-  destory_descr_info(info, handle, descrA);
   destory_device_matrix(d_r0, d_V, d_s, d_H, d_cs, d_sn, d_vi);
 
   HIP_CHECK(hipFree(d_beta));
