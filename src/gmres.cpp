@@ -109,7 +109,7 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
     // copy x from host to device
 
     // compute y = AX
-    spmv_vector_row(0, 1.0, 0.0, d_csr_desc, dev_x, dev_y);
+    spmv_line_enhance(0, 1.0, 0.0, d_csr_desc, dev_x, dev_y);
 
     usparse::device_daxpy(-1.0, d_b, dev_y, N);
 
@@ -139,7 +139,7 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
       std::vector<double> V_i(N);
       usparse::device_dcopy(d_V + i * N, d_vi, N);
 
-      spmv_vector_row(0, 1.0, 0.0, d_csr_desc, d_vi, dev_y);
+      spmv_line_enhance(0, 1.0, 0.0, d_csr_desc, d_vi, dev_y);
 
       for (k = 0; k <= i; k++) {
         usparse::device_dotProduct(dev_y, d_V + k * N, N, &d_H[k * RESTART_TIMES + i], d_temp_buffer, 0);

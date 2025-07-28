@@ -8,7 +8,8 @@
 #include "../api/building_config.h"
 #include "line_enhance_reduce.hpp"
 
-template <int REDUCE_OPTION, int WF_SIZE, int VEC_SIZE, int ROWS_PER_BLOCK, int R, int THREADS, typename I, typename T>
+template <bool BETA_IS_ZERO, int REDUCE_OPTION, int WF_SIZE, int VEC_SIZE, int ROWS_PER_BLOCK, int R, int THREADS,
+          typename I, typename T>
 __global__ void line_enhance_kernel(int m, const T alpha, const T beta, const I *__restrict__ row_offset,
                                     const I *__restrict__ csr_col_ind, const T *__restrict__ csr_val,
                                     const T *__restrict__ x, T *__restrict__ y) {
@@ -74,13 +75,21 @@ __global__ void line_enhance_kernel(int m, const T alpha, const T beta, const I 
   // store result
   if (REDUCE_OPTION == LE_REDUCE_OPTION_DIRECT) {
     if (reduce_row_id < block_row_end) {
-      y[reduce_row_id] = alpha * sum + y[reduce_row_id];
+      if (BETA_IS_ZERO) {
+        y[reduce_row_id] = alpha * sum;
+      } else {
+        y[reduce_row_id] = alpha * sum + beta * y[reduce_row_id];
+      }
     }
   }
   if (REDUCE_OPTION == LE_REDUCE_OPTION_VEC) {
     line_enhance_vec_local_shift<I, T, VEC_SIZE>(sum);
     if (reduce_row_id < block_row_end && tid_in_vec == 0) {
-      y[reduce_row_id] = alpha * sum + y[reduce_row_id];
+      if (BETA_IS_ZERO) {
+        y[reduce_row_id] = alpha * sum;
+      } else {
+        y[reduce_row_id] = alpha * sum + beta * y[reduce_row_id];
+      }
     }
   }
   if (REDUCE_OPTION == LE_REDUCE_OPTION_VEC_MEM_COALESCING) {
@@ -89,11 +98,22 @@ __global__ void line_enhance_kernel(int m, const T alpha, const T beta, const I 
     sum = line_enhance_vec_global_shift<I, T, THREADS / VEC_SIZE>(tid_in_block, vec_id_in_block, tid_in_vec,
                                                                    shared_val, sum);
     if (thread_reduce_row_id < block_row_end) {
-      y[thread_reduce_row_id] = alpha * sum + y[thread_reduce_row_id];
+      if (BETA_IS_ZERO) {
+        y[thread_reduce_row_id] = alpha * sum;
+      } else {
+        y[thread_reduce_row_id] = alpha * sum + beta * y[thread_reduce_row_id];
+      }
     }
   }
 }
 
 #define LINE_ENHANCE_KERNEL_WRAPPER(REDUCE, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS, THREADS)                              \
-  (line_enhance_kernel<REDUCE, __WF_SIZE__, VEC_SIZE, ROWS_PER_BLOCK, R, THREADS, int, double>)<<<BLOCKS, THREADS>>>(  \
-      m, alpha, beta, rowptr, colindex, value, x, y)
+  if (beta == 0.0) {                                                                                                   \
+    (line_enhance_kernel<true, REDUCE, __WF_SIZE__, VEC_SIZE, ROWS_PER_BLOCK, R, THREADS, int,                         \
+                         double>)<<<BLOCKS, THREADS>>>(m, alpha, beta, rowptr, colindex, value, x, y);                 \
+  } else {                                                                                                             \
+    (line_enhance_kernel<false, REDUCE, __WF_SIZE__, VEC_SIZE, ROWS_PER_BLOCK, R, THREADS, int,                        \
+                         double>)<<<BLOCKS, THREADS>>>(m, alpha, beta, rowptr, colindex, value, x, y);                 \
+  }
+
+// todo: better compare of beta == 0.0;
