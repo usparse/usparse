@@ -8,4 +8,9 @@ include(dep.cmake)
 
 add_subdirectory(library)
 add_subdirectory(src)
+
+if (GMRES_TOOLS_ENABLE)
+    add_subdirectory(tools)
+endif ()
+
 add_subdirectory(tests)
