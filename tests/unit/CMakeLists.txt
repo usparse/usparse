@@ -9,6 +9,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 add_executable(
         usparse_test
         usparse/usparse_level1.cc
+        usparse/usparse_level1_dotprod_axpy_fusion.cc
         usparse/usparse_level2_csrmv.cc
 )
 target_include_directories(

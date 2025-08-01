@@ -17,6 +17,7 @@ set(USPARSE_HEADER_FILES ${USPARSE_HEADER_FILES}
 
 )
 set(USPARSE_SOURCE_FILES ${USPARSE_SOURCE_FILES}
+        kernels/level1/usparse_dotprod_axpy_fusion.cpp
         kernels/level1/usparse_level1.cpp
         kernels/level2/usparse_csrmv.cpp
         kernels/level2/usparse_rotation.cpp
