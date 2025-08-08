@@ -194,6 +194,186 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
   return make_tuple(iteration, test_time, resid / init_res); // 禁止修改
 }
 
+RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, double *dev_x, double *dev_y) {
+  // 稀疏矩阵A_d需默认以CSR格式压缩存储，使用DCU优化时，该矩阵A和右端向量b传输到DCU端的开销，以及结果向量x传输到CPU端的开销可不算在计时范围
+  // 若要采用其他的稀疏矩阵压缩格式，需从DCU端的CSR矩阵开始转换，且格式转换的代码必须包含到计时范围内
+  const uint N = A_d->nrows;
+
+  std::vector<double> r0(N);
+  std::vector<double> V((RESTART_TIMES + 1) * N);
+  std::vector<double> s(RESTART_TIMES + 1, 0.0);
+  std::vector<double> V0(N);
+  std::vector<double> H((RESTART_TIMES + 1) * RESTART_TIMES);
+  std::vector<double> cs(RESTART_TIMES);
+  std::vector<double> sn(RESTART_TIMES);
+
+  double H_cpu;
+  double beta_cpu;
+
+  double alpha;
+
+  double beta;
+  beta = calculateNorm(_b, N);                 // 禁止修改
+  double RESID_LIMIT = REL_RESID_LIMIT * beta; // 禁止修改
+  double init_res = beta;                      // 禁止修改
+
+  int i, j, k;
+  double resid;
+  double tmp;
+  int iteration = 0;
+
+  // Apply for memory on the device
+  double *d_r0 = nullptr;
+  double *d_H = nullptr;
+  double *d_V = nullptr;
+  double *d_s = nullptr;
+  double *d_cs = nullptr;
+  double *d_sn = nullptr;
+  double *d_vi = nullptr;
+  // double *d_beta = nullptr;
+  double *d_b = nullptr;
+  float *d_temp_buffer = nullptr;
+  init_device_matrix(&d_r0, &d_V, &d_s, &d_H, &d_cs, &d_sn, &d_vi, N, RESTART_TIMES);
+
+  //  float var
+  float *d_H_f = nullptr;
+  float *d_V_f = nullptr;
+  float *d_vi_f = nullptr;
+  float *d_sn_f = nullptr;
+  float *d_cs_f = nullptr;
+  float *d_r0_f = nullptr;    // dev_y: r0
+  float *d_A_val_f = nullptr; // A: float
+  float *d_s_f = nullptr;
+  float *d_b_f = nullptr;
+  float *d_beta_f = nullptr;
+  // apply for float var
+  init_device_matrix_float(&d_V_f, &d_H_f, &d_vi_f, &d_sn_f, &d_cs_f, &d_r0_f, &d_A_val_f, &d_s_f, &d_b_f, N,
+                           RESTART_TIMES, dev_A->nnz);
+
+  HIP_CHECK(hipMalloc(&d_beta_f, sizeof(float)));
+  HIP_CHECK(hipMalloc(&d_b, N * sizeof(double)));
+  HIP_CHECK(hipMalloc(&d_temp_buffer, (N / 256 + (N % 256 == 0 ? 0 : 1)) * sizeof(float)));
+  HIP_CHECK(hipMemcpy(dev_x, x_d, N * sizeof(double), hipMemcpyHostToDevice));
+  HIP_CHECK(hipMemcpy(d_b, _b, N * sizeof(double), hipMemcpyHostToDevice));
+
+  // force conversion precision form dev_A.val to d_A_val_f
+  usparse::device_cast(dev_A->vals, d_A_val_f, dev_A->nnz);
+  usparse::device_cast(d_b, d_b_f, N);
+
+  // initialize info descrA handle
+  rocsparse_mat_descr descrA;
+  rocsparse_handle handle;
+  rocsparse_mat_info info;
+  init_matrix_info(dev_A, &handle, &descrA, &info);
+
+  // auto start = std::chrono::high_resolution_clock::now(); // 禁止修改
+  // =======如果已移植为DCU代码，请更换为下列计时==========
+  hipEvent_t test_start_event, test_stop_event;
+  hipEventCreate(&test_start_event);
+  hipEventCreate(&test_stop_event);
+  hipEventRecord(test_start_event, 0);
+
+  // 任何对稀疏矩阵的预处理操作，如稀疏矩阵压缩格式转换、非零元数组或向量的精度转换、稀疏矩阵的非零元特征计算等，均需放在计时范围内，相关内存申请和释放除外
+
+  /****GMRES计算过程****/
+  do {
+    // ==========外迭代============
+    // spmv(A_d->rows, A_d->cols, A_d->vals, x_d, r0.data(), N); // 不可修改此步操作中相关数据的存储精度和SpMV计算精度
+    // copy x from host to device
+
+    // compute y = AX
+    usparse::device_csrmv<uint, double>(dev_A->nrows, dev_A->ncols, dev_A->nnz, dev_A->rows, dev_A->cols, dev_A->vals,
+                                        dev_x, dev_y, &handle, &descrA, &info);
+
+    usparse::device_cast<uint, double, float>(dev_y, d_r0_f, N); // dev_y => d_r0_f
+
+    // float
+    usparse::device_daxpy<uint, float, float>(-1.0, d_b_f, d_r0_f, N);
+
+    usparse::device_calculateNorm<uint, float>(d_r0_f, N, d_beta_f, d_temp_buffer, 0);
+    hipDeviceSynchronize();
+
+    beta = *d_beta_f;
+
+    usparse::device_dscal<uint, float>(-1.0 / beta, d_r0_f, N);
+
+    usparse::device_dcopy<uint, float>(d_r0_f, d_V_f, N);
+
+    HIP_CHECK(hipMemset(d_s_f, 0.0, (RESTART_TIMES + 1) * sizeof(float)));
+    HIP_CHECK(hipMemcpy(&d_s_f[0], d_beta_f, sizeof(float), hipMemcpyDeviceToDevice));
+
+    resid = std::abs(beta);
+    i = -1;
+
+    if (resid <= RESID_LIMIT || iteration >= ITERATION_LIMIT) {
+      break;
+    }
+    do {
+      // ==========内迭代============
+      i++;
+      iteration++;
+
+      usparse::device_dcopy<uint, float>(d_V_f + i * N, d_vi_f, N);
+
+      usparse::device_scsrmv<uint, float>(dev_A->nrows, dev_A->ncols, dev_A->nnz, dev_A->rows, dev_A->cols, d_A_val_f,
+                                          d_vi_f, d_r0_f, &handle, &descrA, &info);
+
+      // usparse::dot_daxpy_fusion<uint, double>(dev_y, d_V, d_H, d_temp_buffer, N, RESTART_TIMES, i, 0);
+      for (k = 0; k <= i; k++) {
+        usparse::device_dotProduct(d_r0_f, d_V_f + k * N, N, &d_H_f[k * RESTART_TIMES + i], d_temp_buffer, 0);
+        hipDeviceSynchronize();
+        alpha = -d_H_f[k * RESTART_TIMES + i];
+        usparse::device_daxpy<uint, float, float>(alpha, d_V_f + N * k, d_r0_f, N);
+      }
+      usparse::device_calculateNorm(d_r0_f, N, &d_H_f[(i + 1) * RESTART_TIMES + i], d_temp_buffer, 0);
+      hipDeviceSynchronize();
+
+      alpha = 1.0 / d_H_f[(i + 1) * RESTART_TIMES + i];
+      usparse::device_dscal<uint, float>(alpha, d_r0_f, N);
+      usparse::device_dcopy(d_r0_f, d_V_f + N * (i + 1), N);
+
+      usparse::device_rotation2((uint)(RESTART_TIMES), d_H_f, d_cs_f, d_sn_f, d_s_f, (uint)(i)); // todo: uint to int
+      hipDeviceSynchronize();
+      tmp = d_s_f[i + 1];
+      resid = std::abs(tmp);
+      // std::cout << "iteration " << iteration << ", resid = " << resid/init_res << std::endl;
+
+      if (resid <= RESID_LIMIT || iteration >= ITERATION_LIMIT) {
+        break;
+      }
+    } while (i + 1 < RESTART_TIMES && iteration <= ITERATION_LIMIT);
+
+    // 求解上三角系统
+    usparse::device_sovlerTri(RESTART_TIMES, i, d_H_f, d_s_f);
+    hipDeviceSynchronize();
+
+    // 更新解: <float, double>
+    for (j = 0; j <= i; j++) {
+      tmp = d_s_f[j];
+      usparse::device_daxpy<uint, float, double>(tmp, d_V_f + j * N, dev_x, N);
+    }
+  } while (resid > RESID_LIMIT && iteration <= ITERATION_LIMIT);
+
+  // auto stop = std::chrono::high_resolution_clock::now();            // 禁止修改
+  // std::chrono::duration<float, std::milli> duration = stop - start; // 禁止修改
+  // float test_time = duration.count();                               // 禁止修改
+  // =======如果已移植为DCU代码，请更换为下列计时==========
+  hipEventRecord(test_stop_event, 0);                                 // 禁止修改
+  hipEventSynchronize(test_stop_event);                               // 禁止修改
+  float test_time = 0.0;                                              // 禁止修改
+  hipEventElapsedTime(&test_time, test_start_event, test_stop_event); // 禁止修改
+
+  // destory data
+  destory_descr_info(info, handle, descrA);
+  destory_device_matrix(d_r0, d_V, d_s, d_H, d_cs, d_sn, d_vi);
+  destory_device_float(d_V_f, d_H_f, d_vi_f, d_sn_f, d_cs_f, d_r0_f, d_A_val_f, d_s_f, d_b_f);
+
+  HIP_CHECK(hipFree(d_beta_f));
+  HIP_CHECK(hipFree(d_b));
+  HIP_CHECK(hipFree(d_temp_buffer));
+  return make_tuple(iteration, test_time, resid / init_res); // 禁止修改
+}
+
 // 此函数禁止修改
 void initialize(SpM<double> *A, double *x, double *b) {
   int N = A->nrows;

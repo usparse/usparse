@@ -29,6 +29,14 @@ void destory_descr_info(rocsparse_mat_info info, rocsparse_handle handle, rocspa
 void init_device_matrix(double **d_r0, double **d_V, double **d_s, double **d_H, double **d_cs, double **d_sn,
                         double **d_vi, uint N, int m);
 
+// init device matrix float
+void init_device_matrix_float(float **d_V_f, float **d_H_f, float **d_vi_f, float **d_sn_f, float **d_cs_f,
+                              float **d_r0_f, float **d_A__val_f, float **d_s_f, float **d_b_f, uint N, int m, uint nnz);
+
+// float vector
+void destory_device_float(float *d_V_f, float *d_H_f, float *d_vi_f, float *d_sn_f, float *d_cs_f, float *d_r0_f,
+                          float *d_A_val_f, float *d_s_f, float *d_b_f);
+
 void initDCU(int device_id = 0);
 
 #endif

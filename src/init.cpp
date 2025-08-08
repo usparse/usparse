@@ -96,6 +96,34 @@ void init_device_matrix(double **d_r0, double **d_V, double **d_s, double **d_H,
   HIP_CHECK(hipMemset(*d_s, 0.0, (m + 1) * sizeof(double)));
 }
 
+void init_device_matrix_float(float **d_V_f, float **d_H_f, float **d_vi_f, float **d_sn_f, float **d_cs_f,
+                              float **d_r0_f, float **d_A_val_f, float **d_s_f, float **d_b_f, uint N, int m,
+                              uint nnz) {
+  // init matrix
+  HIP_CHECK(hipMalloc((void **)d_V_f, (m + 1) * N * sizeof(float)));
+  HIP_CHECK(hipMalloc((void **)d_H_f, (m + 1) * m * sizeof(float)));
+  HIP_CHECK(hipMalloc((void **)d_vi_f, N * sizeof(float)));
+  HIP_CHECK(hipMalloc((void **)d_cs_f, m * sizeof(float)));
+  HIP_CHECK(hipMalloc((void **)d_sn_f, m * sizeof(float)));
+  HIP_CHECK(hipMalloc((void **)d_r0_f, N * sizeof(float)));
+  HIP_CHECK(hipMalloc((void **)d_A_val_f, nnz * sizeof(float)));
+  HIP_CHECK(hipMalloc((void **)d_s_f, (m + 1) * sizeof(float)));
+  HIP_CHECK(hipMalloc((void **)d_b_f, N * sizeof(float)));
+}
+
+void destory_device_float(float *d_V_f, float *d_H_f, float *d_vi_f, float *d_sn_f, float *d_cs_f, float *d_r0_f,
+                          float *d_A_val_f, float *d_s_f, float *d_b_f) {
+  HIP_CHECK(hipFree(d_r0_f));
+  HIP_CHECK(hipFree(d_V_f));
+  HIP_CHECK(hipFree(d_A_val_f));
+  HIP_CHECK(hipFree(d_H_f));
+  HIP_CHECK(hipFree(d_cs_f));
+  HIP_CHECK(hipFree(d_sn_f));
+  HIP_CHECK(hipFree(d_vi_f));
+  HIP_CHECK(hipFree(d_s_f));
+  HIP_CHECK(hipFree(d_b_f));
+}
+
 void initDCU(int device_id) {
   int device_count = 0;
   HIP_CHECK(hipGetDeviceCount(&device_count));
