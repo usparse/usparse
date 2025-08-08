@@ -10,7 +10,7 @@
 
 #include "usparse_matrix.h"
 
-template <int VECTOR_SIZE, int WF_SIZE, typename T>
+template <int VECTOR_SIZE, int THREADS, int WF_SIZE, typename T>
 __global__ void native_vector_row_kernel(int m, const T alpha, const T beta, const int *row_offset,
                                          const int *csr_col_ind, const T *csr_val, const T *x, T *y);
 
@@ -35,11 +35,14 @@ __global__ void adaptive_vector_row_kernel(int m, const T alpha, const T beta, c
                                            const int *csr_col_ind, const T *csr_val, const T *x, T *y,
                                            const int block_bp);
 
-void vec_row_sparse_spmv(int trans, const double alpha, const double beta, const csr_desc<int, double> d_csr_desc,
-                         const double *x, double *y);
+template <typename DATA_TYPE>
+void vec_row_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
+                         const csr_desc<int, DATA_TYPE> d_csr_desc, const DATA_TYPE *x, DATA_TYPE *y);
 
-void adaptive_vec_row_sparse_spmv(const int nnz_block_0, const int nnz_block_1, int trans, const double alpha,
-                                  const double beta, const csr_desc<int, double> d_csr_desc, const double *x, double *y);
+template <typename DATA_TYPE>
+void adaptive_vec_row_sparse_spmv(const int nnz_block_0, const int nnz_block_1, int trans, const DATA_TYPE alpha,
+                                  const DATA_TYPE beta, const csr_desc<int, DATA_TYPE> d_csr_desc, const DATA_TYPE *x,
+                                  DATA_TYPE *y);
 
 #include "opt_double_buffer.hpp"
 #include "vector_row.inl"

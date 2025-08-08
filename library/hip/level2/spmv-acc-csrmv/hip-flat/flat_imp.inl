@@ -151,6 +151,6 @@ __global__ void pre_calc_break_point_v2(const I *__restrict__ row_ptr, const I m
   }
 }
 
-#define FLAT_KERNEL_WRAPPER(R, REDUCE_OPTION, REDUCE_VEC_SIZE, BLOCKS, THREADS)                                        \
-  (spmv_flat_kernel<__WF_SIZE__, R, REDUCE_OPTION, REDUCE_VEC_SIZE, BLOCKS, THREADS, int,                              \
-                    double>)<<<(BLOCKS), (THREADS)>>>(m, alpha, beta, rowptr, break_points, colindex, value, x, y)
+#define FLAT_KERNEL_WRAPPER(INDEX_TYPE, FP, R, REDUCE_OPTION, REDUCE_VEC_SIZE, BLOCKS, THREADS)                                    \
+  (spmv_flat_kernel<__WF_SIZE__, R, REDUCE_OPTION, REDUCE_VEC_SIZE, BLOCKS, THREADS, INDEX_TYPE,                              \
+                    FP>)<<<(BLOCKS), (THREADS)>>>(m, alpha, beta, rowptr, break_points, colindex, value, x, y)

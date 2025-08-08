@@ -17,7 +17,7 @@ template <typename I, typename T, int R, int THREADS_PER_BLOCK, int MIN_NNZ_PER_
 csr_adaptive_plus_analyze_info<I>
 csr_adaptive_plus_sparse_spmv_analyze(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,
                                       const csr_desc<I, T> d_csr_desc, const T *x, T *y) {
-  VAR_FROM_CSR_DESC(d_csr_desc);
+  VAR_FROM_CSR_DESC(T, d_csr_desc);
   const I nnz = h_csr_desc.row_ptr[m];
 
   // start from 0. additional element for the starting 0.
@@ -56,7 +56,7 @@ template <typename I, typename T, int R, int THREADS_PER_BLOCK, int MIN_NNZ_PER_
 void csr_adaptive_plus_sparse_spmv_kernel(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,
                                           const csr_desc<I, T> d_csr_desc, const T *x, T *y,
                                           csr_adaptive_plus_analyze_info<I> info) {
-  VAR_FROM_CSR_DESC(d_csr_desc);
+  VAR_FROM_CSR_DESC(T, d_csr_desc);
   // clean array y:
   // hipMemset(y, 0, m * sizeof(double));
 

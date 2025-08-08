@@ -17,7 +17,8 @@
 #include "timer/timer.h"
 #include "benchmark_config.h"
 
-template <int R, int REDUCE_OPTION, int REDUCE_VEC_SIZE, int BLOCKS, int THREADS_PER_BLOCK>
+template <typename INDEX_TYPE, typename DATA_TYPE, int R, int REDUCE_OPTION, int REDUCE_VEC_SIZE, int BLOCKS,
+          int THREADS_PER_BLOCK>
 inline void flat_multi_pass_sparse_spmv(int trans, const double alpha, const double beta, int m, int n, int nnz,
                                         const int *rowptr, const int *colindex, const double *value, const double *x,
                                         double *y, BenchmarkTime *bmt) {
@@ -35,14 +36,15 @@ inline void flat_multi_pass_sparse_spmv(int trans, const double alpha, const dou
   pre_timer.stop();
 
   calc_timer.start();
-  FLAT_KERNEL_WRAPPER(R, REDUCE_OPTION, REDUCE_VEC_SIZE, BLOCKS, THREADS_PER_BLOCK);
+  FLAT_KERNEL_WRAPPER(INDEX_TYPE, DATA_TYPE, R, REDUCE_OPTION, REDUCE_VEC_SIZE, BLOCKS, THREADS_PER_BLOCK);
   calc_timer.stop(true);
   if (bmt != nullptr) {
     bmt->set_time(pre_timer.time_use, calc_timer.time_use, 0.);
   }
 }
 
-template <int R, int REDUCE_OPTION, int REDUCE_VEC_SIZE, int THREADS_PER_BLOCK, int FLAT_PRE_CALC_BP_KERNEL_VERSION>
+template <typename INDEX_TYPE, typename DATA_TYPE, int R, int REDUCE_OPTION, int REDUCE_VEC_SIZE, int THREADS_PER_BLOCK,
+          int FLAT_PRE_CALC_BP_KERNEL_VERSION>
 inline void flat_one_pass_sparse_spmv(int trans, const double alpha, const double beta, int m, int n, int nnz,
                                       const int *rowptr, const int *colindex, const double *value, const double *x,
                                       double *y, BenchmarkTime *bmt) {
@@ -68,17 +70,18 @@ inline void flat_one_pass_sparse_spmv(int trans, const double alpha, const doubl
   }
   pre_timer.stop();
   calc_timer.start();
-  FLAT_KERNEL_ONE_PASS_WRAPPER(R, REDUCE_OPTION, REDUCE_VEC_SIZE, HIP_BLOCKS, THREADS_PER_BLOCK);
+  FLAT_KERNEL_ONE_PASS_WRAPPER(INDEX_TYPE, DATA_TYPE, R, REDUCE_OPTION, REDUCE_VEC_SIZE, HIP_BLOCKS, THREADS_PER_BLOCK);
   calc_timer.stop(true);
   if (bmt != nullptr) {
     bmt->set_time(pre_timer.time_use, calc_timer.time_use, 0.0, 0.);
   }
 }
 
-template <int FLAT_PRE_CALC_BP_KERNEL_VERSION>
-void adaptive_flat_sparse_spmv(int trans, const double alpha, const double beta, const csr_desc<int, double> d_csr_desc,
-                               const double *x, double *y, BenchmarkTime *bmt) {
-  VAR_FROM_CSR_DESC(d_csr_desc)
+template <typename INDEX_TYPE, typename DATA_TYPE, int FLAT_PRE_CALC_BP_KERNEL_VERSION>
+void adaptive_flat_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
+                               const csr_desc<INDEX_TYPE, DATA_TYPE> d_csr_desc, const DATA_TYPE *x, DATA_TYPE *y,
+                               BenchmarkTime *bmt) {
+  VAR_FROM_CSR_DESC(DATA_TYPE, d_csr_desc)
   const int nnz = d_csr_desc.nnz;
   const int n = d_csr_desc.cols;
 
@@ -88,16 +91,17 @@ void adaptive_flat_sparse_spmv(int trans, const double alpha, const double beta,
   if (!FLAT_ONE_PASS) {
     constexpr int blocks = 512;
     constexpr int RED_OPT = FLAT_REDUCE_OPTION_VEC;
-    flat_multi_pass_sparse_spmv<R, RED_OPT, 2, blocks, THREADS_PER_BLOCK>(trans, alpha, beta, m, n, nnz, rowptr,
-                                                                          colindex, value, x, y, bmt);
+    flat_multi_pass_sparse_spmv<INDEX_TYPE, DATA_TYPE, R, RED_OPT, 2, blocks, THREADS_PER_BLOCK>(
+        trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, bmt);
     return;
   }
 
   if (!FLAT_ONE_PASS_ADAPTIVE) {
     constexpr int RED_OPT = FLAT_REDUCE_OPTION_VEC;
     constexpr int VEC_SIZE = 4;
-    flat_one_pass_sparse_spmv<R, RED_OPT, VEC_SIZE, THREADS_PER_BLOCK, FLAT_PRE_CALC_BP_KERNEL_VERSION>(
-        trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, bmt);
+    flat_one_pass_sparse_spmv<INDEX_TYPE, DATA_TYPE, R, RED_OPT, VEC_SIZE, THREADS_PER_BLOCK,
+                              FLAT_PRE_CALC_BP_KERNEL_VERSION>(trans, alpha, beta, m, n, nnz, rowptr, colindex, value,
+                                                               x, y, bmt);
     return;
   }
 
@@ -107,32 +111,41 @@ void adaptive_flat_sparse_spmv(int trans, const double alpha, const double beta,
     // use single thread to reduce if average nnz of row is less than 32.
     constexpr int REDUCE_OPT = FLAT_REDUCE_OPTION_DIRECT;
     constexpr int VEC_SIZE = 1;
-    flat_one_pass_sparse_spmv<R, REDUCE_OPT, VEC_SIZE, THREADS_PER_BLOCK, FLAT_PRE_CALC_BP_KERNEL_VERSION>(
-        trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, bmt);
+    flat_one_pass_sparse_spmv<INDEX_TYPE, DATA_TYPE, R, REDUCE_OPT, VEC_SIZE, THREADS_PER_BLOCK,
+                              FLAT_PRE_CALC_BP_KERNEL_VERSION>(trans, alpha, beta, m, n, nnz, rowptr, colindex, value,
+                                                               x, y, bmt);
   } else if (avg_block_nnz_max <= 64) {
     constexpr int REDUCE_OPT = FLAT_REDUCE_OPTION_VEC;
     // use more threads (4 threads) in vector to reduce if average nnz of row is larger than 32.
     constexpr int VEC_SIZE = 4;
-    flat_one_pass_sparse_spmv<R, REDUCE_OPT, VEC_SIZE, THREADS_PER_BLOCK, FLAT_PRE_CALC_BP_KERNEL_VERSION>(
-        trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, bmt);
+    flat_one_pass_sparse_spmv<INDEX_TYPE, DATA_TYPE, R, REDUCE_OPT, VEC_SIZE, THREADS_PER_BLOCK,
+                              FLAT_PRE_CALC_BP_KERNEL_VERSION>(trans, alpha, beta, m, n, nnz, rowptr, colindex, value,
+                                                               x, y, bmt);
   } else {
     constexpr int REDUCE_OPT = FLAT_REDUCE_OPTION_VEC;
     // use more threads (16 threads) in vector to reduce if average nnz of row is larger than 64.
     constexpr int VEC_SIZE = 16;
-    flat_one_pass_sparse_spmv<R, REDUCE_OPT, VEC_SIZE, THREADS_PER_BLOCK, FLAT_PRE_CALC_BP_KERNEL_VERSION>(
-        trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, bmt);
+    flat_one_pass_sparse_spmv<INDEX_TYPE, DATA_TYPE, R, REDUCE_OPT, VEC_SIZE, THREADS_PER_BLOCK,
+                              FLAT_PRE_CALC_BP_KERNEL_VERSION>(trans, alpha, beta, m, n, nnz, rowptr, colindex, value,
+                                                               x, y, bmt);
   }
 }
 
-template <int FLAT_PRE_CALC_BP_KERNEL_VERSION>
-void flat_sparse_spmv(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                      const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
-  adaptive_flat_sparse_spmv<FLAT_PRE_CALC_BP_KERNEL_VERSION>(trans, alpha, beta, d_csr_desc, x, y, bmt);
+template <typename INDEX_TYPE, typename DATA_TYPE, int FLAT_PRE_CALC_BP_KERNEL_VERSION>
+void flat_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
+                      const csr_desc<INDEX_TYPE, DATA_TYPE> h_csr_desc,
+                      const csr_desc<INDEX_TYPE, DATA_TYPE> d_csr_desc, const DATA_TYPE *x, DATA_TYPE *y,
+                      BenchmarkTime *bmt) {
+  adaptive_flat_sparse_spmv<INDEX_TYPE, DATA_TYPE, FLAT_PRE_CALC_BP_KERNEL_VERSION>(trans, alpha, beta, d_csr_desc, x,
+                                                                                    y, bmt);
 }
 
-void segment_sum_flat_sparse_spmv(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                                  const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
-  VAR_FROM_CSR_DESC(d_csr_desc)
+template <typename INDEX_TYPE, typename DATA_TYPE>
+void segment_sum_flat_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
+                                  const csr_desc<INDEX_TYPE, DATA_TYPE> h_csr_desc,
+                                  const csr_desc<INDEX_TYPE, DATA_TYPE> d_csr_desc, const DATA_TYPE *x, DATA_TYPE *y,
+                                  BenchmarkTime *bmt) {
+  VAR_FROM_CSR_DESC(DATA_TYPE, d_csr_desc)
   const int nnz = d_csr_desc.nnz;
   const int n = d_csr_desc.cols;
 
@@ -140,26 +153,31 @@ void segment_sum_flat_sparse_spmv(int trans, const double alpha, const double be
   constexpr int THREADS_PER_BLOCK = 512;
   constexpr int blocks = 512;
   constexpr int RED_OPT = FLAT_REDUCE_OPTION_SEGMENT_SUM;
-  flat_multi_pass_sparse_spmv<R, RED_OPT, 2, blocks, THREADS_PER_BLOCK>(trans, alpha, beta, m, n, nnz, rowptr, colindex,
-                                                                        value, x, y, bmt);
+  flat_multi_pass_sparse_spmv<INDEX_TYPE, DATA_TYPE, R, RED_OPT, 2, blocks, THREADS_PER_BLOCK>(
+      trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, bmt);
 }
 
-template void adaptive_flat_sparse_spmv<FLAT_PRE_CALC_BP_KERNEL_VERSION_V1>(int trans, const double, const double,
-                                                                            const csr_desc<int, double>, const double *,
-                                                                            double *, BenchmarkTime *);
+template void adaptive_flat_sparse_spmv<int, double, FLAT_PRE_CALC_BP_KERNEL_VERSION_V1>(
+    int trans, const double, const double, const csr_desc<int, double>, const double *, double *, BenchmarkTime *);
 
-template void adaptive_flat_sparse_spmv<FLAT_PRE_CALC_BP_KERNEL_VERSION_V2>(int trans, const double, const double,
-                                                                            const csr_desc<int, double>, const double *,
-                                                                            double *, BenchmarkTime *);
+template void adaptive_flat_sparse_spmv<int, double, FLAT_PRE_CALC_BP_KERNEL_VERSION_V2>(
+    int trans, const double, const double, const csr_desc<int, double>, const double *, double *, BenchmarkTime *);
 
-template void flat_sparse_spmv<FLAT_PRE_CALC_BP_KERNEL_VERSION_V1>(int, const double, const double,
-                                                                   const csr_desc<int, double>,
-                                                                   const csr_desc<int, double>, const double *,
-                                                                   double *, BenchmarkTime *);
+template void flat_sparse_spmv<int, double, FLAT_PRE_CALC_BP_KERNEL_VERSION_V1>(int, const double, const double,
+                                                                                const csr_desc<int, double>,
+                                                                                const csr_desc<int, double>,
+                                                                                const double *, double *,
+                                                                                BenchmarkTime *);
 
-template void flat_sparse_spmv<FLAT_PRE_CALC_BP_KERNEL_VERSION_V2>(int, const double, const double,
-                                                                   const csr_desc<int, double>,
-                                                                   const csr_desc<int, double>, const double *,
-                                                                   double *, BenchmarkTime *);
+template void flat_sparse_spmv<int, double, FLAT_PRE_CALC_BP_KERNEL_VERSION_V2>(int, const double, const double,
+                                                                                const csr_desc<int, double>,
+                                                                                const csr_desc<int, double>,
+                                                                                const double *, double *,
+                                                                                BenchmarkTime *);
+
+template void segment_sum_flat_sparse_spmv<int, double>(int trans, const double alpha, const double beta,
+                                                        const csr_desc<int, double> h_csr_desc,
+                                                        const csr_desc<int, double> d_csr_desc, const double *x,
+                                                        double *y, BenchmarkTime *bmt);
 
 #endif // SPMV_ACC_BENCHMARK_SPMV_ACC_FLAT_HPP

@@ -7,7 +7,7 @@
 
 void line_sparse_spmv(int trans, const double alpha, const double beta, const csr_desc<int, double> d_csr_desc,
                       const double *x, double *y) {
-  VAR_FROM_CSR_DESC(d_csr_desc)
+  VAR_FROM_CSR_DESC(double, d_csr_desc)
 
   // const int avg_eles_per_row = ceil(d_csr_desc.nnz + 0.0 / m);
   const int avg_eles_per_row = d_csr_desc.nnz / m;
@@ -51,7 +51,7 @@ void inline adaptive_line_wrapper(const int NNZ_PER_ROW, const I m, const T alph
 
 void adaptive_line_sparse_spmv(int trans, const double alpha, const double beta, const csr_desc<int, double> d_csr_desc,
                                const double *x, double *y) {
-  VAR_FROM_CSR_DESC(d_csr_desc)
+  VAR_FROM_CSR_DESC(double, d_csr_desc)
 
   const int nnz_per_row = d_csr_desc.nnz / m;
   // make ROW_NUM * NNZ_PER_ROW <= HIP_THREAD
