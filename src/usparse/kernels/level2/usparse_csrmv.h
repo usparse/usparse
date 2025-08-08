@@ -5,7 +5,21 @@
 #ifndef USPARSE_KERNELS_LEVEL2_USPARSE_CSRMV_H
 #define USPARSE_KERNELS_LEVEL2_USPARSE_CSRMV_H
 
+#include "../spmv/hip-flat/spmv_hip_acc_imp.h"
+
 namespace usparse {
+
+  struct csrmv_mat_info {
+    csrmv_flat_mtx_info flat_info;
+  };
+
+  using usparse_csrmv_algo = int;
+  constexpr usparse_csrmv_algo usparse_csrmv_algo_default = 0;
+  constexpr usparse_csrmv_algo usparse_csrmv_algo_line_enhance = 1;
+  constexpr usparse_csrmv_algo usparse_csrmv_algo_flat = 2;
+  constexpr usparse_csrmv_algo usparse_csrmv_algo_vector = 3;
+  constexpr usparse_csrmv_algo usparse_csrmv_algo_thread_row = 4;
+
   template <typename INDEX_TYPE, typename VALUE_TYPE>
   void device_csrmv(const INDEX_TYPE nrows, const INDEX_TYPE ncols, const INDEX_TYPE nnz, const INDEX_TYPE *csr_row_ptr,
                     const INDEX_TYPE *csr_col_index, const VALUE_TYPE *csr_values, const VALUE_TYPE *dev_x,
@@ -19,6 +33,16 @@ namespace usparse {
                      const INDEX_TYPE *csr_row_ptr, const INDEX_TYPE *csr_col_index, const VALUE_TYPE *csr_values,
                      const VALUE_TYPE *dev_x, VALUE_TYPE *dev_y, rocsparse_handle *handle, rocsparse_mat_descr *descrA,
                      rocsparse_mat_info *info);
+
+  template <typename INDEX_TYPE, typename VALUE_TYPE>
+  void device_adaptive_analysis(int trans, const VALUE_TYPE alpha, const VALUE_TYPE beta,
+                                const csr_desc<INDEX_TYPE, VALUE_TYPE> d_csr_desc, const usparse_csrmv_algo algo,
+                                csrmv_mat_info *info = nullptr);
+
+  template <typename INDEX_TYPE, typename VALUE_TYPE>
+  void device_adaptive_spmv(int trans, const VALUE_TYPE alpha, const VALUE_TYPE beta,
+                            const csr_desc<INDEX_TYPE, VALUE_TYPE> d_csr_desc, const VALUE_TYPE *dx, VALUE_TYPE *dy,
+                            const usparse_csrmv_algo algo, csrmv_mat_info *info = nullptr);
 
 } // namespace usparse
 

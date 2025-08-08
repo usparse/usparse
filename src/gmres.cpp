@@ -94,6 +94,9 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
   HIP_CHECK(hipMemcpy(dev_x, x_d, N * sizeof(double), hipMemcpyHostToDevice));
   HIP_CHECK(hipMemcpy(d_b, _b, N * sizeof(double), hipMemcpyHostToDevice));
 
+  usparse::csrmv_mat_info csrmv_info;
+  usparse::device_adaptive_analysis(0, 1.0, 0.0, d_csr_desc, usparse::usparse_csrmv_algo_flat, &csrmv_info);
+
   // auto start = std::chrono::high_resolution_clock::now(); // 禁止修改
   // =======如果已移植为DCU代码，请更换为下列计时==========
   hipEvent_t test_start_event, test_stop_event;
@@ -110,7 +113,8 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
     // copy x from host to device
 
     // compute y = AX
-    spmv_line_enhance(0, 1.0, 0.0, d_csr_desc, dev_x, dev_y);
+    device_adaptive_spmv<int, double>(0, 1.0, 0.0, d_csr_desc, dev_x, dev_y, usparse::usparse_csrmv_algo_flat,
+                                      &csrmv_info);
 
     usparse::device_daxpy(-1.0, d_b, dev_y, N);
 
@@ -140,7 +144,8 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
       std::vector<double> V_i(N);
       usparse::device_dcopy(d_V + i * N, d_vi, N);
 
-      spmv_line_enhance(0, 1.0, 0.0, d_csr_desc, d_vi, dev_y);
+      usparse::device_adaptive_spmv<int, double>(0, 1.0, 0.0, d_csr_desc, d_vi, dev_y, usparse::usparse_csrmv_algo_flat,
+                                                 &csrmv_info);
 
       for (k = 0; k <= i; k++) {
         usparse::device_dotProduct(dev_y, d_V + k * N, N, &d_H[k * RESTART_TIMES + i], d_temp_buffer, 0);
@@ -192,6 +197,7 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
   HIP_CHECK(hipFree(d_beta));
   HIP_CHECK(hipFree(d_b));
   HIP_CHECK(hipFree(d_temp_buffer));
+  // todo: destroy csrmv info.
   return make_tuple(iteration, test_time, resid / init_res); // 禁止修改
 }
 
