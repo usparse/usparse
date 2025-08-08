@@ -18,7 +18,8 @@ std::string MATRIX_BASE_PATH = "/work/share/data/XDZS2025/GMRES/sparseMatrixSet/
 void uspmv(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
            const csr_desc<int, double> d_csr_desc, const double *dx, double *dy, const std::string &strategy) {
   if (strategy == "flat") {
-    spmv_flat(trans, alpha, beta, h_csr_desc, d_csr_desc, dx, dy);
+    // fixme: not work as expeted. pass info into it.
+    spmv_flat(trans, alpha, beta, d_csr_desc, dx, dy, nullptr);
     hipDeviceSynchronize();
   } else if (strategy == "line") {
     spmv_line_enhance(trans, alpha, beta, d_csr_desc, dx, dy);

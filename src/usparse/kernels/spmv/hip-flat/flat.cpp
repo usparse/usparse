@@ -9,10 +9,10 @@
 #include "flat_config.h"
 #include "spmv_hip_acc_imp.h"
 
-template <int R, int REDUCE_OPTION, int REDUCE_VEC_SIZE, int BLOCKS, int THREADS_PER_BLOCK>
-inline void flat_multi_pass_sparse_spmv(int trans, const double alpha, const double beta, int m, int n, int nnz,
-                                        const int *rowptr, const int *colindex, const double *value, const double *x,
-                                        double *y) {
+template <typename DATA_TYPE, int R, int REDUCE_OPTION, int REDUCE_VEC_SIZE, int BLOCKS, int THREADS_PER_BLOCK>
+inline void flat_multi_pass_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta, int m, int n, int nnz,
+                                        const int *rowptr, const int *colindex, const DATA_TYPE *value,
+                                        const DATA_TYPE *x, DATA_TYPE *y) {
   int *break_points;
   // the nnz is rowptr[m], in one round, it can process about `blocks * R * threads_per_block` nnz.
   const int total_rounds =
@@ -23,11 +23,11 @@ inline void flat_multi_pass_sparse_spmv(int trans, const double alpha, const dou
   hipMemset(break_points, 0, break_points_len * sizeof(int));
 
   (pre_calc_break_point<R * THREADS_PER_BLOCK, BLOCKS, int>)<<<1024, 512>>>(rowptr, m, break_points, break_points_len);
-  FLAT_KERNEL_WRAPPER(R, REDUCE_OPTION, REDUCE_VEC_SIZE, BLOCKS, THREADS_PER_BLOCK);
+  FLAT_KERNEL_WRAPPER(DATA_TYPE, R, REDUCE_OPTION, REDUCE_VEC_SIZE, BLOCKS, THREADS_PER_BLOCK);
 }
 
-void flat_matrix_analyse(const csr_desc<int, double> d_csr_desc, int **break_points) {
-  VAR_FROM_CSR_DESC(d_csr_desc)
+template <typename DATA_TYPE> void flat_matrix_analyse(const csr_desc<int, DATA_TYPE> d_csr_desc, int **break_points) {
+  VAR_FROM_CSR_DESC(DATA_TYPE, d_csr_desc)
   const int nnz = d_csr_desc.nnz;
   const int n = d_csr_desc.cols;
 
@@ -43,17 +43,17 @@ void flat_matrix_analyse(const csr_desc<int, double> d_csr_desc, int **break_poi
 }
 
 // just for backward compatibility.
-void flat_analyse(const csr_desc<int, double> d_csr_desc, csrmv_flat_mtx_info *info) {
+template <typename DATA_TYPE> void flat_analyse(const csr_desc<int, DATA_TYPE> d_csr_desc, csrmv_flat_mtx_info *info) {
   flat_matrix_analyse(d_csr_desc, &(info->break_points));
 }
 
-template <int R, int REDUCE_OPTION, int REDUCE_VEC_SIZE, int THREADS_PER_BLOCK>
-inline void flat_one_pass_sparse_spmv(int trans, const double alpha, const double beta, int m, int n, int nnz,
-                                      const int *rowptr, const int *colindex, const double *value, const double *x,
-                                      double *y, const int *break_points) {
+template <typename DATA_TYPE, int R, int REDUCE_OPTION, int REDUCE_VEC_SIZE, int THREADS_PER_BLOCK>
+inline void flat_one_pass_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta, int m, int n, int nnz,
+                                      const int *rowptr, const int *colindex, const DATA_TYPE *value,
+                                      const DATA_TYPE *x, DATA_TYPE *y, const int *break_points) {
   // each block can process `R*THREADS_PER_BLOCK` non-zeros.
   const int HIP_BLOCKS = nnz / (R * THREADS_PER_BLOCK) + ((nnz % (R * THREADS_PER_BLOCK) == 0) ? 0 : 1);
-  FLAT_KERNEL_ONE_PASS_WRAPPER(R, REDUCE_OPTION, REDUCE_VEC_SIZE, HIP_BLOCKS, THREADS_PER_BLOCK);
+  FLAT_KERNEL_ONE_PASS_WRAPPER(DATA_TYPE, R, REDUCE_OPTION, REDUCE_VEC_SIZE, HIP_BLOCKS, THREADS_PER_BLOCK);
 }
 
 template <typename DATA_TYPE, typename INDEX_TYPE, int BEAT_Y_POLICY>
@@ -62,14 +62,14 @@ inline void flat_set_beta_y(DATA_TYPE *y, const INDEX_TYPE m, const DATA_TYPE be
     // set beta*y.
     if (beta == 0.0) {
       // set vector y to 0. because: y = A*x + 0.0 *y.
-      usparse::device_scale_set(0.0, y, m);
+      usparse::device_scale_set<INDEX_TYPE, DATA_TYPE>(0.0, y, m);
     } else if (beta == 1.0) {
       // do nothing. because flat is based on atomicAdd.
     } else {
       usparse::device_dscal(beta, y, m);
     }
   } else if (BEAT_Y_POLICY == BEAT_Y_POLICY_ZERO) {
-    usparse::device_scale_set(0.0, y, m);
+    usparse::device_scale_set<INDEX_TYPE, DATA_TYPE>(0.0, y, m);
   } else if (BEAT_Y_POLICY == BEAT_Y_POLICY_ONE) {
     return; // nothing to do.
   } else {  // BEAT_Y_POLICY == BEAT_Y_POLICY_OTHER
@@ -82,14 +82,14 @@ inline void flat_set_beta_y(DATA_TYPE *y, const INDEX_TYPE m, const DATA_TYPE be
  * currently, it only support adaptive template parameters on one-pass flat method.
  * \note: if config item FLAT_ONE_PASS_ADAPTIVE is set to false, one-pass adaptive will be disabled.
  */
-template <int BEAT_Y_POLICY>
-void adaptive_flat_sparse_spmv(int trans, const double alpha, const double beta, const csr_desc<int, double> d_csr_desc,
-                               const double *x, double *y, const csrmv_flat_mtx_info *info) {
-  VAR_FROM_CSR_DESC(d_csr_desc)
+template <typename T, int BEAT_Y_POLICY>
+void adaptive_flat_sparse_spmv(int trans, const T alpha, const T beta, const csr_desc<int, T> d_csr_desc, const T *x,
+                               T *y, const csrmv_flat_mtx_info *info) {
+  VAR_FROM_CSR_DESC(T, d_csr_desc)
   const int nnz = d_csr_desc.nnz;
   const int n = d_csr_desc.cols;
 
-  flat_set_beta_y<double, int, BEAT_Y_POLICY>(y, m, beta);
+  flat_set_beta_y<T, int, BEAT_Y_POLICY>(y, m, beta);
 
   constexpr int R = 2;
   constexpr int THREADS_PER_BLOCK = 512;
@@ -97,8 +97,8 @@ void adaptive_flat_sparse_spmv(int trans, const double alpha, const double beta,
   if (!FLAT_ONE_PASS) {
     constexpr int blocks = 512;
     constexpr int RED_OPT = FLAT_REDUCE_OPTION_VEC;
-    flat_multi_pass_sparse_spmv<R, RED_OPT, 2, blocks, THREADS_PER_BLOCK>(trans, alpha, beta, m, n, nnz, rowptr,
-                                                                          colindex, value, x, y);
+    flat_multi_pass_sparse_spmv<T, R, RED_OPT, 2, blocks, THREADS_PER_BLOCK>(trans, alpha, beta, m, n, nnz, rowptr,
+                                                                             colindex, value, x, y);
     return;
   }
 
@@ -106,8 +106,8 @@ void adaptive_flat_sparse_spmv(int trans, const double alpha, const double beta,
   if (!FLAT_ONE_PASS_ADAPTIVE) {
     constexpr int RED_OPT = FLAT_REDUCE_OPTION_VEC;
     constexpr int VEC_SIZE = 4;
-    flat_one_pass_sparse_spmv<R, RED_OPT, VEC_SIZE, THREADS_PER_BLOCK>(trans, alpha, beta, m, n, nnz, rowptr, colindex,
-                                                                       value, x, y, break_points);
+    flat_one_pass_sparse_spmv<T, R, RED_OPT, VEC_SIZE, THREADS_PER_BLOCK>(trans, alpha, beta, m, n, nnz, rowptr,
+                                                                          colindex, value, x, y, break_points);
     return;
   }
 
@@ -117,35 +117,61 @@ void adaptive_flat_sparse_spmv(int trans, const double alpha, const double beta,
     // use single thread to reduce if average nnz of row is less than 32.
     constexpr int REDUCE_OPT = FLAT_REDUCE_OPTION_DIRECT;
     constexpr int VEC_SIZE = 1;
-    flat_one_pass_sparse_spmv<R, REDUCE_OPT, VEC_SIZE, THREADS_PER_BLOCK>(trans, alpha, beta, m, n, nnz, rowptr,
-                                                                          colindex, value, x, y, break_points);
+    flat_one_pass_sparse_spmv<T, R, REDUCE_OPT, VEC_SIZE, THREADS_PER_BLOCK>(trans, alpha, beta, m, n, nnz, rowptr,
+                                                                             colindex, value, x, y, break_points);
   } else if (avg_block_nnz_max <= 64) {
     constexpr int REDUCE_OPT = FLAT_REDUCE_OPTION_VEC;
     // use more threads (4 threads) in vector to reduce if average nnz of row is larger than 32.
     constexpr int VEC_SIZE = 4;
-    flat_one_pass_sparse_spmv<R, REDUCE_OPT, VEC_SIZE, THREADS_PER_BLOCK>(trans, alpha, beta, m, n, nnz, rowptr,
-                                                                          colindex, value, x, y, break_points);
+    flat_one_pass_sparse_spmv<T, R, REDUCE_OPT, VEC_SIZE, THREADS_PER_BLOCK>(trans, alpha, beta, m, n, nnz, rowptr,
+                                                                             colindex, value, x, y, break_points);
   } else {
     constexpr int REDUCE_OPT = FLAT_REDUCE_OPTION_VEC;
     // use more threads (16 threads) in vector to reduce if average nnz of row is larger than 64.
     constexpr int VEC_SIZE = 16;
-    flat_one_pass_sparse_spmv<R, REDUCE_OPT, VEC_SIZE, THREADS_PER_BLOCK>(trans, alpha, beta, m, n, nnz, rowptr,
-                                                                          colindex, value, x, y, break_points);
+    flat_one_pass_sparse_spmv<T, R, REDUCE_OPT, VEC_SIZE, THREADS_PER_BLOCK>(trans, alpha, beta, m, n, nnz, rowptr,
+                                                                             colindex, value, x, y, break_points);
   }
 }
 
-template void adaptive_flat_sparse_spmv<BEAT_Y_POLICY_AUTO>(int trans, const double alpha, const double beta,
-                                                            const csr_desc<int, double> d_csr_desc, const double *x,
-                                                            double *y, const csrmv_flat_mtx_info *info);
+template void adaptive_flat_sparse_spmv<double, BEAT_Y_POLICY_AUTO>(int trans, const double alpha, const double beta,
+                                                                    const csr_desc<int, double> d_csr_desc,
+                                                                    const double *x, double *y,
+                                                                    const csrmv_flat_mtx_info *info);
 
-template void adaptive_flat_sparse_spmv<BEAT_Y_POLICY_ZERO>(int trans, const double alpha, const double beta,
-                                                            const csr_desc<int, double> d_csr_desc, const double *x,
-                                                            double *y, const csrmv_flat_mtx_info *info);
+template void adaptive_flat_sparse_spmv<double, BEAT_Y_POLICY_ZERO>(int trans, const double alpha, const double beta,
+                                                                    const csr_desc<int, double> d_csr_desc,
+                                                                    const double *x, double *y,
+                                                                    const csrmv_flat_mtx_info *info);
 
-template void adaptive_flat_sparse_spmv<BEAT_Y_POLICY_ONE>(int trans, const double alpha, const double beta,
-                                                           const csr_desc<int, double> d_csr_desc, const double *x,
-                                                           double *y, const csrmv_flat_mtx_info *info);
+template void adaptive_flat_sparse_spmv<double, BEAT_Y_POLICY_ONE>(int trans, const double alpha, const double beta,
+                                                                   const csr_desc<int, double> d_csr_desc,
+                                                                   const double *x, double *y,
+                                                                   const csrmv_flat_mtx_info *info);
 
-template void adaptive_flat_sparse_spmv<BEAT_Y_POLICY_OTHER>(int trans, const double alpha, const double beta,
-                                                             const csr_desc<int, double> d_csr_desc, const double *x,
-                                                             double *y, const csrmv_flat_mtx_info *info);
+template void adaptive_flat_sparse_spmv<double, BEAT_Y_POLICY_OTHER>(int trans, const double alpha, const double beta,
+                                                                     const csr_desc<int, double> d_csr_desc,
+                                                                     const double *x, double *y,
+                                                                     const csrmv_flat_mtx_info *info);
+
+template void adaptive_flat_sparse_spmv<float, BEAT_Y_POLICY_AUTO>(int trans, const float alpha, const float beta,
+                                                                   const csr_desc<int, float> d_csr_desc,
+                                                                   const float *x, float *y,
+                                                                   const csrmv_flat_mtx_info *info);
+
+template void adaptive_flat_sparse_spmv<float, BEAT_Y_POLICY_ZERO>(int trans, const float alpha, const float beta,
+                                                                   const csr_desc<int, float> d_csr_desc,
+                                                                   const float *x, float *y,
+                                                                   const csrmv_flat_mtx_info *info);
+
+template void adaptive_flat_sparse_spmv<float, BEAT_Y_POLICY_ONE>(int trans, const float alpha, const float beta,
+                                                                  const csr_desc<int, float> d_csr_desc, const float *x,
+                                                                  float *y, const csrmv_flat_mtx_info *info);
+
+template void adaptive_flat_sparse_spmv<float, BEAT_Y_POLICY_OTHER>(int trans, const float alpha, const float beta,
+                                                                    const csr_desc<int, float> d_csr_desc,
+                                                                    const float *x, float *y,
+                                                                    const csrmv_flat_mtx_info *info);
+
+template void flat_analyse<double>(const csr_desc<int, double> d_csr_desc, csrmv_flat_mtx_info *info);
+template void flat_analyse<float>(const csr_desc<int, float> d_csr_desc, csrmv_flat_mtx_info *info);

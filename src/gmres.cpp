@@ -201,7 +201,8 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
   return make_tuple(iteration, test_time, resid / init_res); // 禁止修改
 }
 
-RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, double *dev_x, double *dev_y) {
+RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, double *dev_x, double *dev_y,
+                   csr_desc<int, double> d_csr_desc) {
   // 稀疏矩阵A_d需默认以CSR格式压缩存储，使用DCU优化时，该矩阵A和右端向量b传输到DCU端的开销，以及结果向量x传输到CPU端的开销可不算在计时范围
   // 若要采用其他的稀疏矩阵压缩格式，需从DCU端的CSR矩阵开始转换，且格式转换的代码必须包含到计时范围内
   const uint N = A_d->nrows;
@@ -268,10 +269,10 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   usparse::device_cast(d_b, d_b_f, N);
 
   // initialize info descrA handle
-  rocsparse_mat_descr descrA;
-  rocsparse_handle handle;
-  rocsparse_mat_info info;
-  init_matrix_info(dev_A, &handle, &descrA, &info);
+  csr_desc<int, float> d_csr_desc_float(dev_A->nrows, dev_A->ncols, d_csr_desc.nnz, d_csr_desc.row_ptr,
+                                        d_csr_desc.col_index, d_A_val_f);
+  usparse::csrmv_mat_info csrmv_info;
+  usparse::device_adaptive_analysis(0, 1.0, 0.0, d_csr_desc, usparse::usparse_csrmv_algo_flat, &csrmv_info);
 
   // auto start = std::chrono::high_resolution_clock::now(); // 禁止修改
   // =======如果已移植为DCU代码，请更换为下列计时==========
@@ -289,8 +290,8 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
     // copy x from host to device
 
     // compute y = AX
-    usparse::device_csrmv<uint, double>(dev_A->nrows, dev_A->ncols, dev_A->nnz, dev_A->rows, dev_A->cols, dev_A->vals,
-                                        dev_x, dev_y, &handle, &descrA, &info);
+    usparse::device_adaptive_spmv<int, double>(0, 1.0, 0.0, d_csr_desc, dev_x, dev_y, usparse::usparse_csrmv_algo_flat,
+                                               &csrmv_info);
 
     usparse::device_cast<uint, double, float>(dev_y, d_r0_f, N); // dev_y => d_r0_f
 
@@ -322,8 +323,8 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
 
       usparse::device_dcopy<uint, float>(d_V_f + i * N, d_vi_f, N);
 
-      usparse::device_scsrmv<uint, float>(dev_A->nrows, dev_A->ncols, dev_A->nnz, dev_A->rows, dev_A->cols, d_A_val_f,
-                                          d_vi_f, d_r0_f, &handle, &descrA, &info);
+      usparse::device_adaptive_spmv<int, float>(0, 1.0, 0.0, d_csr_desc_float, d_vi_f, d_r0_f,
+                                                usparse::usparse_csrmv_algo_flat, &csrmv_info);
 
       if (usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION == usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2) {
         usparse::dotprod_axpy_fusion<uint, float, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
@@ -384,7 +385,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   hipEventElapsedTime(&test_time, test_start_event, test_stop_event); // 禁止修改
 
   // destory data
-  destory_descr_info(info, handle, descrA);
+  // todo: destroy csrmv info.
   destory_device_matrix(d_r0, d_V, d_s, d_H, d_cs, d_sn, d_vi);
   destory_device_float(d_V_f, d_H_f, d_vi_f, d_sn_f, d_cs_f, d_r0_f, d_A_val_f, d_s_f, d_b_f);
 

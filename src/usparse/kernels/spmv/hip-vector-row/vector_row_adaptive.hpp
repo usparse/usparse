@@ -141,8 +141,8 @@ __global__ void adaptive_vector_row_kernel(int m, const T alpha, const T beta, c
   }
 }
 
-#define ADAPTIVE_VECTOR_KERNEL_WRAPPER(N, BP)                                                                          \
-  (adaptive_vector_row_kernel<N, 256, __WF_SIZE__, double>)<<<512, 256>>>(m, alpha, beta, rowptr, colindex, value, x,  \
-                                                                          y, BP);
+#define ADAPTIVE_VECTOR_KERNEL_WRAPPER(N, BP, FP)                                                                      \
+  (adaptive_vector_row_kernel<N, 256, __WF_SIZE__, FP>)<<<512, 256>>>(m, alpha, beta, rowptr, colindex, value, x, y,   \
+                                                                      BP);
 
 #endif // SPMV_ACC_VECTOR_ROW_ADAPTIVE_HPP

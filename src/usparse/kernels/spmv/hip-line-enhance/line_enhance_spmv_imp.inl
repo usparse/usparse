@@ -107,13 +107,14 @@ __global__ void line_enhance_kernel(int m, const T alpha, const T beta, const I 
   }
 }
 
-#define LINE_ENHANCE_KERNEL_WRAPPER(REDUCE, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS, THREADS)                              \
+// FP: FP can be float or double
+#define LINE_ENHANCE_KERNEL_WRAPPER(FP, REDUCE, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS, THREADS)                          \
   if (beta == 0.0) {                                                                                                   \
     (line_enhance_kernel<true, REDUCE, __WF_SIZE__, VEC_SIZE, ROWS_PER_BLOCK, R, THREADS, int,                         \
-                         double>)<<<BLOCKS, THREADS>>>(m, alpha, beta, rowptr, colindex, value, x, y);                 \
+                         FP>)<<<BLOCKS, THREADS>>>(m, alpha, beta, rowptr, colindex, value, x, y);                     \
   } else {                                                                                                             \
     (line_enhance_kernel<false, REDUCE, __WF_SIZE__, VEC_SIZE, ROWS_PER_BLOCK, R, THREADS, int,                        \
-                         double>)<<<BLOCKS, THREADS>>>(m, alpha, beta, rowptr, colindex, value, x, y);                 \
+                         FP>)<<<BLOCKS, THREADS>>>(m, alpha, beta, rowptr, colindex, value, x, y);                     \
   }
 
 // todo: better compare of beta == 0.0;
