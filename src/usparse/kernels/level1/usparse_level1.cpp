@@ -11,6 +11,14 @@
 
 namespace usparse {
 
+  template <typename INDEX_TYPE, typename FORM_TYPE, typename TO_TYPE>
+  __global__ void __launch_bounds__(512) cast_kernel(const FORM_TYPE *src, TO_TYPE *dst, const INDEX_TYPE N) {
+    const int tid = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
+    if (tid < N) {
+      dst[tid] = static_cast<TO_TYPE>(src[tid]);
+    }
+  }
+
   // todo: pass THREADS as tparam
   template <typename INDEX_TYPE, typename DATA_TYPE, int THREADS>
   __global__ void calculateNorm_kernel(const DATA_TYPE *vec, INDEX_TYPE N, DATA_TYPE *d_temp_buffer) {
@@ -90,9 +98,9 @@ namespace usparse {
 
   template <typename DATA_TYPE> __global__ void sqrt_kernel(DATA_TYPE *result) { *result = sqrt(*result); }
 
-  template <typename INDEX_TYPE, typename DATA_TYPE>
+  template <typename INDEX_TYPE, typename F_TYPE, typename DATA_TYPE>
   __global__ void __launch_bounds__(512)
-      daxpy_kernel(const DATA_TYPE alpha, const DATA_TYPE *x, DATA_TYPE *y, const INDEX_TYPE N) {
+      daxpy_kernel(const DATA_TYPE alpha, const F_TYPE *x, DATA_TYPE *y, const INDEX_TYPE N) {
     const int tid = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
     if (tid < N) {
       y[tid] += alpha * x[tid];
@@ -159,8 +167,8 @@ void usparse::device_dotProduct(const DATA_TYPE *d_x, const DATA_TYPE *d_y, INDE
   }
 }
 
-template <typename INDEX_TYPE, typename DATA_TYPE>
-void usparse::device_daxpy(const DATA_TYPE alpha, const DATA_TYPE *x, DATA_TYPE *y, const INDEX_TYPE N) {
+template <typename INDEX_TYPE, typename F_TYPE, typename DATA_TYPE>
+void usparse::device_daxpy(const DATA_TYPE alpha, const F_TYPE *x, DATA_TYPE *y, const INDEX_TYPE N) {
   constexpr int THREADS_PER_BLOCK = 512;
   const int BLOCKS = N / THREADS_PER_BLOCK + (N % THREADS_PER_BLOCK == 0 ? 0 : 1);
   daxpy_kernel<<<BLOCKS, THREADS_PER_BLOCK>>>(alpha, x, y, N);
@@ -180,6 +188,13 @@ void usparse::device_dcopy(const DATA_TYPE *src, DATA_TYPE *dst, const INDEX_TYP
   dcopy_kernel<<<BLOCKS, THREADS_PER_BLOCK>>>(src, dst, N);
 }
 
+template <typename INDEX_TYPE, typename FORM_TYPE, typename TO_TYPE>
+void usparse::device_cast(const FORM_TYPE *src, TO_TYPE *dst, const INDEX_TYPE N) {
+  constexpr int THREADS_PER_BLOCK = 512;
+  const int BLOCKS = N / THREADS_PER_BLOCK + (N % THREADS_PER_BLOCK == 0 ? 0 : 1);
+  cast_kernel<<<BLOCKS, THREADS_PER_BLOCK>>>(src, dst, N);
+}
+
 template void usparse::device_calculateNorm<uint, double>(const double *d_vec, uint N, double *d_result,
                                                           double *d_temp_buffer, std::size_t *temp_buffer_size_byte);
 template void usparse::device_calculateNorm<uint, float>(const float *d_vec, uint N, float *d_result,
@@ -190,11 +205,15 @@ template void usparse::device_dotProduct<uint, double>(const double *d_x, const 
 template void usparse::device_dotProduct<uint, float>(const float *d_x, const float *d_y, uint N, float *d_result,
                                                       float *d_temp_buffer, std::size_t *temp_buffer_size_byte);
 
-template void usparse::device_daxpy<uint, double>(const double alpha, const double *x, double *y, const uint N);
-template void usparse::device_daxpy<uint, float>(const float alpha, const float *x, float *y, const uint N);
+template void usparse::device_daxpy<uint, float, double>(const double alpha, const float *x, double *y, const uint N);
+template void usparse::device_daxpy<uint, float, float>(const float alpha, const float *x, float *y, const uint N);
+template void usparse::device_daxpy<uint, double, double>(const double alpha, const double *x, double *y, const uint N);
 
 template void usparse::device_dscal<uint, double>(const double alpha, double *x, const uint N);
 template void usparse::device_dscal<uint, float>(const float alpha, float *x, const uint N);
 
 template void usparse::device_dcopy<uint, double>(const double *src, double *dst, const uint N);
 template void usparse::device_dcopy<uint, float>(const float *src, float *dst, const uint N);
+
+template void usparse::device_cast<uint, double, float>(const double *src, float *dst, const uint N);
+template void usparse::device_cast<uint, float, double>(const float *src, double *dst, const uint N);

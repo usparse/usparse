@@ -24,8 +24,8 @@ namespace usparse {
    * @param y input and output vector of size N.
    * @param N the vector size.
    */
-  template <typename INDEX_TYPE, typename DATA_TYPE>
-  void device_daxpy(DATA_TYPE alpha, const DATA_TYPE *x, DATA_TYPE *y, const INDEX_TYPE N);
+  template <typename INDEX_TYPE, typename F_TYPE, typename DATA_TYPE>
+  void device_daxpy(DATA_TYPE alpha, const F_TYPE *x, DATA_TYPE *y, const INDEX_TYPE N);
 
   /**
    * perform: x = alpha * x, where x is a vector of size N.
@@ -48,6 +48,18 @@ namespace usparse {
    */
   template <typename INDEX_TYPE, typename DATA_TYPE>
   void device_dcopy(const DATA_TYPE *src, DATA_TYPE *dst, const INDEX_TYPE N);
+
+  /**
+   * Forced conversion precision from dst to src.
+   * @tparam INDEX_TYPE index data type.
+   * @tparam FOREM_TYPE data type of src.
+   * @tparam TO_TYPE data type of dst.
+   * @param src input source vector of size N.
+   * @param dst output destination vector of size N.
+   * @param N the vector size.
+   */
+  template <typename INDEX_TYPE, typename FORM_TYPE, typename TO_TYPE>
+  void device_cast(const FORM_TYPE *src, TO_TYPE *dst, const INDEX_TYPE N);
 } // namespace usparse
 
 #endif // USPARSE_KERNELS_LEVEL1_USPARSE_LEVEL1_H

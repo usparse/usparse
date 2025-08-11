@@ -10,6 +10,16 @@ namespace usparse {
   void device_csrmv(const INDEX_TYPE nrows, const INDEX_TYPE ncols, const INDEX_TYPE nnz, const INDEX_TYPE *csr_row_ptr,
                     const INDEX_TYPE *csr_col_index, const VALUE_TYPE *csr_values, const VALUE_TYPE *dev_x,
                     VALUE_TYPE *dev_y, rocsparse_handle *handle, rocsparse_mat_descr *descrA, rocsparse_mat_info *info);
-}
+
+  /**
+   * rocsparse_scrsmv: support float precision.
+   */
+  template <typename INDEX_TYPE, typename VALUE_TYPE>
+  void device_scsrmv(const INDEX_TYPE nrows, const INDEX_TYPE ncols, const INDEX_TYPE nnz,
+                     const INDEX_TYPE *csr_row_ptr, const INDEX_TYPE *csr_col_index, const VALUE_TYPE *csr_values,
+                     const VALUE_TYPE *dev_x, VALUE_TYPE *dev_y, rocsparse_handle *handle, rocsparse_mat_descr *descrA,
+                     rocsparse_mat_info *info);
+
+} // namespace usparse
 
 #endif // USPARSE_KERNELS_LEVEL2_USPARSE_CSRMV_H
