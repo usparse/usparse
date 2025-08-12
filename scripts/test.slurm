@@ -1,17 +1,14 @@
 #!/bin/bash
-#SBATCH -o %j.out			    #指定作业的标准输出
-#SBATCH -e %j.err			    #指定作业的错误输出
-#SBATCH -J gmres_CPU			#指定作业名称
-#SBATCH -p wzidnormal			#指定作业运行的队列
-#SBATCH -t 00:30:00			    #指定作业最大运行120分钟
-#SBATCH -N 1				    #指定节点数
-#SBATCH --ntasks-per-node=1		#指定每个节点的进程数
-#SBATCH --ntasks-per-socket=1	#指定每个Socket的进程数
-#SBATCH --cpus-per-task=3		#指定每个进程的CPU数，最大不超过3
+#SBATCH -o %j.out        #指定作业的标准输出
+#SBATCH -e %j.err        #指定作业的错误输出
+#SBATCH -J gmres_DCU     #指定作业名称
+#SBATCH -p wzhdexclu05   #指定作业运行的队列
+#SBATCH -t 00:30:00      #指定作业最大运行120分钟
+#SBATCH -N 1             #指定节点数
+#SBATCH --exclusive      #节点独享
+#SBATCH --gres dcu:1     #单个DCU
 
-module purge
-module load compiler/gcc/12.2.0
-module load compiler/dtk/25.04
+source ./srcipts/env.sh
 
 make clean && make
 
