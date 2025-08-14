@@ -10,6 +10,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 add_executable(
         usparse_benchmark
         usparse/usparse_level1_benchmark.cc
+        usparse/usparse_level1_dotprof_axpy_fusion.cc
 )
 target_include_directories(
         usparse_benchmark

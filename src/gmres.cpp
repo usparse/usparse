@@ -11,6 +11,7 @@
 
 #include <hip/hip_runtime.h>
 
+#include "gmres_optimization_config.h"
 #include "init.hpp"
 #include "usparse_gmres.h"
 
@@ -318,13 +319,17 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
       usparse::device_scsrmv<uint, float>(dev_A->nrows, dev_A->ncols, dev_A->nnz, dev_A->rows, dev_A->cols, d_A_val_f,
                                           d_vi_f, d_r0_f, &handle, &descrA, &info);
 
-      // usparse::dot_daxpy_fusion<uint, double>(dev_y, d_V, d_H, d_temp_buffer, N, RESTART_TIMES, i, 0);
-      for (k = 0; k <= i; k++) {
-        usparse::device_dotProduct(d_r0_f, d_V_f + k * N, N, &d_H_f[k * RESTART_TIMES + i], d_temp_buffer, 0);
-        hipDeviceSynchronize();
-        alpha = -d_H_f[k * RESTART_TIMES + i];
-        usparse::device_daxpy<uint, float, float>(alpha, d_V_f + N * k, d_r0_f, N);
+      if (GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION) {
+        usparse::dotprod_axpy_fusion<uint, float>(d_r0_f, d_V_f, d_H_f, d_temp_buffer, N, RESTART_TIMES, i, 0);
+      } else {
+        for (k = 0; k <= i; k++) {
+          usparse::device_dotProduct(d_r0_f, d_V_f + k * N, N, &d_H_f[k * RESTART_TIMES + i], d_temp_buffer, 0);
+          hipDeviceSynchronize();
+          alpha = -d_H_f[k * RESTART_TIMES + i];
+          usparse::device_daxpy<uint, float, float>(alpha, d_V_f + N * k, d_r0_f, N);
+        }
       }
+
       usparse::device_calculateNorm(d_r0_f, N, &d_H_f[(i + 1) * RESTART_TIMES + i], d_temp_buffer, 0);
       hipDeviceSynchronize();
 
