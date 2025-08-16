@@ -20,7 +20,7 @@ target_link_libraries(
         ${SPMV_BENCHMARK_SPARSE_LIB}
         PUBLIC
         ${SPMV_CLI_LIB}
-        ${SPMV_BENCHMARK_UTILS_LIB}
+        ${USPARSE_BENCHMARK_UTILS_LIB}
 )
 
 if(BENCHMARK_FORCE_SYNC_KERNELS)

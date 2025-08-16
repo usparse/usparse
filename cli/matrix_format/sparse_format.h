@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-#include "api/types.h"
+#include "usparse_matrix.h"
 #ifdef _OPENMP
 #include "sort_omp.hpp"
 #endif

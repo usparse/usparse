@@ -11,10 +11,10 @@
 #include <hipsparse.h> // cusparseSpMV
 #include <rocsparse.h>
 
-#include <api/types.h>
+#include <usparse_matrix.h>
 
-#include "timer.h"
-#include "utils/benchmark_time.h"
+#include "timer/timer.h"
+#include "../utils/benchmark_time.h"
 
 struct RocSparseVecRow : CsrSpMV {
   void csr_spmv_impl(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,

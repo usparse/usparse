@@ -1,7 +1,7 @@
 #include <iostream>
 #include <stdexcept>
 
-#include <api/types.h>
+#include <usparse_matrix.h>
 
 #include "d_csr.h"
 #include "hola_spmv.h"

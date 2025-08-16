@@ -15,7 +15,7 @@
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
 
-#include "api/types.h"
+#include "usparse_matrix.h"
 #include "utils.hpp"
 #include "utils/statistics_logger.h"
 #include "verification.h"
@@ -42,7 +42,7 @@ struct CsrSpMV {
                              const csr_desc<int, double> h_csr_desc, const csr_desc<int, double> d_csr_desc,
                              const double *x, double *y, BenchmarkTime *bmt) = 0;
 
-  void test(std::string mtx_path, const std::string &strategy_name, enum sparse_operation operation, dtype alpha,
+  void test(std::string mtx_path, const std::string &strategy_name, enum usparse::usparse_operation operation, dtype alpha,
             dtype beta, type_csr h_csr, type_csr d_csr, host_vectors<dtype> h_vectors, dtype *&dev_x, dtype *&dev_y) {
     BenchmarkTimeArray bmt_array;
     // warm up GPU

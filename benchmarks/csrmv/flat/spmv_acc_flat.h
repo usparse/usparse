@@ -6,7 +6,7 @@
 #ifndef SPMV_ACC_BENCHMARK_SPMV_ACC_FLAT_H
 #define SPMV_ACC_BENCHMARK_SPMV_ACC_FLAT_H
 
-#include <api/types.h>
+#include <usparse_matrix.h>
 
 #include "../utils/benchmark_time.h"
 #include "benchmark_config.h"

@@ -8,6 +8,7 @@
 #include "statistics_logger.h"
 
 namespace statistics {
+    // only for csrmv
     void print_statistics_header() {
         std::cout << "PERFORMANCE,"
                   << "matrix name,"

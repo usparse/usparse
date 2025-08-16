@@ -6,7 +6,7 @@
 #define SPMV_ACC_SPMV_H
 
 #include "building_config.h"
-#include "types.h"
+#include "usparse_matrix.h"
 
 /**
  *

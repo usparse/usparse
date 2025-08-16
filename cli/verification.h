@@ -6,7 +6,7 @@
 #define SPMV_ACC_VERIFICATION_H
 
 #include "building_config.h"
-#include "sparse_format.h"
+#include "matrix_format/sparse_format.h"
 
 template <typename I, typename T> struct VerifyResult {
   T max_error = 0.0;

@@ -15,7 +15,7 @@
 
 #include "hola-hip/spmv.h"
 #include "utils.hpp"
-#include "utils/benchmark_time.h"
+#include "../utils/benchmark_time.h"
 
 struct HolaHipSpMV : CsrSpMV {
   void csr_spmv_impl(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,

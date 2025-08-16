@@ -8,7 +8,7 @@
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
 
-#include "api/types.h"
+#include "usparse_matrix.h"
 
 template <int THREADS_PER_VECTOR, int WF_SIZE, typename T>
 __global__ void spmv_light_kernel(const int m, const T alpha, const T beta, int *hip_row_counter, const int *row_offset,

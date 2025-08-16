@@ -1,7 +1,7 @@
 #define ACSR_STDERR
 
 #include "../utils/benchmark_time.h"
-#include "api/types.h"
+#include "usparse_matrix.h"
 #include "timer.h"
 #include "ACSR.h"
 #include <vector>

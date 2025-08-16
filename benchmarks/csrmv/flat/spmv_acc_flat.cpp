@@ -14,7 +14,7 @@
 #include "hip-flat/flat_config.h"
 #include "hip-flat/spmv_hip_acc_imp.h"
 #include "spmv_acc_flat.h"
-#include "timer.h"
+#include "timer/timer.h"
 #include "benchmark_config.h"
 
 template <int R, int REDUCE_OPTION, int REDUCE_VEC_SIZE, int BLOCKS, int THREADS_PER_BLOCK>

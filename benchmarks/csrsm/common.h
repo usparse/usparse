@@ -12,9 +12,9 @@
 #include <sys/time.h>
 #include <vector>
 
-#include "csr_binary_reader.hpp"
-#include "matrix_market_reader.hpp"
-#include "sparse_format.h"
+#include "matrix_format/csr_binary_reader.hpp"
+#include "matrix_format/matrix_market_reader.hpp"
+#include "matrix_format/sparse_format.h"
 
 #include "level3/csrsm_kernels.h"
 

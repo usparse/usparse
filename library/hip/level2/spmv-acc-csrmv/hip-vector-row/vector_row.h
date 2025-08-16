@@ -8,7 +8,7 @@
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
 
-#include "api/types.h"
+#include "usparse_matrix.h"
 
 template <int VECTOR_SIZE, int WF_SIZE, typename T>
 __global__ void native_vector_row_kernel(int m, const T alpha, const T beta, const int *row_offset,

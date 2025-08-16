@@ -5,7 +5,7 @@
 #ifndef SPMV_ACC_LINE_ENHANCE_SPMV_H
 #define SPMV_ACC_LINE_ENHANCE_SPMV_H
 
-#include "api/types.h"
+#include "usparse_matrix.h"
 
 void line_enhance_sparse_spmv(int trans, const double alpha, const double beta, const csr_desc<int, double> d_csr_desc,
                               const double *x, double *y);

@@ -5,7 +5,7 @@
 #include <iostream>
 
 #include "spmv.h"
-#include "types.h"
+#include "usparse_matrix.h"
 
 void sparse_spmv(int htrans, const double halpha, const double hbeta, int hm, int hn, const int *rowptr, const int *colindex,
                  const double *value, const double *x, double *y) {

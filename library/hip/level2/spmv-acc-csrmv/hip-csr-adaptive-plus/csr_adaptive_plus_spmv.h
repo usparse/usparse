@@ -5,7 +5,7 @@
 #ifndef SPMV_ACC_CSR_ADAPTIVE2_SPMV_H
 #define SPMV_ACC_CSR_ADAPTIVE2_SPMV_H
 
-#include "../api/types.h"
+#include "usparse_matrix.h"
 #include "../api/handle.h"
 
 template <typename Index> struct csr_adaptive_plus_analyze_info {

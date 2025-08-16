@@ -5,7 +5,7 @@
 #include <cub/util_debug.cuh>
 
 #include "../utils/benchmark_time.h"
-#include "api/types.h"
+#include "usparse_matrix.h"
 #include "timer.h"
 #include "benchmark_config.h"
 #include "utils/timer_utils.h"
