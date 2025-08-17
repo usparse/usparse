@@ -34,7 +34,7 @@ foreach (X_STRATEGY IN LISTS ENABLED_STRATEGIES)
 endforeach ()
 
 set(ACC_HEADER_FILES ${ACC_HEADER_FILES}
-        ${USPARSE_API_PATH}/types.h
+        ${USPARSE_HEADER_PATH}/usparse_matrix.h
         ${USPARSE_API_PATH}/spmv.h
         )
 set(ACC_SOURCE_FILES ${ACC_SOURCE_FILES} ${USPARSE_API_PATH}/spmv_imp.cpp strategy_picker.cpp)
@@ -46,7 +46,7 @@ if (USPARSE_ENABLE_HIP)
     target_include_directories(
             ${SPMV_KERNEL_LIB_NAME}
             PUBLIC
-            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}$<SEMICOLON>${USPARSE_API_PATH}/../$<SEMICOLON>${USPARSE_HIP_SOURCE_PATH}$<SEMICOLON>${PROJECT_BINARY_DIR}/generated>
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}$<SEMICOLON>${USPARSE_API_PATH}/../$<SEMICOLON>${USPARSE_HEADER_PATH}$<SEMICOLON>${USPARSE_HIP_SOURCE_PATH}$<SEMICOLON>${PROJECT_BINARY_DIR}/generated>
             $<INSTALL_INTERFACE:include>
     )
 endif ()

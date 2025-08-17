@@ -5,7 +5,7 @@
 #ifndef SPMV_ACC_COMMON_MACROS_H
 #define SPMV_ACC_COMMON_MACROS_H
 
-#include "../api/types.h"
+#include "usparse_matrix.h"
 
 #define VAR_FROM_CSR_DESC(csr_desc)                                                                                    \
   const int m = csr_desc.rows;                                                                                         \

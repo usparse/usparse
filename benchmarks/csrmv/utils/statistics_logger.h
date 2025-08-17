@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "utils/benchmark_time.h"
+#include "../../utils/benchmark_time.h"
 #include "verification.h"
 
 namespace statistics {

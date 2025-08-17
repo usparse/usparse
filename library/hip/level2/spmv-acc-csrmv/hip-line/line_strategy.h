@@ -8,7 +8,7 @@
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
 
-#include "api/types.h"
+#include "usparse_matrix.h"
 
 template <int ROW_SIZE, int WF_SIZE, int BLOCKS, typename I, typename T>
 __global__ void spmv_line_kernel(int m, const T alpha, const T beta, const I *row_offset, const I *csr_col_ind,

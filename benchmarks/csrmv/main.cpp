@@ -10,14 +10,15 @@
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
 
-#include "api/types.h"
+#include "usparse_matrix.h"
+#include "usparse_types.h"
 #include "benchmark_merge_path.hpp"
 #include "clipp.h"
 
-#include "csr_binary_reader.hpp"
-#include "csr_mtx_reader.hpp"
-#include "matrix_market_reader.hpp"
-#include "sparse_format.h"
+#include "matrix_format/csr_binary_reader.hpp"
+#include "matrix_format/csr_mtx_reader.hpp"
+#include "matrix_format/matrix_market_reader.hpp"
+#include "matrix_format/sparse_format.h"
 #include "utils.hpp"
 #include "utils/statistics_logger.h"
 
@@ -97,7 +98,7 @@ void test_spmv(std::string mtx_path, type_csr h_csr, host_vectors<dtype> h_vecto
   dtype *dev_x, *dev_y;
   type_csr d_csr = create_device_data(h_csr, h_vectors.hX, h_vectors.temphY, dev_x, dev_y);
   // set parameters
-  enum sparse_operation operation = operation_none;
+  enum usparse::usparse_operation operation = usparse::usparse_operation::operation_none;
   dtype alpha = 1.0;
   dtype beta = 1.0;
 

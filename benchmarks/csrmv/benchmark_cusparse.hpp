@@ -7,11 +7,11 @@
 
 #include <cusparse.h>
 
-#include <api/types.h>
+#include <usparse_matrix.h>
 
-#include "timer.h"
-#include "utils/benchmark_time.h"
-#include "utils/timer_utils.h"
+#include "timer/timer.h"
+#include "../utils/benchmark_time.h"
+#include "../utils/timer_utils.h"
 
 struct CuSparseGeneral : CsrSpMV {
 

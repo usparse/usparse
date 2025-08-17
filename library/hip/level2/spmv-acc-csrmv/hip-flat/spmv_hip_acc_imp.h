@@ -8,7 +8,7 @@
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
 
-#include "api/types.h"
+#include "usparse_matrix.h"
 #include "flat_imp_one_pass.hpp"
 
 template <int WF_SIZE, int R, int BLOCKS, int THREADS, typename I, typename T>

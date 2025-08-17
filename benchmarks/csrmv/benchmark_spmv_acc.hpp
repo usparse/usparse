@@ -5,9 +5,9 @@
 #ifndef SPMV_ACC_BENCHMARK_SPMV_ACC_HPP
 #define SPMV_ACC_BENCHMARK_SPMV_ACC_HPP
 
-#include "api/types.h"
-#include "utils/timer_utils.h"
-#include "utils/benchmark_time.h"
+#include "usparse_matrix.h"
+#include "../utils/timer_utils.h"
+#include "../utils/benchmark_time.h"
 
 #include "csr_spmv.hpp"
 

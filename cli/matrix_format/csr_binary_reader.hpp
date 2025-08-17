@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 
-#include <api/types.h>
+#include <usparse_matrix.h>
 
 /**
  * Class `csr_binary_reader` read csr binary format sparse matrix from file to memory.

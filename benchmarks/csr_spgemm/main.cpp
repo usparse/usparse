@@ -7,9 +7,9 @@
 #include <sys/time.h>
 #include <vector>
 #include "api/spgemm_hip_api.h"
-#include "cli/csr_binary_reader.hpp"
-#include "cli/matrix_market_reader.hpp"
-#include "cli/sparse_format.h"
+#include "matrix_format/csr_binary_reader.hpp"
+#include "matrix_format/matrix_market_reader.hpp"
+#include "matrix_format/sparse_format.h"
 #include "common.h"
 #include "memory_copy.hpp"
 #include "vertify.hpp"

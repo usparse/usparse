@@ -8,7 +8,7 @@
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
 
-#include "api/types.h"
+#include "usparse_matrix.h"
 
 __global__ void native_thread_row(int trans, const double alpha, const double beta, int m, int n, const int *rowptr,
                                   const int *colindex, const double *value, const double *x, double *y);

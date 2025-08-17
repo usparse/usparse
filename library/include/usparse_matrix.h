@@ -53,4 +53,12 @@ namespace usparse {
   };
 } // namespace usparse
 
+// for backward compatibility of csrmv.
+// todo: remove it.
+template <typename I, typename T>
+using var_csr_desc = usparse::var_csr_desc<I, T>;
+
+template <typename I, typename T>
+using csr_desc = usparse::csr_desc<I, T>;
+
 #endif // USPARSE_HIP_USPARSE_MATRIX_H

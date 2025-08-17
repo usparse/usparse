@@ -1,5 +1,5 @@
 #include "../utils/benchmark_time.h"
-#include "api/types.h"
+#include "usparse_matrix.h"
 #include "merge_path_config.h"
 #include "merge_path_partition.h"
 #include "merge_path_reduction.h"

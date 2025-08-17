@@ -2,7 +2,7 @@
 #define SPMV_ACC_BENCHMARK_MERGE_PATH_SPMV_H
 
 #include "../utils/benchmark_time.h"
-#include "api/types.h"
+#include "usparse_matrix.h"
 #include "merge_path_config.h"
 
 template <int REDUCTION_ALGORITHM = Binary, int UPDATE_ALGORITHM = SingleBlock>
