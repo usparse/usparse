@@ -33,6 +33,29 @@ namespace usparse {
                                                                                      d_temp_buffer, result);
   }
 
+  template <typename INDEX_TYPE, typename DATA_TYPE, int THREADS, int ELES_PER_THREAD, int STRIDES>
+  __device__ __forceinline__ void calculate_norm_cg(cooperative_groups::grid_group &grid, const int &g_tid,
+                                                    const DATA_TYPE (&reg_x)[STRIDES][ELES_PER_THREAD],
+                                                    DATA_TYPE *d_temp_buffer, DATA_TYPE *result) {
+    DATA_TYPE thread_local_sum = static_cast<DATA_TYPE>(0);
+#pragma unroll
+    for (int i = 0; i < STRIDES; i++) {
+#pragma unroll
+      for (int j = 0; j < ELES_PER_THREAD; j++) {
+        // todo: check array length. because reg_x may be dirty data.
+        thread_local_sum += reg_x[i][j] * reg_x[i][j];
+      }
+    }
+
+    usparse::device::reduce_using_cooperative_groups<INDEX_TYPE, DATA_TYPE, THREADS>(grid, thread_local_sum,
+                                                                                     d_temp_buffer, result);
+
+    // calculate norm
+    if (grid.thread_rank() == 0) {
+      *result = sqrt(*result);
+    }
+  }
+
   /**
    * load a array in global device memory into register.
    * each thead loads @tparam ELES_PER_THREAD * @tparam STRIDES elements.
@@ -123,11 +146,22 @@ namespace usparse {
     }
   }
 
+  template <typename INDEX_TYPE, typename DATA_TYPE, int ELES_PER_THREAD, int STRIDES>
+  __device__ __forceinline__ void register_dscal(DATA_TYPE (&reg_x)[STRIDES][ELES_PER_THREAD], const DATA_TYPE alpha) {
+#pragma unroll
+    for (int i = 0; i < STRIDES; i++) {
+#pragma unroll
+      for (int j = 0; j < ELES_PER_THREAD; j++) {
+        reg_x[i][j] = alpha * reg_x[i][j];
+      }
+    }
+  }
+
   constexpr int RESTART_TIMES = 20; // todo:
 
   template <typename INDEX_TYPE, typename DATA_TYPE, int THREADS, int ELES_PER_THREAD, int STRIDES>
   __global__ void __launch_bounds__(512)
-      dotprod_axpy_fusion_kernel(DATA_TYPE *d_r0, const DATA_TYPE *d_v, DATA_TYPE *d_h, DATA_TYPE *d_temp_buffer,
+      dotprod_axpy_fusion_kernel(DATA_TYPE *d_r0, DATA_TYPE *d_v, DATA_TYPE *d_h, DATA_TYPE *d_temp_buffer,
                                  const INDEX_TYPE N, const INDEX_TYPE m, const INDEX_TYPE i) {
     // init cooperative groups
     cooperative_groups::grid_group grid = cooperative_groups::this_grid();
@@ -160,8 +194,21 @@ namespace usparse {
       // register level daxpy
       register_daxpy<INDEX_TYPE, DATA_TYPE, ELES_PER_THREAD, STRIDES>(reg_x, reg_y, alpha);
     }
+    const INDEX_TYPE h_idx = (i + 1) * RESTART_TIMES + i;
+    calculate_norm_cg<INDEX_TYPE, DATA_TYPE, THREADS, ELES_PER_THREAD, STRIDES>(grid, gid, reg_x, d_temp_buffer,
+                                                                                &(d_h[h_idx]));
+
+    grid.sync();
+    const DATA_TYPE alpha = 1 / d_h[h_idx];
+
+    register_dscal<INDEX_TYPE, DATA_TYPE, ELES_PER_THREAD, STRIDES>(reg_x, alpha);
+
+    // store back to array d_v[i+1]
+    store_v_to_device<INDEX_TYPE, DATA_TYPE, ELES_PER_THREAD, STRIDES>(g_threads_num, gid, reg_x, d_v + (i + 1) * N, N);
+
     // store back to d_r0;
-    store_v_to_device<INDEX_TYPE, DATA_TYPE, ELES_PER_THREAD, STRIDES>(g_threads_num, gid, reg_x, d_r0, N);
+    // d_r0 :The d_r0 array is not used after the current loop, just
+    // store_v_to_device<INDEX_TYPE, DATA_TYPE, ELES_PER_THREAD, STRIDES>(g_threads_num, gid, reg_x, d_r0, N);
   }
 } // namespace usparse
 

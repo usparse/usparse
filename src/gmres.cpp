@@ -328,14 +328,13 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
           alpha = -d_H_f[k * RESTART_TIMES + i];
           usparse::device_daxpy<uint, float, float>(alpha, d_V_f + N * k, d_r0_f, N);
         }
+        usparse::device_calculateNorm(d_r0_f, N, &d_H_f[(i + 1) * RESTART_TIMES + i], d_temp_buffer, 0);
+        hipDeviceSynchronize();
+
+        alpha = 1.0 / d_H_f[(i + 1) * RESTART_TIMES + i];
+        usparse::device_dscal<uint, float>(alpha, d_r0_f, N);
+        usparse::device_dcopy(d_r0_f, d_V_f + N * (i + 1), N);
       }
-
-      usparse::device_calculateNorm(d_r0_f, N, &d_H_f[(i + 1) * RESTART_TIMES + i], d_temp_buffer, 0);
-      hipDeviceSynchronize();
-
-      alpha = 1.0 / d_H_f[(i + 1) * RESTART_TIMES + i];
-      usparse::device_dscal<uint, float>(alpha, d_r0_f, N);
-      usparse::device_dcopy(d_r0_f, d_V_f + N * (i + 1), N);
 
       usparse::device_rotation2((uint)(RESTART_TIMES), d_H_f, d_cs_f, d_sn_f, d_s_f, (uint)(i)); // todo: uint to int
       hipDeviceSynchronize();

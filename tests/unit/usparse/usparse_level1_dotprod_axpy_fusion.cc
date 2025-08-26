@@ -33,6 +33,20 @@ void dcopy(const double *src, double *dst, uint N) {
   }
 }
 
+double calculateNorm(const double *vec, uint N) {
+  double sum = 0.0;
+  for (uint i = 0; i < N; ++i) {
+    sum += vec[i] * vec[i];
+  }
+  return std::sqrt(sum);
+}
+
+void dscal(double alpha, double *x, uint N) {
+  for (uint i = 0; i < N; ++i) {
+    x[i] *= alpha;
+  }
+}
+
 void print_arr(const double *src, const uint start, const uint end) {
   for (uint i = start; i < end; ++i) {
     printf("Host, i:%d, v:%f\n", i, src[i]);
@@ -71,6 +85,10 @@ TEST(Level1Test, dotProdAxpyFusion) {
     const double alpha = -h_H[k * RESTART_TIMES + i];
     daxpy(alpha, h_V.data() + N * k, h_r0.data(), N);
   }
+  h_H[(i + 1) * RESTART_TIMES + i] = calculateNorm(h_r0.data(), N);
+  const double alpha = 1.0 / h_H[(i + 1) * RESTART_TIMES + i];
+  dscal(alpha, h_r0.data(), N);
+  dcopy(h_r0.data(), h_V.data() + N * (i + 1), N);
 
   std::vector<double> r0_expected(N);
   dcopy(h_r0.data(), r0_expected.data(), N);
@@ -111,6 +129,10 @@ TEST(Level1Test, dotProdAxpyFusion) {
       hipMemcpy(&dev_result_on_host, d_H + (0 * RESTART_TIMES + 0), 1 * sizeof(double), hipMemcpyDeviceToHost));
   EXPECT_DOUBLE_EQ(dev_result_on_host, h_H[0 * RESTART_TIMES + 0]);
 
+  double dev_h_on_host = 0; //  result: H[1, 0]
+  TEST_HIP_CHECK(hipMemcpy(&dev_h_on_host, d_H + (1 * RESTART_TIMES + 0), 1 * sizeof(double), hipMemcpyDeviceToHost));
+  EXPECT_DOUBLE_EQ(dev_h_on_host, h_H[1 * RESTART_TIMES + 0]);
+
   std::vector<double> r0_dev_result(N); // result : r0[N]
   TEST_HIP_CHECK(hipMemcpy(r0_dev_result.data(), d_r0, N * sizeof(double), hipMemcpyDeviceToHost));
 
@@ -122,6 +144,20 @@ TEST(Level1Test, dotProdAxpyFusion) {
       printf("%d %f %f.\n", k, r0_expected[k], r0_dev_result[k]);
     }
     count++;
+  }
+  printf("----------------------\n");
+
+  std::vector<double> vi_result(N); // result : r0[N]
+  TEST_HIP_CHECK(hipMemcpy(vi_result.data(), d_V + (i + 1) * N, N * sizeof(double), hipMemcpyDeviceToHost));
+
+  int cnt = 0;
+  printf("----------------------\nNo. v[i+1] dev_result:\n");
+  for (int k = 0; k < N; ++k) {
+    EXPECT_NEAR(vi_result[k], r0_expected[k], 1e-9);
+    if (cnt < 10) {
+      printf("%d %f %f.\n", k, r0_expected[k], vi_result[k]);
+    }
+    cnt++;
   }
   printf("----------------------\n");
 

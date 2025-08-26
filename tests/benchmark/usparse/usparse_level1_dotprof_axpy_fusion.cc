@@ -15,7 +15,7 @@
 
 // benchmarking usparse::dotprod_axpy_fusion
 template <typename T> static void Usparse_dotprod_axpy_fusion(benchmark::State &state) {
-  constexpr int N = 100000;
+  const int N = state.range(0);
   constexpr int RESTART_TIMES = 20;
   constexpr int I = 2;
 
@@ -67,6 +67,10 @@ template <typename T> static void Usparse_dotprod_axpy_fusion(benchmark::State &
   hipFree(d_V);
   hipFree(d_H);
   hipFree(d_temp_buffer);
+
+  const std::size_t mem_size = N * sizeof(T) * 2;
+  state.counters["Bandwidth"] =
+      benchmark::Counter(mem_size * state.iterations(), benchmark::Counter::kIsRate, benchmark::Counter::kIs1024);
 }
 
 BENCHMARK_TEMPLATE(Usparse_dotprod_axpy_fusion, float)
