@@ -49,6 +49,11 @@ if (USPARSE_ENABLE_HIP)
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}$<SEMICOLON>${USPARSE_API_PATH}/../$<SEMICOLON>${USPARSE_HEADER_PATH}$<SEMICOLON>${USPARSE_HIP_SOURCE_PATH}$<SEMICOLON>${PROJECT_BINARY_DIR}/generated>
             $<INSTALL_INTERFACE:include>
     )
+    target_link_libraries(
+            ${SPMV_KERNEL_LIB_NAME}
+            PUBLIC
+            ${USPARSE_LIB_NAME}
+    )
 endif ()
 
 ##########################
