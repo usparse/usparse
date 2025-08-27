@@ -4,6 +4,7 @@
 
 #include <iostream>
 
+#include "../../level1/usparse_level1.h"
 #include "../common/CPU/csr_macros.h"
 #include "flat_config.h"
 #include "spmv_hip_acc_imp.h"
@@ -55,16 +56,40 @@ void flat_sparse_spmv(int trans, const double alpha, const double beta, const cs
   adaptive_flat_sparse_spmv(nnz_block_0, nnz_block_1, trans, alpha, beta, d_csr_desc, x, y);
 }
 
+template <typename DATA_TYPE, typename INDEX_TYPE, int BEAT_Y_POLICY>
+inline void flat_set_beta_y(DATA_TYPE *y, const INDEX_TYPE m, const DATA_TYPE beta) {
+  if (BEAT_Y_POLICY == BEAT_Y_POLICY_AUTO) {
+    // set beta*y.
+    if (beta == 0.0) {
+      // set vector y to 0. because: y = A*x + 0.0 *y.
+      usparse::device_scale_set(0.0, y, m);
+    } else if (beta == 1.0) {
+      // do nothing. because flat is based on atomicAdd.
+    } else {
+      usparse::device_dscal(beta, y, m);
+    }
+  } else if (BEAT_Y_POLICY == BEAT_Y_POLICY_ZERO) {
+    usparse::device_scale_set(0.0, y, m);
+  } else if (BEAT_Y_POLICY == BEAT_Y_POLICY_ONE) {
+    return; // nothing to do.
+  } else {  // BEAT_Y_POLICY == BEAT_Y_POLICY_OTHER
+    usparse::device_dscal(beta, y, m);
+  }
+}
+
 /**
  * set flat kernel template parameters adaptively.
  * currently, it only support adaptive template parameters on one-pass flat method.
  * \note: if config item FLAT_ONE_PASS_ADAPTIVE is set to false, one-pass adaptive will be disabled.
  */
-void adaptive_flat_sparse_spmv(const int nnz_block_0, const int nnz_block_1, int trans, const double alpha, const double beta,
-                               const csr_desc<int, double> d_csr_desc, const double *x, double *y) {
+template <int BEAT_Y_POLICY>
+void adaptive_flat_sparse_spmv(const int nnz_block_0, const int nnz_block_1, int trans, const double alpha,
+                               const double beta, const csr_desc<int, double> d_csr_desc, const double *x, double *y) {
   VAR_FROM_CSR_DESC(d_csr_desc)
   const int nnz = d_csr_desc.nnz;
   const int n = d_csr_desc.cols;
+
+  flat_set_beta_y<double, int, BEAT_Y_POLICY>(y, m, beta);
 
   constexpr int R = 2;
   constexpr int THREADS_PER_BLOCK = 512;
@@ -107,3 +132,23 @@ void adaptive_flat_sparse_spmv(const int nnz_block_0, const int nnz_block_1, int
                                                                           colindex, value, x, y);
   }
 }
+
+template void adaptive_flat_sparse_spmv<BEAT_Y_POLICY_AUTO>(const int nnz_block_0, const int nnz_block_1, int trans,
+                                                            const double alpha, const double beta,
+                                                            const csr_desc<int, double> d_csr_desc, const double *x,
+                                                            double *y);
+
+template void adaptive_flat_sparse_spmv<BEAT_Y_POLICY_ZERO>(const int nnz_block_0, const int nnz_block_1, int trans,
+                                                            const double alpha, const double beta,
+                                                            const csr_desc<int, double> d_csr_desc, const double *x,
+                                                            double *y);
+
+template void adaptive_flat_sparse_spmv<BEAT_Y_POLICY_ONE>(const int nnz_block_0, const int nnz_block_1, int trans,
+                                                           const double alpha, const double beta,
+                                                           const csr_desc<int, double> d_csr_desc, const double *x,
+                                                           double *y);
+
+template void adaptive_flat_sparse_spmv<BEAT_Y_POLICY_OTHER>(const int nnz_block_0, const int nnz_block_1, int trans,
+                                                             const double alpha, const double beta,
+                                                             const csr_desc<int, double> d_csr_desc, const double *x,
+                                                             double *y);

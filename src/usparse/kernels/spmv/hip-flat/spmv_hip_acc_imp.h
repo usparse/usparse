@@ -23,6 +23,7 @@ __global__ void pre_calc_break_point(const I *__restrict__ row_ptr, const I m, I
 void flat_sparse_spmv(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
                       const csr_desc<int, double> d_csr_desc, const double *x, double *y);
 
+template <int BEAT_Y_POLICY = BEAT_Y_POLICY_AUTO>
 void adaptive_flat_sparse_spmv(const int nnz_block_0, const int nnz_block_1, int trans, const double alpha, const double beta,
                                const csr_desc<int, double> d_csr_desc, const double *x, double *y);
 
