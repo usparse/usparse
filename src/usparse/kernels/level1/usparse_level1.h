@@ -60,6 +60,22 @@ namespace usparse {
    */
   template <typename INDEX_TYPE, typename FORM_TYPE, typename TO_TYPE>
   void device_cast(const FORM_TYPE *src, TO_TYPE *dst, const INDEX_TYPE N);
+
+  /**
+   * set all elements in a vector to the given scale value: alpha.
+   *
+   * for(i = 0:N) {
+   *    data[i] = alpha;
+   * }
+   * @tparam INDEX_TYPE data type for index
+   * @tparam DATA_TYPE data type for vector value
+   * @param alpha the scale: alpha
+   * @param data the vector data
+   * @param N the size of the vector data
+   */
+  template <typename INDEX_TYPE, typename DATA_TYPE>
+  void device_scale_set(const DATA_TYPE alpha, DATA_TYPE *data, const INDEX_TYPE N);
+
 } // namespace usparse
 
 #endif // USPARSE_KERNELS_LEVEL1_USPARSE_LEVEL1_H
