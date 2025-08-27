@@ -15,7 +15,7 @@
 
 // benchmarking usparse::dotprod_axpy_fusion
 template <typename T> static void Usparse_dotprod_axpy_fusion(benchmark::State &state) {
-  constexpr int N = 100000;
+  const int N = state.range(0);
   constexpr int RESTART_TIMES = 20;
   constexpr int I = 2;
 
@@ -54,12 +54,13 @@ template <typename T> static void Usparse_dotprod_axpy_fusion(benchmark::State &
 
   std::size_t buffer_size = 0;
   T *d_temp_buffer = nullptr;
-  usparse::dotprod_axpy_fusion<uint, T>(nullptr, nullptr, nullptr, d_temp_buffer, (uint)N, (uint)m, (uint)i,
-                                        &buffer_size);
+  usparse::dotprod_axpy_fusion<uint, T, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
+      nullptr, nullptr, nullptr, d_temp_buffer, (uint)N, (uint)m, (uint)i, &buffer_size);
   TEST_HIP_CHECK(hipMalloc(&d_temp_buffer, buffer_size));
 
   for (auto _ : state) {
-    usparse::dotprod_axpy_fusion<uint, T>(d_r0, d_V, d_H, d_temp_buffer, (uint)N, (uint)m, (uint)i, 0);
+    usparse::dotprod_axpy_fusion<uint, T, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
+        d_r0, d_V, d_H, d_temp_buffer, (uint)N, (uint)m, (uint)i, 0);
     hipDeviceSynchronize();
   }
 
@@ -67,6 +68,10 @@ template <typename T> static void Usparse_dotprod_axpy_fusion(benchmark::State &
   hipFree(d_V);
   hipFree(d_H);
   hipFree(d_temp_buffer);
+
+  const std::size_t mem_size = N * sizeof(T) * 2;
+  state.counters["Bandwidth"] =
+      benchmark::Counter(mem_size * state.iterations(), benchmark::Counter::kIsRate, benchmark::Counter::kIs1024);
 }
 
 BENCHMARK_TEMPLATE(Usparse_dotprod_axpy_fusion, float)
