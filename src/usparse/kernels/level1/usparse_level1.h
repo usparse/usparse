@@ -31,12 +31,12 @@ namespace usparse {
    * @param m the max restart times (currently not used). see also: RESTART_TIMES.
    * @param i the loop times (see above pseudocode).
    */
-  template <typename INDEX_TYPE, typename DATA_TYPE>
+  template <typename INDEX_TYPE, typename DATA_TYPE, int OPT_LEVEL>
   void dotprod_axpy_fusion(DATA_TYPE *d_r0, const DATA_TYPE *d_v, DATA_TYPE *d_h, DATA_TYPE *d_temp_buffer,
                            const INDEX_TYPE N, const INDEX_TYPE m, const INDEX_TYPE i,
                            std::size_t *temp_buffer_size_byte);
 
-  template <typename INDEX_TYPE, typename DATA_TYPE, int THREADS, int ELES_PER_THREAD, int STRIDES>
+  template <typename INDEX_TYPE, typename DATA_TYPE, int THREADS, int ELES_PER_THREAD, int STRIDES, int OPT_LEVEL>
   void dotprod_axpy_fusion_internal_imp(DATA_TYPE *d_r0, const DATA_TYPE *d_v, DATA_TYPE *d_h, DATA_TYPE *d_temp_buffer,
                                         const INDEX_TYPE N, const INDEX_TYPE m, const INDEX_TYPE i,
                                         std::size_t *temp_buffer_size_byte);

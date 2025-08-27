@@ -7,6 +7,8 @@
 
 // header in usparse library for GMRES calling
 
+#include "gmres_optimization_config.h"
+
 #include "kernels/level1/usparse_level1.h"
 #include "kernels/level2/usparse_csrmv.h"
 #include "kernels/level2/usparse_rotation.h"

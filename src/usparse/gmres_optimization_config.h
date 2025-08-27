@@ -1,0 +1,16 @@
+//
+// Created by genshen to 2025-08-13.
+//
+
+#ifndef USPARSE_GMRES_OPTIMIZATION_CONFIG_H
+#define USPARSE_GMRES_OPTIMIZATION_CONFIG_H
+
+namespace usparse {
+  constexpr int GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_NONE = 0;
+  constexpr int GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_1 = 1; // only fusion inner loop
+  constexpr int GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2 = 2; // make full fusion.
+
+  constexpr int GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION = GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2;
+}
+
+#endif // USPARSE_GMRES_OPTIMIZATION_CONFIG_H

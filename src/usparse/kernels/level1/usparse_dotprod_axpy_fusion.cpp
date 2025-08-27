@@ -9,6 +9,7 @@
 
 #include <hip/hip_cooperative_groups.h>
 
+#include "gmres_optimization_config.h"
 #include "kernels/primitives/usparse_reduce.hpp"
 #include "kernels/usparse_config.hpp"
 #include "usparse_level1.h"
@@ -159,7 +160,7 @@ namespace usparse {
 
   constexpr int RESTART_TIMES = 20; // todo:
 
-  template <typename INDEX_TYPE, typename DATA_TYPE, int THREADS, int ELES_PER_THREAD, int STRIDES>
+  template <typename INDEX_TYPE, typename DATA_TYPE, int THREADS, int ELES_PER_THREAD, int STRIDES, int OPT_LEVEL>
   __global__ void __launch_bounds__(512)
       dotprod_axpy_fusion_kernel(DATA_TYPE *d_r0, DATA_TYPE *d_v, DATA_TYPE *d_h, DATA_TYPE *d_temp_buffer,
                                  const INDEX_TYPE N, const INDEX_TYPE m, const INDEX_TYPE i) {
@@ -194,25 +195,29 @@ namespace usparse {
       // register level daxpy
       register_daxpy<INDEX_TYPE, DATA_TYPE, ELES_PER_THREAD, STRIDES>(reg_x, reg_y, alpha);
     }
-    const INDEX_TYPE h_idx = (i + 1) * RESTART_TIMES + i;
-    calculate_norm_cg<INDEX_TYPE, DATA_TYPE, THREADS, ELES_PER_THREAD, STRIDES>(grid, gid, reg_x, d_temp_buffer,
-                                                                                &(d_h[h_idx]));
 
-    grid.sync();
-    const DATA_TYPE alpha = 1 / d_h[h_idx];
+    if (OPT_LEVEL == usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_1) {
+      // store back to d_r0;
+      store_v_to_device<INDEX_TYPE, DATA_TYPE, ELES_PER_THREAD, STRIDES>(g_threads_num, gid, reg_x, d_r0, N);
+    } else { // GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2
+      const INDEX_TYPE h_idx = (i + 1) * RESTART_TIMES + i;
+      calculate_norm_cg<INDEX_TYPE, DATA_TYPE, THREADS, ELES_PER_THREAD, STRIDES>(grid, gid, reg_x, d_temp_buffer,
+                                                                                  &(d_h[h_idx]));
 
-    register_dscal<INDEX_TYPE, DATA_TYPE, ELES_PER_THREAD, STRIDES>(reg_x, alpha);
+      grid.sync();
+      const DATA_TYPE alpha = 1 / d_h[h_idx];
 
-    // store back to array d_v[i+1]
-    store_v_to_device<INDEX_TYPE, DATA_TYPE, ELES_PER_THREAD, STRIDES>(g_threads_num, gid, reg_x, d_v + (i + 1) * N, N);
+      register_dscal<INDEX_TYPE, DATA_TYPE, ELES_PER_THREAD, STRIDES>(reg_x, alpha);
 
-    // store back to d_r0;
-    // d_r0 :The d_r0 array is not used after the current loop, just
-    // store_v_to_device<INDEX_TYPE, DATA_TYPE, ELES_PER_THREAD, STRIDES>(g_threads_num, gid, reg_x, d_r0, N);
+      // store back to array d_v[i+1]
+      // d_r0: The d_r0 array is not used after the current loop, just need to store d_v[i+1].
+      store_v_to_device<INDEX_TYPE, DATA_TYPE, ELES_PER_THREAD, STRIDES>(g_threads_num, gid, reg_x, d_v + (i + 1) * N,
+                                                                         N);
+    }
   }
 } // namespace usparse
 
-template <typename INDEX_TYPE, typename DATA_TYPE, int THREADS, int ELES_PER_THREAD, int STRIDES>
+template <typename INDEX_TYPE, typename DATA_TYPE, int THREADS, int ELES_PER_THREAD, int STRIDES, int OPT_LEVEL>
 void usparse::dotprod_axpy_fusion_internal_imp(DATA_TYPE *d_r0, const DATA_TYPE *d_v, DATA_TYPE *d_h,
                                                DATA_TYPE *d_temp_buffer, const INDEX_TYPE N, const INDEX_TYPE m,
                                                const INDEX_TYPE i, std::size_t *temp_buffer_size_byte) {
@@ -225,9 +230,9 @@ void usparse::dotprod_axpy_fusion_internal_imp(DATA_TYPE *d_r0, const DATA_TYPE 
   } else {
     void *kernelArgs[] = {(void *)&d_r0, (void *)&d_v, (void *)&d_h, (void *)&d_temp_buffer,
                           (void *)&N,    (void *)&m,   (void *)&i};
-    hipError_t launchErr =
-        hipLaunchCooperativeKernel(dotprod_axpy_fusion_kernel<INDEX_TYPE, DATA_TYPE, THREADS, ELES_PER_THREAD, STRIDES>,
-                                   BLOCKS, THREADS, kernelArgs, 0, 0);
+    hipError_t launchErr = hipLaunchCooperativeKernel(
+        dotprod_axpy_fusion_kernel<INDEX_TYPE, DATA_TYPE, THREADS, ELES_PER_THREAD, STRIDES, OPT_LEVEL>, BLOCKS,
+        THREADS, kernelArgs, 0, 0);
 
     if (launchErr != hipSuccess) {
       std::cerr << "Kernel launch failed: " << hipGetErrorString(launchErr) << std::endl;
@@ -235,13 +240,13 @@ void usparse::dotprod_axpy_fusion_internal_imp(DATA_TYPE *d_r0, const DATA_TYPE 
   }
 }
 
-template <typename INDEX_TYPE, typename DATA_TYPE>
+template <typename INDEX_TYPE, typename DATA_TYPE, int OPT_LEVEL>
 void usparse::dotprod_axpy_fusion(DATA_TYPE *d_r0, const DATA_TYPE *d_v, DATA_TYPE *d_h, DATA_TYPE *d_temp_buffer,
                                   const INDEX_TYPE N, const INDEX_TYPE m, const INDEX_TYPE i,
                                   std::size_t *temp_buffer_size_byte) {
 
 #define FUSION_SHORT_MARK(THREADS, ELES_PER_THREAD, STRIDES)                                                           \
-  dotprod_axpy_fusion_internal_imp<INDEX_TYPE, DATA_TYPE, THREADS, ELES_PER_THREAD, STRIDES>(                          \
+  dotprod_axpy_fusion_internal_imp<INDEX_TYPE, DATA_TYPE, THREADS, ELES_PER_THREAD, STRIDES, OPT_LEVEL>(               \
       d_r0, d_v, d_h, d_temp_buffer, N, m, i, temp_buffer_size_byte);
 
   if (N < 163840) { // 163840
@@ -264,9 +269,18 @@ void usparse::dotprod_axpy_fusion(DATA_TYPE *d_r0, const DATA_TYPE *d_v, DATA_TY
 #undef FUSION_SHORT_MARK
 }
 
-template void usparse::dotprod_axpy_fusion<uint, double>(double *d_r0, const double *d_v, double *d_h,
-                                                         double *d_temp_buffer, const uint N, const uint m,
-                                                         const uint i, std::size_t *temp_buffer_size_byte);
-template void usparse::dotprod_axpy_fusion<uint, float>(float *d_r0, const float *d_v, float *d_h, float *d_temp_buffer,
-                                                        const uint N, const uint m, const uint i,
-                                                        std::size_t *temp_buffer_size_byte);
+template void usparse::dotprod_axpy_fusion<uint, double, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_1>(
+    double *d_r0, const double *d_v, double *d_h, double *d_temp_buffer, const uint N, const uint m, const uint i,
+    std::size_t *temp_buffer_size_byte);
+
+template void usparse::dotprod_axpy_fusion<uint, float, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_1>(
+    float *d_r0, const float *d_v, float *d_h, float *d_temp_buffer, const uint N, const uint m, const uint i,
+    std::size_t *temp_buffer_size_byte);
+
+template void usparse::dotprod_axpy_fusion<uint, double, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
+    double *d_r0, const double *d_v, double *d_h, double *d_temp_buffer, const uint N, const uint m, const uint i,
+    std::size_t *temp_buffer_size_byte);
+
+template void usparse::dotprod_axpy_fusion<uint, float, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
+    float *d_r0, const float *d_v, float *d_h, float *d_temp_buffer, const uint N, const uint m, const uint i,
+    std::size_t *temp_buffer_size_byte);

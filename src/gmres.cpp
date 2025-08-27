@@ -319,9 +319,19 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
       usparse::device_scsrmv<uint, float>(dev_A->nrows, dev_A->ncols, dev_A->nnz, dev_A->rows, dev_A->cols, d_A_val_f,
                                           d_vi_f, d_r0_f, &handle, &descrA, &info);
 
-      if (GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION) {
-        usparse::dotprod_axpy_fusion<uint, float>(d_r0_f, d_V_f, d_H_f, d_temp_buffer, N, RESTART_TIMES, i, 0);
-      } else {
+      if (usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION == usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2) {
+        usparse::dotprod_axpy_fusion<uint, float, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
+            d_r0_f, d_V_f, d_H_f, d_temp_buffer, N, RESTART_TIMES, i, 0);
+      } else if (usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION ==
+                 usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_1) {
+        usparse::dotprod_axpy_fusion<uint, float, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_1>(
+            d_r0_f, d_V_f, d_H_f, d_temp_buffer, N, RESTART_TIMES, i, 0);
+        usparse::device_calculateNorm(d_r0_f, N, &d_H_f[(i + 1) * RESTART_TIMES + i], d_temp_buffer, 0);
+        hipDeviceSynchronize();
+        alpha = 1.0 / d_H_f[(i + 1) * RESTART_TIMES + i];
+        usparse::device_dscal<uint, float>(alpha, d_r0_f, N);
+        usparse::device_dcopy(d_r0_f, d_V_f + N * (i + 1), N);
+      } else { // GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_NONE
         for (k = 0; k <= i; k++) {
           usparse::device_dotProduct(d_r0_f, d_V_f + k * N, N, &d_H_f[k * RESTART_TIMES + i], d_temp_buffer, 0);
           hipDeviceSynchronize();
