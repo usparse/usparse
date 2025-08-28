@@ -2,13 +2,15 @@
 #SBATCH -o %j.out        #指定作业的标准输出
 #SBATCH -e %j.err        #指定作业的错误输出
 #SBATCH -J gmres_DCU     #指定作业名称
-#SBATCH -p wzhdexclu05   #指定作业运行的队列
+#SBATCH -p wzidnormal   #指定作业运行的队列
 #SBATCH -t 00:30:00      #指定作业最大运行120分钟
 #SBATCH -N 1             #指定节点数
 #SBATCH --exclusive      #节点独享
 #SBATCH --gres dcu:1     #单个DCU
 
-source ./srcipts/env.sh
+module purge
+module load compiler/dtk/25.04
+export CC=hipcc CXX=hipcc
 
 make clean && make
 
@@ -23,7 +25,7 @@ MATRIX_DIR="/work/share/data/XDZS2025/GMRES/sparseMatrixSet"
 for i in $(seq 1 80)
 do
     MTX_FILE="${MATRIX_DIR}/mtx${i}.bin"
-    
+
     if [ -f "$MTX_FILE" ]; then
         echo "================================================="
         echo "Running GMRES for mtx${i}.bin"

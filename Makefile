@@ -1,16 +1,34 @@
-.PHONY: all clean
+CXX = hipcc
 
-SHELL:=/bin/bash
+CXXFLAGS = -O2 -std=c++14 -w
+LDFLAGS  =
 
-all: gmres
+DIR_OBJ = obj
+DIR_SRC = src
+DIR_INC = inc
 
-gmres: ./build/bin/gmres-host
+CPP_SRCS := $(shell find $(DIR_SRC) -name '*.cpp')
 
-./build/bin/gmres-host:
-	source ./scripts/env.sh
-	cmake -B ./build -S ./ -DCMAKE_BUILD_TYPE=Release -DUSPARSE_UNIT_TEST_ENABLE=OFF -DUSPARSE_BENCHMARK_ENABLE=OFF -DGMRES_TOOLS_ENABLE=OFF
-	cmake --build ./build -j 4
-	ln -s -f ./build/bin/gmres-host ./gmres
+AOBJS := $(patsubst $(DIR_SRC)/%.cpp,$(DIR_OBJ)/%.o,$(CPP_SRCS))
 
+DEPS := $(shell find $(DIR_INC) -name '*.hpp') \
+        $(shell find $(DIR_SRC) -name '*.h') \
+        $(shell find $(DIR_SRC) -name '*.hpp')
+
+INCLUDES := $(addprefix -I,$(shell find $(DIR_INC) -type d)) \
+            $(addprefix -I,$(shell find $(DIR_SRC) -type d))
+
+LIBS = -L$(ROCM_PATH)/lib64 -lrocsparse -lamdhip64
+
+PROG = gmres
+
+$(DIR_OBJ)/%.o: $(DIR_SRC)/%.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) -c $(CXXFLAGS) $(INCLUDES) $< -o $@
+
+$(PROG): $(AOBJS)
+	$(CXX) $(LDFLAGS) $(LIBS) $(INCLUDES) $^ -o $@
+
+.PHONY: clean
 clean:
-	rm -rf ./build/ ./gmres
+	rm -rf $(DIR_OBJ) $(PROG)
