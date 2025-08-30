@@ -269,6 +269,28 @@ void usparse::dotprod_axpy_fusion(DATA_TYPE *d_r0, const DATA_TYPE *d_v, DATA_TY
 #undef FUSION_SHORT_MARK
 }
 
+#define FUSION_SHORT_MARK(THREADS, ELES_PER_THREAD, STRIDES)                                                           \
+  template void usparse::dotprod_axpy_fusion_internal_imp<uint, float, THREADS, ELES_PER_THREAD, STRIDES,              \
+                                                          usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(    \
+      float *, const float *, float *, float *, const uint, const uint, const uint, std::size_t *);
+
+FUSION_SHORT_MARK(128, 2, 2);
+FUSION_SHORT_MARK(128, 2, 4);
+FUSION_SHORT_MARK(128, 4, 2);
+FUSION_SHORT_MARK(128, 4, 4);
+
+FUSION_SHORT_MARK(256, 2, 2);
+FUSION_SHORT_MARK(256, 2, 4);
+FUSION_SHORT_MARK(256, 4, 2);
+FUSION_SHORT_MARK(256, 4, 4);
+
+FUSION_SHORT_MARK(512, 2, 2);
+FUSION_SHORT_MARK(512, 2, 4);
+FUSION_SHORT_MARK(512, 4, 2);
+FUSION_SHORT_MARK(512, 4, 4);
+
+#undef FUSION_SHORT_MARK
+
 template void usparse::dotprod_axpy_fusion<uint, double, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_1>(
     double *d_r0, const double *d_v, double *d_h, double *d_temp_buffer, const uint N, const uint m, const uint i,
     std::size_t *temp_buffer_size_byte);
