@@ -31,6 +31,25 @@ void usparse::device_scsrmv(const INDEX_TYPE nrows, const INDEX_TYPE ncols, cons
                    (rocsparse_int *)(csr_row_ptr), (rocsparse_int *)(csr_col_index), *info, dev_x, &hip_beta, dev_y);
 }
 
+template <typename INDEX_TYPE, typename VALUE_TYPE>
+void usparse::device_adaptive_analysis(int trans, const VALUE_TYPE alpha, const VALUE_TYPE beta,
+                                       const csr_desc<INDEX_TYPE, VALUE_TYPE> d_csr_desc,
+                                       const usparse::usparse_csrmv_algo algo, usparse::csrmv_mat_info *info) {
+  if (algo == usparse::usparse_csrmv_algo_flat) {
+    flat_analyse(d_csr_desc, &(info->flat_info));
+  }
+}
+
+template <typename INDEX_TYPE, typename VALUE_TYPE>
+void usparse::device_adaptive_spmv(int trans, const VALUE_TYPE alpha, const VALUE_TYPE beta,
+                                   const csr_desc<INDEX_TYPE, VALUE_TYPE> d_csr_desc, const VALUE_TYPE *dx,
+                                   VALUE_TYPE *dy, const usparse::usparse_csrmv_algo algo,
+                                   usparse::csrmv_mat_info *info) {
+  if (algo == usparse::usparse_csrmv_algo_flat && d_csr_desc.nnz > 0) {
+    adaptive_flat_sparse_spmv(trans, alpha, beta, d_csr_desc, dx, dy, &(info->flat_info));
+  }
+}
+
 // todo: the parameter passed to spmv kernel api must int. there is a conversion from uint to int.
 template void usparse::device_csrmv<uint, double>(const uint nrows, const uint ncols, const uint nnz,
                                                   const uint *csr_row_ptr, const uint *csr_col_index,
@@ -44,3 +63,13 @@ template void usparse::device_scsrmv<uint, float>(const uint nrows, const uint n
                                                   const float *csr_values, const float *dev_x, float *dev_y,
                                                   rocsparse_handle *handle, rocsparse_mat_descr *descrA,
                                                   rocsparse_mat_info *info);
+
+template void usparse::device_adaptive_analysis<int, double>(int trans, const double alpha, const double beta,
+                                                             const csr_desc<int, double> d_csr_desc,
+                                                             const usparse::usparse_csrmv_algo algo,
+                                                             usparse::csrmv_mat_info *info);
+
+template void usparse::device_adaptive_spmv<int, double>(int trans, const double alpha, const double beta,
+                                                         const csr_desc<int, double> d_csr_desc, const double *dx,
+                                                         double *dy, const usparse::usparse_csrmv_algo algo,
+                                                         usparse::csrmv_mat_info *info);
