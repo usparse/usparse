@@ -46,7 +46,7 @@ void usparse::device_adaptive_spmv(int trans, const VALUE_TYPE alpha, const VALU
                                    VALUE_TYPE *dy, const usparse::usparse_csrmv_algo algo,
                                    usparse::csrmv_mat_info *info) {
   if (algo == usparse::usparse_csrmv_algo_flat && d_csr_desc.nnz > 0) {
-    flat_sparse_spmv(trans, alpha, beta, d_csr_desc, d_csr_desc, dx, dy, &(info->flat_info));
+    adaptive_flat_sparse_spmv(trans, alpha, beta, d_csr_desc, dx, dy, &(info->flat_info));
   }
 }
 

@@ -56,19 +56,6 @@ inline void flat_one_pass_sparse_spmv(int trans, const double alpha, const doubl
   FLAT_KERNEL_ONE_PASS_WRAPPER(R, REDUCE_OPTION, REDUCE_VEC_SIZE, HIP_BLOCKS, THREADS_PER_BLOCK);
 }
 
-void flat_sparse_spmv(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                      const csr_desc<int, double> d_csr_desc, const double *x, double *y,
-                      const csrmv_flat_mtx_info *info) {
-  // divide the matrix into 2 blocks and calculate nnz for each block.
-  const int m = h_csr_desc.rows;
-  const int bp_1 = h_csr_desc.row_ptr[m / 2];
-  const int bp_2 = h_csr_desc.row_ptr[m];
-
-  const int nnz_block_0 = bp_1 - 0;
-  const int nnz_block_1 = bp_2 - bp_1;
-  adaptive_flat_sparse_spmv(nnz_block_0, nnz_block_1, trans, alpha, beta, d_csr_desc, x, y, info);
-}
-
 template <typename DATA_TYPE, typename INDEX_TYPE, int BEAT_Y_POLICY>
 inline void flat_set_beta_y(DATA_TYPE *y, const INDEX_TYPE m, const DATA_TYPE beta) {
   if (BEAT_Y_POLICY == BEAT_Y_POLICY_AUTO) {
@@ -96,9 +83,8 @@ inline void flat_set_beta_y(DATA_TYPE *y, const INDEX_TYPE m, const DATA_TYPE be
  * \note: if config item FLAT_ONE_PASS_ADAPTIVE is set to false, one-pass adaptive will be disabled.
  */
 template <int BEAT_Y_POLICY>
-void adaptive_flat_sparse_spmv(const int nnz_block_0, const int nnz_block_1, int trans, const double alpha,
-                               const double beta, const csr_desc<int, double> d_csr_desc, const double *x, double *y,
-                               const csrmv_flat_mtx_info *info) {
+void adaptive_flat_sparse_spmv(int trans, const double alpha, const double beta, const csr_desc<int, double> d_csr_desc,
+                               const double *x, double *y, const csrmv_flat_mtx_info *info) {
   VAR_FROM_CSR_DESC(d_csr_desc)
   const int nnz = d_csr_desc.nnz;
   const int n = d_csr_desc.cols;
@@ -126,7 +112,7 @@ void adaptive_flat_sparse_spmv(const int nnz_block_0, const int nnz_block_1, int
   }
 
   // divide the matrix into 2 parts and get the max nnz per row of each part.
-  int avg_block_nnz_max = std::max(2 * nnz_block_0 / m, 2 * nnz_block_1 / m);
+  int avg_block_nnz_max = nnz / m;
   if (avg_block_nnz_max <= 32) {
     // use single thread to reduce if average nnz of row is less than 32.
     constexpr int REDUCE_OPT = FLAT_REDUCE_OPTION_DIRECT;
@@ -148,22 +134,18 @@ void adaptive_flat_sparse_spmv(const int nnz_block_0, const int nnz_block_1, int
   }
 }
 
-template void adaptive_flat_sparse_spmv<BEAT_Y_POLICY_AUTO>(const int nnz_block_0, const int nnz_block_1, int trans,
-                                                            const double alpha, const double beta,
+template void adaptive_flat_sparse_spmv<BEAT_Y_POLICY_AUTO>(int trans, const double alpha, const double beta,
                                                             const csr_desc<int, double> d_csr_desc, const double *x,
                                                             double *y, const csrmv_flat_mtx_info *info);
 
-template void adaptive_flat_sparse_spmv<BEAT_Y_POLICY_ZERO>(const int nnz_block_0, const int nnz_block_1, int trans,
-                                                            const double alpha, const double beta,
+template void adaptive_flat_sparse_spmv<BEAT_Y_POLICY_ZERO>(int trans, const double alpha, const double beta,
                                                             const csr_desc<int, double> d_csr_desc, const double *x,
                                                             double *y, const csrmv_flat_mtx_info *info);
 
-template void adaptive_flat_sparse_spmv<BEAT_Y_POLICY_ONE>(const int nnz_block_0, const int nnz_block_1, int trans,
-                                                           const double alpha, const double beta,
+template void adaptive_flat_sparse_spmv<BEAT_Y_POLICY_ONE>(int trans, const double alpha, const double beta,
                                                            const csr_desc<int, double> d_csr_desc, const double *x,
                                                            double *y, const csrmv_flat_mtx_info *info);
 
-template void adaptive_flat_sparse_spmv<BEAT_Y_POLICY_OTHER>(const int nnz_block_0, const int nnz_block_1, int trans,
-                                                             const double alpha, const double beta,
+template void adaptive_flat_sparse_spmv<BEAT_Y_POLICY_OTHER>(int trans, const double alpha, const double beta,
                                                              const csr_desc<int, double> d_csr_desc, const double *x,
                                                              double *y, const csrmv_flat_mtx_info *info);
