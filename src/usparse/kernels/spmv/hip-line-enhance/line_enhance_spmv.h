@@ -13,7 +13,8 @@ void line_enhance_sparse_spmv(int trans, const double alpha, const double beta, 
 /**
  * set kernel template parameters adaptively by matrix characteristic.
  */
-void adaptive_enhance_sparse_spmv(int trans, const double alpha, const double beta, const csr_desc<int, double> d_csr_desc,
-                                  const double *x, double *y);
+template <typename FPType>
+void adaptive_enhance_sparse_spmv(int trans, const FPType alpha, const FPType beta,
+                                  const csr_desc<int, FPType> d_csr_desc, const FPType *x, FPType *y);
 
 #endif // SPMV_ACC_LINE_ENHANCE_SPMV_H

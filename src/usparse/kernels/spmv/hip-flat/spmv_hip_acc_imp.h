@@ -24,11 +24,11 @@ template <int BREAK_STRIDE, int BLOCKS, typename I>
 __global__ void pre_calc_break_point(const I *__restrict__ row_ptr, const I m, I *__restrict__ break_points,
                                      const I bp_len);
 
-template <int BEAT_Y_POLICY = BEAT_Y_POLICY_AUTO>
-void adaptive_flat_sparse_spmv(int trans, const double alpha, const double beta, const csr_desc<int, double> d_csr_desc,
-                               const double *x, double *y, const csrmv_flat_mtx_info *info);
+template <typename FPType, int BEAT_Y_POLICY = BEAT_Y_POLICY_AUTO>
+void adaptive_flat_sparse_spmv(int trans, const FPType alpha, const FPType beta, const csr_desc<int, FPType> d_csr_desc,
+                               const FPType *x, FPType *y, const csrmv_flat_mtx_info *info);
 
-void flat_analyse(const csr_desc<int, double> d_csr_desc, csrmv_flat_mtx_info *info);
+template <typename FPType> void flat_analyse(const csr_desc<int, FPType> d_csr_desc, csrmv_flat_mtx_info *info);
 
 #include "flat_imp.inl"
 

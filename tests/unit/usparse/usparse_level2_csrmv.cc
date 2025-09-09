@@ -236,7 +236,8 @@ TEST(ustbSparseTest, spmv_flat) {
   csr_desc<int, double> h_csr_desc(N, N, nnz, h_row_ptr, h_col_index, h_values);
   csr_desc<int, double> d_csr_desc(N, N, nnz, d_row_ptr, d_col_index, d_values);
 
-  spmv_flat(0, 1.0, 0.0, h_csr_desc, d_csr_desc, d_x, d_y);
+  // fixme: not work as expeted. pass info into it.
+  spmv_flat(0, 1.0, 0.0, d_csr_desc, d_x, d_y, nullptr);
   hipDeviceSynchronize();
 
   TEST_HIP_CHECK(hipMemcpy(h_y, d_y, N * sizeof(double), hipMemcpyDeviceToHost));

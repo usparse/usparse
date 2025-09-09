@@ -5,9 +5,9 @@
 #ifndef SPMV_ACC_FLAT_IMP_ONE_PASS_HPP
 #define SPMV_ACC_FLAT_IMP_ONE_PASS_HPP
 
+#include "../api/building_config.h"
 #include "flat_config.h"
 #include "flat_reduce.hpp"
-#include "../api/building_config.h"
 
 #include "../common/DCU/utils/global_mem_ops.h"
 #include "../common/DCU/utils/utils.h"
@@ -71,9 +71,9 @@ __global__ void spmv_flat_one_pass_kernel(int m, const T alpha, const T beta, co
   }
 }
 
-#define FLAT_KERNEL_ONE_PASS_WRAPPER(R, REDUCE_OPTION, REDUCE_VEC_SIZE, BLOCKS, THREADS)                               \
+#define FLAT_KERNEL_ONE_PASS_WRAPPER(FP, R, REDUCE_OPTION, REDUCE_VEC_SIZE, BLOCKS, THREADS)                           \
   (spmv_flat_one_pass_kernel<__WF_SIZE__, R, REDUCE_OPTION, REDUCE_VEC_SIZE, THREADS, int,                             \
-                             double>)<<<(BLOCKS), (THREADS)>>>(m, alpha, beta, rowptr, break_points, colindex, value,  \
-                                                               x, y)
+                             FP>)<<<(BLOCKS), (THREADS)>>>(m, alpha, beta, rowptr, break_points, colindex, value, x,   \
+                                                           y)
 
 #endif // SPMV_ACC_FLAT_IMP_ONE_PASS_HPP

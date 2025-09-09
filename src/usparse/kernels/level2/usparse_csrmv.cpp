@@ -73,3 +73,13 @@ template void usparse::device_adaptive_spmv<int, double>(int trans, const double
                                                          const csr_desc<int, double> d_csr_desc, const double *dx,
                                                          double *dy, const usparse::usparse_csrmv_algo algo,
                                                          usparse::csrmv_mat_info *info);
+
+template void usparse::device_adaptive_analysis<int, float>(int trans, const float alpha, const float beta,
+                                                            const csr_desc<int, float> d_csr_desc,
+                                                            const usparse::usparse_csrmv_algo algo,
+                                                            usparse::csrmv_mat_info *info);
+
+template void usparse::device_adaptive_spmv<int, float>(int trans, const float alpha, const float beta,
+                                                        const csr_desc<int, float> d_csr_desc, const float *dx,
+                                                        float *dy, const usparse::usparse_csrmv_algo algo,
+                                                        usparse::csrmv_mat_info *info);

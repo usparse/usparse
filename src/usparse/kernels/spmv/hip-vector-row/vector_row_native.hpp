@@ -120,7 +120,4 @@ __global__ void native_vector_row_kernel(int m, const T alpha, const T beta, con
   }
 }
 
-#define NATIVE_VECTOR_KERNEL_WRAPPER(N)                                                                                \
-  (native_vector_row_kernel<N, 256, __WF_SIZE__, double>)<<<512, 256>>>(m, alpha, beta, rowptr, colindex, value, x, y);
-
 #endif // SPMV_ACC_VECTOR_ROW_NATIVE_HPP

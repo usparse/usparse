@@ -369,16 +369,16 @@ __global__ void spmv_vector_row_kernel_double_buffer_legacy(int m, const T alpha
   }
 }
 
-#define VECTOR_KERNEL_WRAPPER_PIPELINE(N)                                                                              \
-  (vector_row_kernel_pipeline<N, (__WF_SIZE__ / N), __WF_SIZE__, 512, int, double>)<<<512, 256>>>(                     \
+#define VECTOR_KERNEL_WRAPPER_PIPELINE(N, FP)                                                                          \
+  (vector_row_kernel_pipeline<N, (__WF_SIZE__ / N), __WF_SIZE__, 512, int, FP>)<<<512, 256>>>(m, alpha, beta, rowptr,  \
+                                                                                              colindex, value, x, y)
+
+#define VECTOR_KERNEL_WRAPPER_DB_BUFFER(N, FP)                                                                         \
+  (spmv_vector_row_kernel_double_buffer<N, (__WF_SIZE__ / N), __WF_SIZE__, 512, int, FP>)<<<512, 256>>>(               \
       m, alpha, beta, rowptr, colindex, value, x, y)
 
-#define VECTOR_KERNEL_WRAPPER_DB_BUFFER(N)                                                                             \
-  (spmv_vector_row_kernel_double_buffer<N, (__WF_SIZE__ / N), __WF_SIZE__, 512, int, double>)<<<512, 256>>>(           \
-      m, alpha, beta, rowptr, colindex, value, x, y)
-
-#define VECTOR_KERNEL_WRAPPER_DB_BUFFER_LEGACY(N)                                                                      \
-  (spmv_vector_row_kernel_double_buffer_legacy<N, (__WF_SIZE__ / N), __WF_SIZE__, 512, int, double>)<<<512, 256>>>(    \
+#define VECTOR_KERNEL_WRAPPER_DB_BUFFER_LEGACY(N, FP)                                                                  \
+  (spmv_vector_row_kernel_double_buffer_legacy<N, (__WF_SIZE__ / N), __WF_SIZE__, 512, int, FP>)<<<512, 256>>>(        \
       m, alpha, beta, rowptr, colindex, value, x, y)
 
 #endif // SPMV_ACC_VECTOR_ROW_OPT_DOUBLE_BUFFER_HPP
