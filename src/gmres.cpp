@@ -321,9 +321,9 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
       i++;
       iteration++;
 
-      usparse::device_dcopy<uint, float>(d_V_f + i * N, d_vi_f, N);
+      const float *csrmv_x_f = d_V_f + i * N; // the x vector in y = Ax.
 
-      usparse::device_adaptive_spmv<int, float, BEAT_Y_POLICY_ZERO>(0, 1.0, 0.0, d_csr_desc_float, d_vi_f, d_r0_f,
+      usparse::device_adaptive_spmv<int, float, BEAT_Y_POLICY_ZERO>(0, 1.0, 0.0, d_csr_desc_float, csrmv_x_f, d_r0_f,
                                                                     usparse::usparse_csrmv_algo_flat, &csrmv_info);
 
       if (usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION == usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2) {
