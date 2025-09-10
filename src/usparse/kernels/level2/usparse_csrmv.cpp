@@ -7,6 +7,10 @@
 
 #include <rocsparse/rocsparse.h>
 
+#include "../spmv/hip-flat/spmv_hip_acc_imp.h"
+#include "../spmv/hip-line-enhance/line_enhance_spmv.h"
+#include "../spmv/hip-vector-row/vector_row.h"
+
 #include "usparse_csrmv.h"
 
 template <typename INDEX_TYPE, typename VALUE_TYPE>
@@ -37,6 +41,10 @@ void usparse::device_adaptive_analysis(int trans, const VALUE_TYPE alpha, const 
                                        const usparse::usparse_csrmv_algo algo, usparse::csrmv_mat_info *info) {
   if (algo == usparse::usparse_csrmv_algo_flat) {
     flat_analyse(d_csr_desc, &(info->flat_info));
+  } else if (algo == usparse::usparse_csrmv_algo_line_enhance) {
+    return;
+  } else if (algo == usparse::usparse_csrmv_algo_vector) {
+    return;
   }
 }
 
@@ -47,6 +55,10 @@ void usparse::device_adaptive_spmv(int trans, const VALUE_TYPE alpha, const VALU
                                    usparse::csrmv_mat_info *info) {
   if (algo == usparse::usparse_csrmv_algo_flat && d_csr_desc.nnz > 0) {
     adaptive_flat_sparse_spmv(trans, alpha, beta, d_csr_desc, dx, dy, &(info->flat_info));
+  } else if (algo == usparse::usparse_csrmv_algo_line_enhance) {
+    adaptive_enhance_sparse_spmv(trans, alpha, beta, d_csr_desc, dx, dy);
+  } else if (algo == usparse::usparse_csrmv_algo_vector) {
+    vec_row_sparse_spmv(trans, alpha, beta, d_csr_desc, dx, dy);
   }
 }
 
