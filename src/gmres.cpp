@@ -113,8 +113,8 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
     // copy x from host to device
 
     // compute y = AX
-    device_adaptive_spmv<int, double>(0, 1.0, 0.0, d_csr_desc, dev_x, dev_y, usparse::usparse_csrmv_algo_flat,
-                                      &csrmv_info);
+    device_adaptive_spmv<int, double, BEAT_Y_POLICY_ZERO>(0, 1.0, 0.0, d_csr_desc, dev_x, dev_y,
+                                                          usparse::usparse_csrmv_algo_flat, &csrmv_info);
 
     usparse::device_daxpy(-1.0, d_b, dev_y, N);
 
@@ -144,8 +144,8 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
       std::vector<double> V_i(N);
       usparse::device_dcopy(d_V + i * N, d_vi, N);
 
-      usparse::device_adaptive_spmv<int, double>(0, 1.0, 0.0, d_csr_desc, d_vi, dev_y, usparse::usparse_csrmv_algo_flat,
-                                                 &csrmv_info);
+      usparse::device_adaptive_spmv<int, double, BEAT_Y_POLICY_ZERO>(0, 1.0, 0.0, d_csr_desc, d_vi, dev_y,
+                                                                     usparse::usparse_csrmv_algo_flat, &csrmv_info);
 
       for (k = 0; k <= i; k++) {
         usparse::device_dotProduct(dev_y, d_V + k * N, N, &d_H[k * RESTART_TIMES + i], d_temp_buffer, 0);
@@ -290,8 +290,8 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
     // copy x from host to device
 
     // compute y = AX
-    usparse::device_adaptive_spmv<int, double>(0, 1.0, 0.0, d_csr_desc, dev_x, dev_y, usparse::usparse_csrmv_algo_flat,
-                                               &csrmv_info);
+    usparse::device_adaptive_spmv<int, double, BEAT_Y_POLICY_ZERO>(0, 1.0, 0.0, d_csr_desc, dev_x, dev_y,
+                                                                   usparse::usparse_csrmv_algo_flat, &csrmv_info);
 
     usparse::device_cast<uint, double, float>(dev_y, d_r0_f, N); // dev_y => d_r0_f
 
@@ -323,8 +323,8 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
 
       usparse::device_dcopy<uint, float>(d_V_f + i * N, d_vi_f, N);
 
-      usparse::device_adaptive_spmv<int, float>(0, 1.0, 0.0, d_csr_desc_float, d_vi_f, d_r0_f,
-                                                usparse::usparse_csrmv_algo_flat, &csrmv_info);
+      usparse::device_adaptive_spmv<int, float, BEAT_Y_POLICY_ZERO>(0, 1.0, 0.0, d_csr_desc_float, d_vi_f, d_r0_f,
+                                                                    usparse::usparse_csrmv_algo_flat, &csrmv_info);
 
       if (usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION == usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2) {
         usparse::dotprod_axpy_fusion<uint, float, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
