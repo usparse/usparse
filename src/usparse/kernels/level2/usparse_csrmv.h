@@ -5,6 +5,7 @@
 #ifndef USPARSE_KERNELS_LEVEL2_USPARSE_CSRMV_H
 #define USPARSE_KERNELS_LEVEL2_USPARSE_CSRMV_H
 
+#include "../spmv/api/types.h"
 #include "../spmv/hip-flat/flat_config.h"
 #include "../spmv/hip-flat/spmv_hip_acc_imp.h"
 

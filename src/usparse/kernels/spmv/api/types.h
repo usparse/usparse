@@ -40,4 +40,9 @@ public:
         col_index(_var_csr_desc.col_index), values(_var_csr_desc.values) {}
 };
 
+constexpr int BEAT_Y_POLICY_AUTO = 0; // does not guarantee the value of beat in y = alpha * Ax + beta * y.
+constexpr int BEAT_Y_POLICY_ZERO = 1; // beta = 0.0 in y = alpha * Ax + beta * y.
+constexpr int BEAT_Y_POLICY_ONE = 2;  // beta = 1.0 in y = alpha * Ax + beta * y.
+constexpr int BEAT_Y_POLICY_OTHER = 3; // other case.
+
 #endif // SPMV_ACC_TYPES_H

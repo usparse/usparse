@@ -107,14 +107,30 @@ __global__ void line_enhance_kernel(int m, const T alpha, const T beta, const I 
   }
 }
 
-// FP: FP can be float or double
-#define LINE_ENHANCE_KERNEL_WRAPPER(FP, REDUCE, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS, THREADS)                          \
-  if (beta == 0.0) {                                                                                                   \
-    (line_enhance_kernel<true, REDUCE, __WF_SIZE__, VEC_SIZE, ROWS_PER_BLOCK, R, THREADS, int,                         \
-                         FP>)<<<BLOCKS, THREADS>>>(m, alpha, beta, rowptr, colindex, value, x, y);                     \
-  } else {                                                                                                             \
-    (line_enhance_kernel<false, REDUCE, __WF_SIZE__, VEC_SIZE, ROWS_PER_BLOCK, R, THREADS, int,                        \
-                         FP>)<<<BLOCKS, THREADS>>>(m, alpha, beta, rowptr, colindex, value, x, y);                     \
+template <typename INDEX_TYPE, typename VALUE_TYPE, int REDUCE_OPTION, int WF_SIZE, int VEC_SIZE, int ROWS_PER_BLOCK,
+          int R, int THREADS, int BEAT_Y_POLICY>
+void line_enhance_kernel_wrapper(const int BLOCKS, const int m, const VALUE_TYPE alpha, const VALUE_TYPE beta,
+                                 const INDEX_TYPE *__restrict__ row_offset, const INDEX_TYPE *__restrict__ csr_col_ind,
+                                 const VALUE_TYPE *__restrict__ csr_val, const VALUE_TYPE *__restrict__ x,
+                                 VALUE_TYPE *__restrict__ y) {
+  if (BEAT_Y_POLICY == BEAT_Y_POLICY_AUTO) {
+    if (beta == 0.0) {
+      (line_enhance_kernel<true, REDUCE_OPTION, WF_SIZE, VEC_SIZE, ROWS_PER_BLOCK, R, THREADS, INDEX_TYPE,
+                           VALUE_TYPE>)<<<BLOCKS, THREADS>>>(m, alpha, beta, row_offset, csr_col_ind, csr_val, x, y);
+    } else {
+      (line_enhance_kernel<false, REDUCE_OPTION, WF_SIZE, VEC_SIZE, ROWS_PER_BLOCK, R, THREADS, INDEX_TYPE,
+                           VALUE_TYPE>)<<<BLOCKS, THREADS>>>(m, alpha, beta, row_offset, csr_col_ind, csr_val, x, y);
+    }
+  } else if (BEAT_Y_POLICY == BEAT_Y_POLICY_ZERO) {
+    (line_enhance_kernel<true, REDUCE_OPTION, WF_SIZE, VEC_SIZE, ROWS_PER_BLOCK, R, THREADS, INDEX_TYPE,
+                         VALUE_TYPE>)<<<BLOCKS, THREADS>>>(m, alpha, beta, row_offset, csr_col_ind, csr_val, x, y);
+  } else { // BEAT_Y_POLICY_ONE or BEAT_Y_POLICY_OTHER
+    (line_enhance_kernel<false, REDUCE_OPTION, WF_SIZE, VEC_SIZE, ROWS_PER_BLOCK, R, THREADS, INDEX_TYPE,
+                         VALUE_TYPE>)<<<BLOCKS, THREADS>>>(m, alpha, beta, row_offset, csr_col_ind, csr_val, x, y);
   }
+}
 
-// todo: better compare of beta == 0.0;
+// FP: FP can be float or double
+#define LINE_ENHANCE_KERNEL_WRAPPER(FP, BEAT_Y_POLICY, REDUCE, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS, THREADS)           \
+  (line_enhance_kernel_wrapper<int, FP, REDUCE, __WF_SIZE__, VEC_SIZE, ROWS_PER_BLOCK, R, THREADS,                     \
+                               BEAT_Y_POLICY>)(BLOCKS, m, alpha, beta, rowptr, colindex, value, x, y);
