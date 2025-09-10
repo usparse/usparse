@@ -61,9 +61,9 @@ __global__ void __launch_bounds__(512)
 }
 
 // TODO: remember to merge with csrmv
-template <typename DATA_TYPE, typename INDEX_TYPE, int BEAT_Y_POLICY>
+template <typename DATA_TYPE, typename INDEX_TYPE, int BETA_Y_POLICY>
 inline void coo_flat_set_beta_y(DATA_TYPE *y, const INDEX_TYPE m, const DATA_TYPE beta) {
-  if (BEAT_Y_POLICY == BEAT_Y_POLICY_AUTO) {
+  if (BETA_Y_POLICY == BETA_Y_POLICY_AUTO) {
     // set beta*y.
     if (beta == 0.0) {
       // set vector y to 0. because: y = A*x + 0.0 *y.
@@ -73,23 +73,23 @@ inline void coo_flat_set_beta_y(DATA_TYPE *y, const INDEX_TYPE m, const DATA_TYP
     } else {
       usparse::device_dscal(beta, y, m);
     }
-  } else if (BEAT_Y_POLICY == BEAT_Y_POLICY_ZERO) {
+  } else if (BETA_Y_POLICY == BETA_Y_POLICY_ZERO) {
     usparse::device_scale_set<INDEX_TYPE, DATA_TYPE>(0.0, y, m);
-  } else if (BEAT_Y_POLICY == BEAT_Y_POLICY_ONE) {
+  } else if (BETA_Y_POLICY == BETA_Y_POLICY_ONE) {
     return; // nothing to do.
-  } else {  // BEAT_Y_POLICY == BEAT_Y_POLICY_OTHER
+  } else {  // BETA_Y_POLICY == BETA_Y_POLICY_OTHER
     usparse::device_dscal(beta, y, m);
   }
 }
 
-template <typename INDEX_TYPE, typename DATA_TYPE, int BEAT_Y_POLICY>
+template <typename INDEX_TYPE, typename DATA_TYPE, int BETA_Y_POLICY>
 void adaptive_flat_coo_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
                                    const usparse::coo_desc<INDEX_TYPE, DATA_TYPE> d_coo_desc, const DATA_TYPE *x,
                                    DATA_TYPE *y) {
   constexpr int THREADS_PER_BLOCK = 512;
   const INDEX_TYPE nnz = d_coo_desc.nnz;
 
-  coo_flat_set_beta_y<DATA_TYPE, INDEX_TYPE, BEAT_Y_POLICY>(y, d_coo_desc.rows, beta);
+  coo_flat_set_beta_y<DATA_TYPE, INDEX_TYPE, BETA_Y_POLICY>(y, d_coo_desc.rows, beta);
 
 #define CALL_FLAT_KERNEL(R)                                                                                            \
   const int HIP_BLOCKS = nnz / (R * THREADS_PER_BLOCK) + ((nnz % (R * THREADS_PER_BLOCK) == 0) ? 0 : 1);               \
@@ -112,11 +112,11 @@ void adaptive_flat_coo_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_
 }
 
 template void
-adaptive_flat_coo_sparse_spmv<int, double, BEAT_Y_POLICY_AUTO>(int trans, const double alpha, const double beta,
+adaptive_flat_coo_sparse_spmv<int, double, BETA_Y_POLICY_AUTO>(int trans, const double alpha, const double beta,
                                                                const usparse::coo_desc<int, double> d_coo_desc,
                                                                const double *x, double *y);
 
 template void
-adaptive_flat_coo_sparse_spmv<int, float, BEAT_Y_POLICY_AUTO>(int trans, const float alpha, const float beta,
+adaptive_flat_coo_sparse_spmv<int, float, BETA_Y_POLICY_AUTO>(int trans, const float alpha, const float beta,
                                                               const usparse::coo_desc<int, float> d_coo_desc,
                                                               const float *x, float *y);

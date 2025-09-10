@@ -32,7 +32,7 @@ usparse::usparse_status usparse::spmv::internal::usparse_csrmv_imp(
     const usparse::csr_desc<INDEX_TYPE, DATA_TYPE> dev_csr_mat, const DATA_TYPE *x, DATA_TYPE *y,
     usparse::mat::usparse_mat_info *info, const usparse::spmv::usparse_csrmv_algorithms algo) {
   if (algo == usparse::spmv::usparse_csrmv_algorithms::Flat) {
-    adaptive_flat_sparse_spmv<DATA_TYPE, BEAT_Y_POLICY_AUTO>(trans, alpha, beta, dev_csr_mat, x, y,
+    adaptive_flat_sparse_spmv<DATA_TYPE, BETA_Y_POLICY_AUTO>(trans, alpha, beta, dev_csr_mat, x, y,
                                                              info->csrmv_info->flat_info);
   } else if (algo == usparse::spmv::usparse_csrmv_algorithms::LineEnhance) {
     adaptive_enhance_sparse_spmv<DATA_TYPE>(trans, alpha, beta, dev_csr_mat, x, y);
@@ -122,7 +122,7 @@ usparse::usparse_status usparse::spmv::internal::usparse_coomv_imp(
     const usparse::usparse_operation trans, const DATA_TYPE alpha, const DATA_TYPE beta,
     const usparse::coo_desc<INDEX_TYPE, DATA_TYPE> dev_coo_mat, const DATA_TYPE *x, DATA_TYPE *y,
     usparse::mat::usparse_mat_info *info, const usparse::spmv::usparse_coomv_algorithms algo) {
-  adaptive_flat_coo_sparse_spmv<INDEX_TYPE, DATA_TYPE, BEAT_Y_POLICY_AUTO>(trans, alpha, beta, dev_coo_mat, x, y);
+  adaptive_flat_coo_sparse_spmv<INDEX_TYPE, DATA_TYPE, BETA_Y_POLICY_AUTO>(trans, alpha, beta, dev_coo_mat, x, y);
   return usparse::usparse_status::usparse_status_success;
 }
 

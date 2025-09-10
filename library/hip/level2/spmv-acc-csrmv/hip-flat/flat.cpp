@@ -81,9 +81,9 @@ void segment_sum_flat_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_T
                                                                                    rowptr, colindex, value, x, y);
 }
 
-template <typename DATA_TYPE, typename INDEX_TYPE, int BEAT_Y_POLICY>
+template <typename DATA_TYPE, typename INDEX_TYPE, int BETA_Y_POLICY>
 inline void flat_set_beta_y(DATA_TYPE *y, const INDEX_TYPE m, const DATA_TYPE beta) {
-  if (BEAT_Y_POLICY == BEAT_Y_POLICY_AUTO) {
+  if (BETA_Y_POLICY == BETA_Y_POLICY_AUTO) {
     // set beta*y.
     if (beta == 0.0) {
       // set vector y to 0. because: y = A*x + 0.0 *y.
@@ -93,11 +93,11 @@ inline void flat_set_beta_y(DATA_TYPE *y, const INDEX_TYPE m, const DATA_TYPE be
     } else {
       usparse::device_dscal(beta, y, m);
     }
-  } else if (BEAT_Y_POLICY == BEAT_Y_POLICY_ZERO) {
+  } else if (BETA_Y_POLICY == BETA_Y_POLICY_ZERO) {
     usparse::device_scale_set<INDEX_TYPE, DATA_TYPE>(0.0, y, m);
-  } else if (BEAT_Y_POLICY == BEAT_Y_POLICY_ONE) {
+  } else if (BETA_Y_POLICY == BETA_Y_POLICY_ONE) {
     return; // nothing to do.
-  } else {  // BEAT_Y_POLICY == BEAT_Y_POLICY_OTHER
+  } else {  // BETA_Y_POLICY == BETA_Y_POLICY_OTHER
     usparse::device_dscal(beta, y, m);
   }
 }
@@ -107,14 +107,14 @@ inline void flat_set_beta_y(DATA_TYPE *y, const INDEX_TYPE m, const DATA_TYPE be
  * currently, it only support adaptive template parameters on one-pass flat method.
  * \note: if config item FLAT_ONE_PASS_ADAPTIVE is set to false, one-pass adaptive will be disabled.
  */
-template <typename T, int BEAT_Y_POLICY>
+template <typename T, int BETA_Y_POLICY>
 void adaptive_flat_sparse_spmv(int trans, const T alpha, const T beta, const csr_desc<int, T> d_csr_desc, const T *x,
                                T *y, const csrmv_flat_mtx_info *info) {
   VAR_FROM_CSR_DESC(T, d_csr_desc)
   const int nnz = d_csr_desc.nnz;
   const int n = d_csr_desc.cols;
 
-  flat_set_beta_y<T, int, BEAT_Y_POLICY>(y, m, beta);
+  flat_set_beta_y<T, int, BETA_Y_POLICY>(y, m, beta);
 
   constexpr int R = 2;
   constexpr int THREADS_PER_BLOCK = 512;
@@ -162,41 +162,41 @@ void adaptive_flat_sparse_spmv(int trans, const T alpha, const T beta, const csr
   }
 }
 
-template void adaptive_flat_sparse_spmv<double, BEAT_Y_POLICY_AUTO>(int trans, const double alpha, const double beta,
+template void adaptive_flat_sparse_spmv<double, BETA_Y_POLICY_AUTO>(int trans, const double alpha, const double beta,
                                                                     const csr_desc<int, double> d_csr_desc,
                                                                     const double *x, double *y,
                                                                     const csrmv_flat_mtx_info *info);
 
-template void adaptive_flat_sparse_spmv<double, BEAT_Y_POLICY_ZERO>(int trans, const double alpha, const double beta,
+template void adaptive_flat_sparse_spmv<double, BETA_Y_POLICY_ZERO>(int trans, const double alpha, const double beta,
                                                                     const csr_desc<int, double> d_csr_desc,
                                                                     const double *x, double *y,
                                                                     const csrmv_flat_mtx_info *info);
 
-template void adaptive_flat_sparse_spmv<double, BEAT_Y_POLICY_ONE>(int trans, const double alpha, const double beta,
+template void adaptive_flat_sparse_spmv<double, BETA_Y_POLICY_ONE>(int trans, const double alpha, const double beta,
                                                                    const csr_desc<int, double> d_csr_desc,
                                                                    const double *x, double *y,
                                                                    const csrmv_flat_mtx_info *info);
 
-template void adaptive_flat_sparse_spmv<double, BEAT_Y_POLICY_OTHER>(int trans, const double alpha, const double beta,
+template void adaptive_flat_sparse_spmv<double, BETA_Y_POLICY_OTHER>(int trans, const double alpha, const double beta,
                                                                      const csr_desc<int, double> d_csr_desc,
                                                                      const double *x, double *y,
                                                                      const csrmv_flat_mtx_info *info);
 
-template void adaptive_flat_sparse_spmv<float, BEAT_Y_POLICY_AUTO>(int trans, const float alpha, const float beta,
+template void adaptive_flat_sparse_spmv<float, BETA_Y_POLICY_AUTO>(int trans, const float alpha, const float beta,
                                                                    const csr_desc<int, float> d_csr_desc,
                                                                    const float *x, float *y,
                                                                    const csrmv_flat_mtx_info *info);
 
-template void adaptive_flat_sparse_spmv<float, BEAT_Y_POLICY_ZERO>(int trans, const float alpha, const float beta,
+template void adaptive_flat_sparse_spmv<float, BETA_Y_POLICY_ZERO>(int trans, const float alpha, const float beta,
                                                                    const csr_desc<int, float> d_csr_desc,
                                                                    const float *x, float *y,
                                                                    const csrmv_flat_mtx_info *info);
 
-template void adaptive_flat_sparse_spmv<float, BEAT_Y_POLICY_ONE>(int trans, const float alpha, const float beta,
+template void adaptive_flat_sparse_spmv<float, BETA_Y_POLICY_ONE>(int trans, const float alpha, const float beta,
                                                                   const csr_desc<int, float> d_csr_desc, const float *x,
                                                                   float *y, const csrmv_flat_mtx_info *info);
 
-template void adaptive_flat_sparse_spmv<float, BEAT_Y_POLICY_OTHER>(int trans, const float alpha, const float beta,
+template void adaptive_flat_sparse_spmv<float, BETA_Y_POLICY_OTHER>(int trans, const float alpha, const float beta,
                                                                     const csr_desc<int, float> d_csr_desc,
                                                                     const float *x, float *y,
                                                                     const csrmv_flat_mtx_info *info);
