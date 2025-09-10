@@ -5,6 +5,8 @@
 #ifndef USPARSE_KERNELS_LEVEL2_USPARSE_CSRMV_H
 #define USPARSE_KERNELS_LEVEL2_USPARSE_CSRMV_H
 
+#include "../spmv/api/types.h"
+#include "../spmv/hip-flat/flat_config.h"
 #include "../spmv/hip-flat/spmv_hip_acc_imp.h"
 
 namespace usparse {
@@ -39,7 +41,7 @@ namespace usparse {
                                 const csr_desc<INDEX_TYPE, VALUE_TYPE> d_csr_desc, const usparse_csrmv_algo algo,
                                 csrmv_mat_info *info = nullptr);
 
-  template <typename INDEX_TYPE, typename VALUE_TYPE>
+  template <typename INDEX_TYPE, typename VALUE_TYPE, int BEAT_Y_POLICY = BEAT_Y_POLICY_AUTO>
   void device_adaptive_spmv(int trans, const VALUE_TYPE alpha, const VALUE_TYPE beta,
                             const csr_desc<INDEX_TYPE, VALUE_TYPE> d_csr_desc, const VALUE_TYPE *dx, VALUE_TYPE *dy,
                             const usparse_csrmv_algo algo, csrmv_mat_info *info = nullptr);
