@@ -45,7 +45,6 @@ template <typename INDEX_TYPE, typename DATA_TYPE>
 void usparse::device_rotation2(INDEX_TYPE Am, DATA_TYPE *d_H, DATA_TYPE *d_cs, DATA_TYPE *d_sn, DATA_TYPE *d_s,
                                INDEX_TYPE i) {
   rotation2_kernel<<<1, 1>>>(Am, d_H, d_cs, d_sn, d_s, i);
-  hipDeviceSynchronize();
 }
 
 template void usparse::device_rotation2<uint, double>(uint Am, double *d_H, double *d_cs, double *d_sn, double *d_s,
