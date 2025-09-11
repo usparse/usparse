@@ -39,6 +39,37 @@ void spmv(const uint *rowPtr, const uint *colInd, const double *values, const do
   }
 }
 
+template <typename T>
+usparse::usparse_csrmv_algo select_csrmv_algo(const csr_desc<int, T> d_csr_desc) {
+  const int density = d_csr_desc.nnz / d_csr_desc.rows;
+
+  if (density > 50.0) {
+    if (d_csr_desc.nnz > 10000000 && d_csr_desc.rows > 1000000) {
+      return usparse::usparse_csrmv_algo_line_enhance;
+    } else {
+      return usparse::usparse_csrmv_algo_flat;
+    }
+  } else if (density > 15.0) {
+    if (d_csr_desc.nnz > 5000000) {
+      return usparse::usparse_csrmv_algo_flat;
+    } else if (d_csr_desc.rows > 500000) {
+      return usparse::usparse_csrmv_algo_line_enhance;
+    } else {
+      return usparse::usparse_csrmv_algo_flat;
+    }
+  } else {
+    if (d_csr_desc.nnz < 1000000 || d_csr_desc.rows > 1000000) {
+      return usparse::usparse_csrmv_algo_line_enhance;
+    } else {
+      if (density > 8.0) {
+        return usparse::usparse_csrmv_algo_flat;
+      } else {
+        return usparse::usparse_csrmv_algo_line_enhance;
+      }
+    }
+  }
+}
+
 RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, double *dev_x, double *dev_y,
              csr_desc<int, double> d_csr_desc) {
   // 稀疏矩阵A_d需默认以CSR格式压缩存储，使用DCU优化时，该矩阵A和右端向量b传输到DCU端的开销，以及结果向量x传输到CPU端的开销可不算在计时范围
@@ -272,7 +303,8 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   csr_desc<int, float> d_csr_desc_float(dev_A->nrows, dev_A->ncols, d_csr_desc.nnz, d_csr_desc.row_ptr,
                                         d_csr_desc.col_index, d_A_val_f);
   usparse::csrmv_mat_info csrmv_info;
-  usparse::device_adaptive_analysis(0, 1.0, 0.0, d_csr_desc, usparse::usparse_csrmv_algo_flat, &csrmv_info);
+  const usparse::usparse_csrmv_algo csrmv_algo = select_csrmv_algo(d_csr_desc);
+  usparse::device_adaptive_analysis(0, 1.0, 0.0, d_csr_desc, csrmv_algo, &csrmv_info);
 
   // auto start = std::chrono::high_resolution_clock::now(); // 禁止修改
   // =======如果已移植为DCU代码，请更换为下列计时==========
@@ -290,8 +322,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
     // copy x from host to device
 
     // compute y = AX
-    usparse::device_adaptive_spmv<int, double, BEAT_Y_POLICY_ZERO>(0, 1.0, 0.0, d_csr_desc, dev_x, dev_y,
-                                                                   usparse::usparse_csrmv_algo_flat, &csrmv_info);
+    usparse::device_adaptive_spmv<int, double, BEAT_Y_POLICY_ZERO>(0, 1.0, 0.0, d_csr_desc, dev_x, dev_y, csrmv_algo, &csrmv_info);
 
     usparse::device_cast<uint, double, float>(dev_y, d_r0_f, N); // dev_y => d_r0_f
 
@@ -324,7 +355,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
       const float *csrmv_x_f = d_V_f + i * N; // the x vector in y = Ax.
 
       usparse::device_adaptive_spmv<int, float, BEAT_Y_POLICY_ZERO>(0, 1.0, 0.0, d_csr_desc_float, csrmv_x_f, d_r0_f,
-                                                                    usparse::usparse_csrmv_algo_flat, &csrmv_info);
+                                                                    csrmv_algo, &csrmv_info);
 
       if (usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION == usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2) {
         usparse::dotprod_axpy_fusion<uint, float, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(

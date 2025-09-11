@@ -9,6 +9,8 @@
 #include "flat_config.h"
 #include "spmv_hip_acc_imp.h"
 
+void adaptive_flat_matrix_analyse_imp(const int m, const int n, const int nnz, const int *rowptr, int **break_points);
+
 template <typename DATA_TYPE, int R, int REDUCE_OPTION, int REDUCE_VEC_SIZE, int BLOCKS, int THREADS_PER_BLOCK>
 inline void flat_multi_pass_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta, int m, int n, int nnz,
                                         const int *rowptr, const int *colindex, const DATA_TYPE *value,
@@ -42,9 +44,15 @@ template <typename DATA_TYPE> void flat_matrix_analyse(const csr_desc<int, DATA_
   (pre_calc_break_point<R * THREADS_PER_BLOCK, 0, int>)<<<1024, 512>>>(rowptr, m, *break_points, break_points_len);
 }
 
-// just for backward compatibility.
-template <typename DATA_TYPE> void flat_analyse(const csr_desc<int, DATA_TYPE> d_csr_desc, csrmv_flat_mtx_info *info) {
-  flat_matrix_analyse(d_csr_desc, &(info->break_points));
+// analyse for adaptive flat strategy
+template <typename DATA_TYPE>
+void adaptive_flat_analyse(const csr_desc<int, DATA_TYPE> d_csr_desc, csrmv_flat_mtx_info *info) {
+  const int *rowptr = d_csr_desc.row_ptr;
+  const int m = d_csr_desc.rows;
+  const int n = d_csr_desc.cols;
+  const int nnz = d_csr_desc.nnz;
+
+  adaptive_flat_matrix_analyse_imp(m, n, nnz, rowptr, &(info->break_points));
 }
 
 template <typename DATA_TYPE, int R, int REDUCE_OPTION, int REDUCE_VEC_SIZE, int THREADS_PER_BLOCK>
@@ -91,10 +99,10 @@ void adaptive_flat_sparse_spmv(int trans, const T alpha, const T beta, const csr
 
   flat_set_beta_y<T, int, BEAT_Y_POLICY>(y, m, beta);
 
-  constexpr int R = 2;
-  constexpr int THREADS_PER_BLOCK = 512;
   // for non one-pass.
   if (!FLAT_ONE_PASS) {
+    constexpr int R = 2;
+    constexpr int THREADS_PER_BLOCK = 512;
     constexpr int blocks = 512;
     constexpr int RED_OPT = FLAT_REDUCE_OPTION_VEC;
     flat_multi_pass_sparse_spmv<T, R, RED_OPT, 2, blocks, THREADS_PER_BLOCK>(trans, alpha, beta, m, n, nnz, rowptr,
@@ -104,6 +112,8 @@ void adaptive_flat_sparse_spmv(int trans, const T alpha, const T beta, const csr
 
   int *break_points = info->break_points;
   if (!FLAT_ONE_PASS_ADAPTIVE) {
+    constexpr int R = 2;
+    constexpr int THREADS_PER_BLOCK = 512;
     constexpr int RED_OPT = FLAT_REDUCE_OPTION_VEC;
     constexpr int VEC_SIZE = 4;
     flat_one_pass_sparse_spmv<T, R, RED_OPT, VEC_SIZE, THREADS_PER_BLOCK>(trans, alpha, beta, m, n, nnz, rowptr,
@@ -111,6 +121,14 @@ void adaptive_flat_sparse_spmv(int trans, const T alpha, const T beta, const csr
     return;
   }
 
+  if constexpr (std::is_same<T, double>::value) { // float64
+    adaptive_flat_sparse_spmv_fp64(trans, alpha, beta, d_csr_desc, x, y, break_points);
+  } else { // float32
+    adaptive_flat_sparse_spmv_fp32(trans, alpha, beta, d_csr_desc, x, y, break_points);
+  }
+  return;
+
+#if 0
   // divide the matrix into 2 parts and get the max nnz per row of each part.
   int avg_block_nnz_max = nnz / m;
   if (avg_block_nnz_max <= 32) {
@@ -131,6 +149,291 @@ void adaptive_flat_sparse_spmv(int trans, const T alpha, const T beta, const csr
     constexpr int VEC_SIZE = 16;
     flat_one_pass_sparse_spmv<T, R, REDUCE_OPT, VEC_SIZE, THREADS_PER_BLOCK>(trans, alpha, beta, m, n, nnz, rowptr,
                                                                              colindex, value, x, y, break_points);
+  }
+#endif
+
+}
+
+/**
+ * set flat kernel template parameters adaptively.
+ * currently, it only support adaptive template parameters on one-pass flat method.
+ * \note: if config item FLAT_ONE_PASS_ADAPTIVE is set to false, one-pass adaptive will be disabled.
+ */
+void adaptive_flat_sparse_spmv_fp64(int trans, const double alpha, const double beta,
+                                    const csr_desc<int, double> d_csr_desc, const double *x, double *y,
+                                    const int *break_points) {
+  using T = double;
+  VAR_FROM_CSR_DESC(T, d_csr_desc)
+  const int nnz = d_csr_desc.nnz;
+  const int n = d_csr_desc.cols;
+
+  const int density = nnz / m;
+  if (n < 50000) {
+    if (density < 5.0) {
+      constexpr int R = 1;
+      constexpr int VEC_SIZE = 1;
+      constexpr int THREADS_PER_BLOCK = 512;
+      flat_one_pass_sparse_spmv<T, R, FLAT_REDUCE_OPTION_DIRECT, VEC_SIZE, THREADS_PER_BLOCK>(
+          trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points);
+    } else if (density < 10.0) {
+      constexpr int R = 1;
+      constexpr int VEC_SIZE = 2;
+      constexpr int THREADS_PER_BLOCK = 512;
+      flat_one_pass_sparse_spmv<T, R, FLAT_REDUCE_OPTION_VEC, VEC_SIZE, THREADS_PER_BLOCK>(
+          trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points);
+    } else if (density < 20.0) {
+      constexpr int R = 2;
+      constexpr int VEC_SIZE = 4;
+      constexpr int THREADS_PER_BLOCK = 512;
+      flat_one_pass_sparse_spmv<T, R, FLAT_REDUCE_OPTION_VEC, VEC_SIZE, THREADS_PER_BLOCK>(
+          trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points);
+    } else if (density < 50.0) {
+      constexpr int R = 2;
+      constexpr int VEC_SIZE = 8;
+      constexpr int THREADS_PER_BLOCK = 512;
+      flat_one_pass_sparse_spmv<T, R, FLAT_REDUCE_OPTION_VEC, VEC_SIZE, THREADS_PER_BLOCK>(
+          trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points);
+    } else {
+      constexpr int R = 2;
+      constexpr int VEC_SIZE = 16;
+      constexpr int THREADS_PER_BLOCK = 512;
+      flat_one_pass_sparse_spmv<T, R, FLAT_REDUCE_OPTION_VEC, VEC_SIZE, THREADS_PER_BLOCK>(
+          trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points);
+    }
+  } else if (density < 10.0) {
+    if (density < 5.0) {
+      constexpr int R = 1;
+      constexpr int VEC_SIZE = 1;
+      constexpr int THREADS_PER_BLOCK = 512;
+      flat_one_pass_sparse_spmv<T, R, FLAT_REDUCE_OPTION_DIRECT, VEC_SIZE, THREADS_PER_BLOCK>(
+          trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points);
+    } else {
+      constexpr int R = 1;
+      constexpr int VEC_SIZE = 2;
+      constexpr int THREADS_PER_BLOCK = 512;
+      flat_one_pass_sparse_spmv<T, R, FLAT_REDUCE_OPTION_VEC, VEC_SIZE, THREADS_PER_BLOCK>(
+          trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points);
+    }
+  } else {
+    if (density < 20.0) {
+      constexpr int R = 2;
+      constexpr int VEC_SIZE = 4;
+      constexpr int THREADS_PER_BLOCK = 256;
+      flat_one_pass_sparse_spmv<T, R, FLAT_REDUCE_OPTION_VEC, VEC_SIZE, THREADS_PER_BLOCK>(
+          trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points);
+    } else if (density < 50.0) {
+      constexpr int R = 2;
+      constexpr int VEC_SIZE = 8;
+      constexpr int THREADS_PER_BLOCK = 256;
+      flat_one_pass_sparse_spmv<T, R, FLAT_REDUCE_OPTION_VEC, VEC_SIZE, THREADS_PER_BLOCK>(
+          trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points);
+    } else if (density < 100.0) {
+      constexpr int R = 2;
+      constexpr int VEC_SIZE = 16;
+      constexpr int THREADS_PER_BLOCK = 256;
+      flat_one_pass_sparse_spmv<T, R, FLAT_REDUCE_OPTION_VEC, VEC_SIZE, THREADS_PER_BLOCK>(
+          trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points);
+    } else {
+      constexpr int R = 3;
+      constexpr int VEC_SIZE = 16;
+      constexpr int THREADS_PER_BLOCK = 256;
+      flat_one_pass_sparse_spmv<T, R, FLAT_REDUCE_OPTION_VEC, VEC_SIZE, THREADS_PER_BLOCK>(
+          trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points);
+    }
+  }
+}
+
+void adaptive_flat_sparse_spmv_fp32(int trans, const float alpha, const float beta,
+                                    const csr_desc<int, float> d_csr_desc, const float *x, float *y,
+                                    const int *break_points) {
+  using T = float;
+  VAR_FROM_CSR_DESC(T, d_csr_desc)
+  const int nnz = d_csr_desc.nnz;
+  const int n = d_csr_desc.cols;
+
+  const int density = nnz / n;
+  if (n < 50000) {
+    if (density < 5.0) {
+      constexpr int R = 1;
+      constexpr int VEC_SIZE = 1;
+      constexpr int THREADS_PER_BLOCK = 512;
+      flat_one_pass_sparse_spmv<T, R, FLAT_REDUCE_OPTION_DIRECT, VEC_SIZE, THREADS_PER_BLOCK>(
+          trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points);
+    } else if (density < 10.0) {
+      constexpr int R = 1;
+      constexpr int VEC_SIZE = 2;
+      constexpr int THREADS_PER_BLOCK = 512;
+      flat_one_pass_sparse_spmv<T, R, FLAT_REDUCE_OPTION_VEC, VEC_SIZE, THREADS_PER_BLOCK>(
+          trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points);
+    } else if (density < 20.0) {
+      constexpr int R = 2;
+      constexpr int VEC_SIZE = 4;
+      constexpr int THREADS_PER_BLOCK = 512;
+      flat_one_pass_sparse_spmv<T, R, FLAT_REDUCE_OPTION_VEC, VEC_SIZE, THREADS_PER_BLOCK>(
+          trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points);
+    } else if (density < 50.0) {
+      constexpr int R = 2;
+      constexpr int VEC_SIZE = 8;
+      constexpr int THREADS_PER_BLOCK = 512;
+      flat_one_pass_sparse_spmv<T, R, FLAT_REDUCE_OPTION_VEC, VEC_SIZE, THREADS_PER_BLOCK>(
+          trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points);
+    } else {
+      constexpr int R = 2;
+      constexpr int VEC_SIZE = 16;
+      constexpr int THREADS_PER_BLOCK = 512;
+      flat_one_pass_sparse_spmv<T, R, FLAT_REDUCE_OPTION_VEC, VEC_SIZE, THREADS_PER_BLOCK>(
+          trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points);
+    }
+  } else if (density < 10.0) {
+    if (density < 5.0) {
+      constexpr int R = 1;
+      constexpr int VEC_SIZE = 1;
+      constexpr int THREADS_PER_BLOCK = 512;
+      flat_one_pass_sparse_spmv<T, R, FLAT_REDUCE_OPTION_DIRECT, VEC_SIZE, THREADS_PER_BLOCK>(
+          trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points);
+    } else {
+      constexpr int R = 1;
+      constexpr int VEC_SIZE = 2;
+      constexpr int THREADS_PER_BLOCK = 512;
+      flat_one_pass_sparse_spmv<T, R, FLAT_REDUCE_OPTION_VEC, VEC_SIZE, THREADS_PER_BLOCK>(
+          trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points);
+    }
+  } else {
+    if (density < 20.0) {
+      constexpr int R = 2;
+      constexpr int VEC_SIZE = 4;
+      constexpr int THREADS_PER_BLOCK = 256;
+      flat_one_pass_sparse_spmv<T, R, FLAT_REDUCE_OPTION_VEC, VEC_SIZE, THREADS_PER_BLOCK>(
+          trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points);
+    } else if (density < 50.0) {
+      constexpr int R = 2;
+      constexpr int VEC_SIZE = 8;
+      constexpr int THREADS_PER_BLOCK = 256;
+      flat_one_pass_sparse_spmv<T, R, FLAT_REDUCE_OPTION_VEC, VEC_SIZE, THREADS_PER_BLOCK>(
+          trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points);
+    } else if (density < 100.0) {
+      constexpr int R = 2;
+      constexpr int VEC_SIZE = 16;
+      constexpr int THREADS_PER_BLOCK = 256;
+      flat_one_pass_sparse_spmv<T, R, FLAT_REDUCE_OPTION_VEC, VEC_SIZE, THREADS_PER_BLOCK>(
+          trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points);
+    } else {
+      constexpr int R = 3;
+      constexpr int VEC_SIZE = 16;
+      constexpr int THREADS_PER_BLOCK = 256;
+      flat_one_pass_sparse_spmv<T, R, FLAT_REDUCE_OPTION_VEC, VEC_SIZE, THREADS_PER_BLOCK>(
+          trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points);
+    }
+  }
+}
+
+void adaptive_flat_matrix_analyse_imp(const int m, const int n, const int nnz, const int *rowptr, int **break_points) {
+  const int density = nnz / m;
+  if (n < 50000) {
+    if (density < 5.0) {
+      constexpr int R = 1;
+      constexpr int THREADS_PER_BLOCK = 512;
+      const int HIP_BLOCKS = nnz / (R * THREADS_PER_BLOCK) + ((nnz % (R * THREADS_PER_BLOCK) == 0) ? 0 : 1);
+      constexpr int TOTAL_ROUNDS = 1;
+      const int break_points_len = TOTAL_ROUNDS * HIP_BLOCKS + 1;
+      hipMalloc((void **)break_points, break_points_len * sizeof(int));
+      hipMemset(*break_points, 0, break_points_len * sizeof(int));
+      pre_calc_break_point<R * THREADS_PER_BLOCK, 0, int><<<1024, 512>>>(rowptr, m, *break_points, break_points_len);
+    } else if (density < 10.0) {
+      constexpr int R = 1;
+      constexpr int THREADS_PER_BLOCK = 512;
+      const int HIP_BLOCKS = nnz / (R * THREADS_PER_BLOCK) + ((nnz % (R * THREADS_PER_BLOCK) == 0) ? 0 : 1);
+      constexpr int TOTAL_ROUNDS = 1;
+      const int break_points_len = TOTAL_ROUNDS * HIP_BLOCKS + 1;
+      hipMalloc((void **)break_points, break_points_len * sizeof(int));
+      hipMemset(*break_points, 0, break_points_len * sizeof(int));
+      pre_calc_break_point<R * THREADS_PER_BLOCK, 0, int><<<1024, 512>>>(rowptr, m, *break_points, break_points_len);
+    } else if (density < 20.0) {
+      constexpr int R = 2;
+      constexpr int THREADS_PER_BLOCK = 512;
+      const int HIP_BLOCKS = nnz / (R * THREADS_PER_BLOCK) + ((nnz % (R * THREADS_PER_BLOCK) == 0) ? 0 : 1);
+      constexpr int TOTAL_ROUNDS = 1;
+      const int break_points_len = TOTAL_ROUNDS * HIP_BLOCKS + 1;
+      hipMalloc((void **)break_points, break_points_len * sizeof(int));
+      hipMemset(*break_points, 0, break_points_len * sizeof(int));
+      pre_calc_break_point<R * THREADS_PER_BLOCK, 0, int><<<1024, 512>>>(rowptr, m, *break_points, break_points_len);
+    } else if (density < 50.0) {
+      constexpr int R = 2;
+      constexpr int THREADS_PER_BLOCK = 512;
+      const int HIP_BLOCKS = nnz / (R * THREADS_PER_BLOCK) + ((nnz % (R * THREADS_PER_BLOCK) == 0) ? 0 : 1);
+      constexpr int TOTAL_ROUNDS = 1;
+      const int break_points_len = TOTAL_ROUNDS * HIP_BLOCKS + 1;
+      hipMalloc((void **)break_points, break_points_len * sizeof(int));
+      hipMemset(*break_points, 0, break_points_len * sizeof(int));
+      pre_calc_break_point<R * THREADS_PER_BLOCK, 0, int><<<1024, 512>>>(rowptr, m, *break_points, break_points_len);
+    } else {
+      constexpr int R = 2;
+      constexpr int THREADS_PER_BLOCK = 512;
+      const int HIP_BLOCKS = nnz / (R * THREADS_PER_BLOCK) + ((nnz % (R * THREADS_PER_BLOCK) == 0) ? 0 : 1);
+      constexpr int TOTAL_ROUNDS = 1;
+      const int break_points_len = TOTAL_ROUNDS * HIP_BLOCKS + 1;
+      hipMalloc((void **)break_points, break_points_len * sizeof(int));
+      hipMemset(*break_points, 0, break_points_len * sizeof(int));
+      pre_calc_break_point<R * THREADS_PER_BLOCK, 0, int><<<1024, 512>>>(rowptr, m, *break_points, break_points_len);
+    }
+  } else if (density < 10.0) {
+    if (density < 5.0) {
+      constexpr int R = 1;
+      constexpr int THREADS_PER_BLOCK = 512;
+      const int HIP_BLOCKS = nnz / (R * THREADS_PER_BLOCK) + ((nnz % (R * THREADS_PER_BLOCK) == 0) ? 0 : 1);
+      constexpr int TOTAL_ROUNDS = 1;
+      const int break_points_len = TOTAL_ROUNDS * HIP_BLOCKS + 1;
+      hipMalloc((void **)break_points, break_points_len * sizeof(int));
+      hipMemset(*break_points, 0, break_points_len * sizeof(int));
+      pre_calc_break_point<R * THREADS_PER_BLOCK, 0, int><<<1024, 512>>>(rowptr, m, *break_points, break_points_len);
+    } else {
+      constexpr int R = 1;
+      constexpr int THREADS_PER_BLOCK = 512;
+      const int HIP_BLOCKS = nnz / (R * THREADS_PER_BLOCK) + ((nnz % (R * THREADS_PER_BLOCK) == 0) ? 0 : 1);
+      constexpr int TOTAL_ROUNDS = 1;
+      const int break_points_len = TOTAL_ROUNDS * HIP_BLOCKS + 1;
+      hipMalloc((void **)break_points, break_points_len * sizeof(int));
+      hipMemset(*break_points, 0, break_points_len * sizeof(int));
+      pre_calc_break_point<R * THREADS_PER_BLOCK, 0, int><<<1024, 512>>>(rowptr, m, *break_points, break_points_len);
+    }
+  } else {
+    if (density < 20.0) {
+      constexpr int R = 2;
+      constexpr int THREADS_PER_BLOCK = 256;
+      const int HIP_BLOCKS = nnz / (R * THREADS_PER_BLOCK) + ((nnz % (R * THREADS_PER_BLOCK) == 0) ? 0 : 1);
+      constexpr int TOTAL_ROUNDS = 1;
+      const int break_points_len = TOTAL_ROUNDS * HIP_BLOCKS + 1;
+      hipMalloc((void **)break_points, break_points_len * sizeof(int));
+      hipMemset(*break_points, 0, break_points_len * sizeof(int));
+      pre_calc_break_point<R * THREADS_PER_BLOCK, 0, int><<<1024, 512>>>(rowptr, m, *break_points, break_points_len);
+    } else if (density < 50.0) {
+      constexpr int R = 2;
+      constexpr int THREADS_PER_BLOCK = 256;
+      const int HIP_BLOCKS = nnz / (R * THREADS_PER_BLOCK) + ((nnz % (R * THREADS_PER_BLOCK) == 0) ? 0 : 1);
+      constexpr int TOTAL_ROUNDS = 1;
+      const int break_points_len = TOTAL_ROUNDS * HIP_BLOCKS + 1;
+      hipMalloc((void **)break_points, break_points_len * sizeof(int));
+      hipMemset(*break_points, 0, break_points_len * sizeof(int));
+      pre_calc_break_point<R * THREADS_PER_BLOCK, 0, int><<<1024, 512>>>(rowptr, m, *break_points, break_points_len);
+    } else if (density < 100.0) {
+      constexpr int R = 2;
+      constexpr int THREADS_PER_BLOCK = 256;
+      const int HIP_BLOCKS = nnz / (R * THREADS_PER_BLOCK) + ((nnz % (R * THREADS_PER_BLOCK) == 0) ? 0 : 1);
+      constexpr int TOTAL_ROUNDS = 1;
+      const int break_points_len = TOTAL_ROUNDS * HIP_BLOCKS + 1;
+      hipMalloc((void **)break_points, break_points_len * sizeof(int));
+      hipMemset(*break_points, 0, break_points_len * sizeof(int));
+      pre_calc_break_point<R * THREADS_PER_BLOCK, 0, int><<<1024, 512>>>(rowptr, m, *break_points, break_points_len);
+    } else {
+      constexpr int R = 3;
+      constexpr int THREADS_PER_BLOCK = 256;
+      const int HIP_BLOCKS = nnz / (R * THREADS_PER_BLOCK) + ((nnz % (R * THREADS_PER_BLOCK) == 0) ? 0 : 1);
+      constexpr int TOTAL_ROUNDS = 1;
+      const int break_points_len = TOTAL_ROUNDS * HIP_BLOCKS + 1;
+      hipMalloc((void **)break_points, break_points_len * sizeof(int));
+      hipMemset(*break_points, 0, break_points_len * sizeof(int));
+      pre_calc_break_point<R * THREADS_PER_BLOCK, 0, int><<<1024, 512>>>(rowptr, m, *break_points, break_points_len);
+    }
   }
 }
 
@@ -173,5 +476,5 @@ template void adaptive_flat_sparse_spmv<float, BEAT_Y_POLICY_OTHER>(int trans, c
                                                                     const float *x, float *y,
                                                                     const csrmv_flat_mtx_info *info);
 
-template void flat_analyse<double>(const csr_desc<int, double> d_csr_desc, csrmv_flat_mtx_info *info);
-template void flat_analyse<float>(const csr_desc<int, float> d_csr_desc, csrmv_flat_mtx_info *info);
+template void adaptive_flat_analyse<double>(const csr_desc<int, double> d_csr_desc, csrmv_flat_mtx_info *info);
+template void adaptive_flat_analyse<float>(const csr_desc<int, float> d_csr_desc, csrmv_flat_mtx_info *info);
