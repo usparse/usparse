@@ -70,6 +70,49 @@ usparse::usparse_csrmv_algo select_csrmv_algo(const csr_desc<int, T> d_csr_desc)
   }
 }
 
+struct sync_handle {
+  static constexpr int SYNC_POLICY = 1;
+
+  static constexpr int SYNC_POLICY_DEVICE_SYNC = 0;
+  static constexpr int SYNC_POLICY_EVENT_SYNC = 1;
+  static constexpr int SYNC_POLICY_MEMCOPY_SYNC = 2;
+
+  inline sync_handle() {
+    if (SYNC_POLICY == SYNC_POLICY_DEVICE_SYNC) {
+      return;
+    } else if (SYNC_POLICY == SYNC_POLICY_EVENT_SYNC) {
+      hipEventCreate(&sync_kernel_event);
+    } else if (SYNC_POLICY == SYNC_POLICY_MEMCOPY_SYNC) {
+      mem_malloc();
+    }
+  }
+
+  inline void sync() {
+    if (SYNC_POLICY == SYNC_POLICY_DEVICE_SYNC) {
+      hipDeviceSynchronize();
+    } else if (SYNC_POLICY == SYNC_POLICY_EVENT_SYNC) {
+      hipEventRecord(sync_kernel_event);
+      hipEventSynchronize(sync_kernel_event);
+    } else if (SYNC_POLICY == SYNC_POLICY_MEMCOPY_SYNC) {
+      mem_copy();
+    }
+  }
+
+private:
+  int *host_data;
+  int *dev_data;
+
+  hipEvent_t sync_kernel_event;
+
+private:
+  void mem_malloc() {
+    HIP_CHECK(hipHostMalloc((int **)&host_data, 1 * sizeof(int)));
+    HIP_CHECK(hipMalloc((int **)&dev_data, 1 * sizeof(int)));
+  }
+
+  void mem_copy() { HIP_CHECK(hipMemcpy(dev_data, host_data, 1 * sizeof(int), hipMemcpyHostToDevice)); }
+};
+
 RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, double *dev_x, double *dev_y,
              csr_desc<int, double> d_csr_desc) {
   // 稀疏矩阵A_d需默认以CSR格式压缩存储，使用DCU优化时，该矩阵A和右端向量b传输到DCU端的开销，以及结果向量x传输到CPU端的开销可不算在计时范围
@@ -309,6 +352,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   // auto start = std::chrono::high_resolution_clock::now(); // 禁止修改
   // =======如果已移植为DCU代码，请更换为下列计时==========
   hipEvent_t test_start_event, test_stop_event;
+  sync_handle h_sync;
   hipEventCreate(&test_start_event);
   hipEventCreate(&test_stop_event);
   hipEventRecord(test_start_event, 0);
@@ -330,7 +374,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
     usparse::device_daxpy<uint, float, float>(-1.0, d_b_f, d_r0_f, N);
 
     usparse::device_calculateNorm<uint, float>(d_r0_f, N, d_beta_f, d_temp_buffer, 0);
-    hipDeviceSynchronize();
+    h_sync.sync();
 
     beta = *d_beta_f;
 
@@ -365,19 +409,19 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
         usparse::dotprod_axpy_fusion<uint, float, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_1>(
             d_r0_f, d_V_f, d_H_f, d_temp_buffer, N, RESTART_TIMES, i, 0);
         usparse::device_calculateNorm(d_r0_f, N, &d_H_f[(i + 1) * RESTART_TIMES + i], d_temp_buffer, 0);
-        hipDeviceSynchronize();
+        h_sync.sync();
         alpha = 1.0 / d_H_f[(i + 1) * RESTART_TIMES + i];
         usparse::device_dscal<uint, float>(alpha, d_r0_f, N);
         usparse::device_dcopy(d_r0_f, d_V_f + N * (i + 1), N);
       } else { // GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_NONE
         for (k = 0; k <= i; k++) {
           usparse::device_dotProduct(d_r0_f, d_V_f + k * N, N, &d_H_f[k * RESTART_TIMES + i], d_temp_buffer, 0);
-          hipDeviceSynchronize();
+          h_sync.sync();
           alpha = -d_H_f[k * RESTART_TIMES + i];
           usparse::device_daxpy<uint, float, float>(alpha, d_V_f + N * k, d_r0_f, N);
         }
         usparse::device_calculateNorm(d_r0_f, N, &d_H_f[(i + 1) * RESTART_TIMES + i], d_temp_buffer, 0);
-        hipDeviceSynchronize();
+        h_sync.sync();
 
         alpha = 1.0 / d_H_f[(i + 1) * RESTART_TIMES + i];
         usparse::device_dscal<uint, float>(alpha, d_r0_f, N);
@@ -385,7 +429,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
       }
 
       usparse::device_rotation2((uint)(RESTART_TIMES), d_H_f, d_cs_f, d_sn_f, d_s_f, (uint)(i)); // todo: uint to int
-      hipDeviceSynchronize();
+      h_sync.sync();
       tmp = d_s_f[i + 1];
       resid = std::abs(tmp);
       // std::cout << "iteration " << iteration << ", resid = " << resid/init_res << std::endl;
@@ -397,7 +441,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
 
     // 求解上三角系统
     usparse::device_sovlerTri(RESTART_TIMES, i, d_H_f, d_s_f);
-    hipDeviceSynchronize();
+    h_sync.sync();
 
     // 更新解: <float, double>
     for (j = 0; j <= i; j++) {
