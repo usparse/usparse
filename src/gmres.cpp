@@ -317,6 +317,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   // double *d_beta = nullptr;
   double *d_b = nullptr;
   float *d_temp_buffer = nullptr;
+  float *d_gs_buffer = nullptr;
   init_device_matrix(&d_r0, &d_V, &d_s, &d_H, &d_cs, &d_sn, &d_vi, N, RESTART_TIMES);
 
   //  float var
@@ -337,6 +338,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   HIP_CHECK(hipMalloc(&d_beta_f, sizeof(float)));
   HIP_CHECK(hipMalloc(&d_b, N * sizeof(double)));
   HIP_CHECK(hipMalloc(&d_temp_buffer, (N / 256 + (N % 256 == 0 ? 0 : 1)) * sizeof(float)));
+  HIP_CHECK(hipMalloc(&d_gs_buffer, RESTART_TIMES * (N / 256 + (N % 256 == 0 ? 0 : 1)) * sizeof(float)));
   HIP_CHECK(hipMemcpy(dev_x, x_d, N * sizeof(double), hipMemcpyHostToDevice));
   HIP_CHECK(hipMemcpy(d_b, _b, N * sizeof(double), hipMemcpyHostToDevice));
 
@@ -443,20 +445,35 @@ usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2) {
           usparse::device_dcopy(d_r0_f, d_V_f + N * (i + 1), N);
         }
       } else { // GMRES_OPT_USE_GS
-        for (k = 0; k <= i; k++) {
-          usparse::device_dotProduct(d_r0_f, d_V_f + k * N, N, &d_H_f[k * RESTART_TIMES + i], d_temp_buffer, 0);
-        }
-        h_sync.sync();
-        for (k = 0; k <= i; k++) {
-          alpha = -d_H_f[k * RESTART_TIMES + i];
-          usparse::device_daxpy<uint, float, float>(alpha, d_V_f + N * k, d_r0_f, N);
-        }
-        usparse::device_calculateNorm(d_r0_f, N, &d_H_f[(i + 1) * RESTART_TIMES + i], d_temp_buffer, 0);
-        h_sync.sync();
+        if (usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION ==
+            usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2) {
+          usparse::gs_dotproduct<uint, float>(d_r0_f, d_V_f, d_H_f, d_gs_buffer, N, (uint)i, 0);
 
-        alpha = 1.0 / d_H_f[(i + 1) * RESTART_TIMES + i];
-        usparse::device_dscal<uint, float>(alpha, d_r0_f, N);
-        usparse::device_dcopy(d_r0_f, d_V_f + N * (i + 1), N);
+          h_sync.sync();
+
+          usparse::gs_daxpy<uint, float>(d_r0_f, d_V_f, d_H_f, N, (uint)i);
+          usparse::device_calculateNorm(d_r0_f, N, &d_H_f[(i + 1) * RESTART_TIMES + i], d_temp_buffer, 0);
+          h_sync.sync();
+
+          alpha = 1.0 / d_H_f[(i + 1) * RESTART_TIMES + i];
+          usparse::device_dscal<uint, float>(alpha, d_r0_f, N);
+          usparse::device_dcopy(d_r0_f, d_V_f + N * (i + 1), N);
+        } else {
+          for (k = 0; k <= i; k++) {
+            usparse::device_dotProduct(d_r0_f, d_V_f + k * N, N, &d_H_f[k * RESTART_TIMES + i], d_temp_buffer, 0);
+          }
+          h_sync.sync();
+          for (k = 0; k <= i; k++) {
+            alpha = -d_H_f[k * RESTART_TIMES + i];
+            usparse::device_daxpy<uint, float, float>(alpha, d_V_f + N * k, d_r0_f, N);
+          }
+          usparse::device_calculateNorm(d_r0_f, N, &d_H_f[(i + 1) * RESTART_TIMES + i], d_temp_buffer, 0);
+          h_sync.sync();
+
+          alpha = 1.0 / d_H_f[(i + 1) * RESTART_TIMES + i];
+          usparse::device_dscal<uint, float>(alpha, d_r0_f, N);
+          usparse::device_dcopy(d_r0_f, d_V_f + N * (i + 1), N);
+        }
       }
 
       usparse::device_rotation2((uint)(RESTART_TIMES), d_H_f, d_cs_f, d_sn_f, d_s_f, (uint)(i)); // todo: uint to int
