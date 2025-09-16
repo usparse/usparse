@@ -15,6 +15,7 @@
  * Multiplication is performed by threads in block and write the results into LDS.
  * In reduction step, each thread will reduce the results belonging to it from LDS in multiple rounds.
  *
+ * @tparam BETA_IS_ZERO: beta is zero in y = alpha Ax + beta y.
  * @tparam WF_SIZE wavefront size, threads in a wavefront.
  * @tparam ROWS_PER_BLOCK rows assigned to a HIP block.
  * @tparam R set for the LDS size in HIP block.
@@ -31,7 +32,7 @@
  * @param y vector y in: y = alpha * A * x + beta * y
  * @return
  */
-template <int WF_SIZE, int ROWS_PER_BLOCK, int R, int THREADS, typename I, typename T>
+template <bool BETA_IS_ZERO, int WF_SIZE, int ROWS_PER_BLOCK, int R, int THREADS, typename I, typename T>
 __global__ void line_enhance_kernel(int m, const T alpha, const T beta, const I *__restrict__ row_offset,
                                  const I *__restrict__ csr_col_ind, const T *__restrict__ csr_val,
                                  const T *__restrict__ x, T *__restrict__ y);

@@ -30,9 +30,11 @@ set(USPARSE_HEADER_FILES ${USPARSE_HEADER_FILES}
         ${USPARSE_HEADER_PATH}/usparse.h
         ${USPARSE_HEADER_PATH}/usparse_matrix.h
         ${USPARSE_HEADER_PATH}/usparse_types.h
+        level1/usparse_blas_level1.h
         )
 
 set(USPARSE_SOURCE_FILES ${USPARSE_SOURCE_FILES}
+        level1/usparse_blas_level1.cpp
         level2/csrmv.cpp
         level3/csrsm_kernels.cpp
         )
