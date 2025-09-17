@@ -1,3 +1,4 @@
+add_subdirectory(usparse_tuner)
 
 add_executable(csr-reader main.cpp)
 
