@@ -60,7 +60,7 @@ void adaptive_sparse_spmv(int trans, const double alpha, const double beta, cons
   if (bp_3 > (1 << 23)) { // 2^23 = 8,388,608
     csrmv_flat_mtx_info info;
     flat_analyse(d_csr_desc, &info);
-    adaptive_flat_sparse_spmv(nnz_block_0, nnz_block_1, trans, alpha, beta, d_csr_desc, x, y, &info);
+    adaptive_flat_sparse_spmv(trans, alpha, beta, d_csr_desc, x, y, &info);
     return;
   }
 

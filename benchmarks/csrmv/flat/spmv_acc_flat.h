@@ -13,7 +13,7 @@
 
 // todo: move the config to the flat implementation under src directory
 template <int FLAT_PRE_CALC_BP_KERNEL_VERSION = FLAT_PRE_CALC_BP_KERNEL_VERSION_V1>
-void adaptive_flat_sparse_spmv(const int nnz_block_0, const int nnz_block_1, int trans, const double alpha, const double beta,
+void adaptive_flat_sparse_spmv(int trans, const double alpha, const double beta,
                                const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt);
 
 template <int FLAT_PRE_CALC_BP_KERNEL_VERSION = FLAT_PRE_CALC_BP_KERNEL_VERSION_V1>

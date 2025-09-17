@@ -37,9 +37,8 @@ void segment_sum_flat_sparse_spmv(int trans, const double alpha, const double be
                                   const csr_desc<int, double> d_csr_desc, const double *x, double *y);
 
 template <int BEAT_Y_POLICY = BEAT_Y_POLICY_AUTO>
-void adaptive_flat_sparse_spmv(const int nnz_block_0, const int nnz_block_1, int trans, const double alpha,
-                               const double beta, const csr_desc<int, double> d_csr_desc, const double *x, double *y,
-                               const csrmv_flat_mtx_info *info);
+void adaptive_flat_sparse_spmv(int trans, const double alpha, const double beta, const csr_desc<int, double> d_csr_desc,
+                               const double *x, double *y, const csrmv_flat_mtx_info *info);
 
 void flat_analyse(const csr_desc<int, double> d_csr_desc, csrmv_flat_mtx_info *info);
 
