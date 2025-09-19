@@ -72,7 +72,7 @@ usparse::usparse_csrmv_algo select_csrmv_algo(const csr_desc<int, T> d_csr_desc)
 }
 
 struct sync_handle {
-  static constexpr int SYNC_POLICY = 1;
+  static constexpr int SYNC_POLICY = 2;
 
   static constexpr int SYNC_POLICY_DEVICE_SYNC = 0;
   static constexpr int SYNC_POLICY_EVENT_SYNC = 1;
