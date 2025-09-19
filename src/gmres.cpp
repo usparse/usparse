@@ -12,6 +12,7 @@
 #include <hip/hip_runtime.h>
 
 #include "gmres_optimization_config.h"
+#include "gmres_utils.hpp"
 #include "init.hpp"
 #include "usparse_gmres.h"
 
@@ -170,6 +171,7 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
 
   usparse::csrmv_mat_info csrmv_info;
   usparse::device_adaptive_analysis(0, 1.0, 0.0, d_csr_desc, usparse::usparse_csrmv_algo_flat, &csrmv_info);
+  utils::warmup();
 
   // auto start = std::chrono::high_resolution_clock::now(); // 禁止修改
   // =======如果已移植为DCU代码，请更换为下列计时==========
@@ -348,6 +350,8 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   usparse::csrmv_mat_info csrmv_info;
   const usparse::usparse_csrmv_algo csrmv_algo = select_csrmv_algo(d_csr_desc);
   usparse::device_adaptive_analysis(0, 1.0, 0.0, d_csr_desc, csrmv_algo, &csrmv_info);
+
+  utils::warmup();
 
   // auto start = std::chrono::high_resolution_clock::now(); // 禁止修改
   // =======如果已移植为DCU代码，请更换为下列计时==========
