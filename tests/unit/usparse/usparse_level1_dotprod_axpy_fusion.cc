@@ -80,6 +80,8 @@ TEST(Level1Test, dotProdAxpyFusion) {
 
   const int i = I; // todo: change this value (i must <= RESTART_TIMES)
   const int m = RESTART_TIMES;
+  const float f_density = 0.5; // TODO: just for passing the compiling.
+
   for (int k = 0; k <= i; k++) {
     h_H[k * RESTART_TIMES + i] = dotProduct(h_r0.data(), h_V.data() + k * N, N);
     const double alpha = -h_H[k * RESTART_TIMES + i];
@@ -117,11 +119,11 @@ TEST(Level1Test, dotProdAxpyFusion) {
   std::size_t buffer_size = 0;
   double *d_temp_buffer = nullptr;
   usparse::dotprod_axpy_fusion<uint, double, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
-      nullptr, nullptr, nullptr, d_temp_buffer, (uint)N, (uint)m, (uint)i, &buffer_size);
+      nullptr, nullptr, nullptr, d_temp_buffer, (uint)N, (uint)m, (uint)i, &buffer_size, f_density);
   TEST_HIP_CHECK(hipMalloc(&d_temp_buffer, buffer_size));
 
   usparse::dotprod_axpy_fusion<uint, double, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
-      d_r0, d_V, d_H, d_temp_buffer, (uint)N, (uint)m, (uint)i, 0);
+      d_r0, d_V, d_H, d_temp_buffer, (uint)N, (uint)m, (uint)i, 0, f_density);
   hipDeviceSynchronize();
 
   // check result.

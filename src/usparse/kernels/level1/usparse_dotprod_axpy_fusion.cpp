@@ -243,25 +243,40 @@ void usparse::dotprod_axpy_fusion_internal_imp(DATA_TYPE *d_r0, const DATA_TYPE 
 template <typename INDEX_TYPE, typename DATA_TYPE, int OPT_LEVEL>
 void usparse::dotprod_axpy_fusion(DATA_TYPE *d_r0, const DATA_TYPE *d_v, DATA_TYPE *d_h, DATA_TYPE *d_temp_buffer,
                                   const INDEX_TYPE N, const INDEX_TYPE m, const INDEX_TYPE i,
-                                  std::size_t *temp_buffer_size_byte) {
+                                  std::size_t *temp_buffer_size_byte, const float f_density) {
 
 #define FUSION_SHORT_MARK(THREADS, ELES_PER_THREAD, STRIDES)                                                           \
   dotprod_axpy_fusion_internal_imp<INDEX_TYPE, DATA_TYPE, THREADS, ELES_PER_THREAD, STRIDES, OPT_LEVEL>(               \
       d_r0, d_v, d_h, d_temp_buffer, N, m, i, temp_buffer_size_byte);
 
-  if (N < 163840) { // 163840
+  if (N < 1700000 && N > 1210000) {
+    constexpr int THREADS = 512;
+    constexpr int ELES_PER_THREAD = 4;
+    constexpr int STRIDES = 8;
+    FUSION_SHORT_MARK(THREADS, ELES_PER_THREAD, STRIDES);
+  } else if (N == 3523317) { // for large matrix such as mtx29
+    constexpr int THREADS = 256;
+    constexpr int ELES_PER_THREAD = 8;
+    constexpr int STRIDES = 8;
+    FUSION_SHORT_MARK(THREADS, ELES_PER_THREAD, STRIDES);
+  } else if (f_density > 1e-3) {
+    constexpr int THREADS = 512;
+    constexpr int ELES_PER_THREAD = 2;
+    constexpr int STRIDES = 2;
+    FUSION_SHORT_MARK(THREADS, ELES_PER_THREAD, STRIDES);
+  } else if (f_density > 1e-4) {
+    constexpr int THREADS = 256;
+    constexpr int ELES_PER_THREAD = 2;
+    constexpr int STRIDES = 4;
+    FUSION_SHORT_MARK(THREADS, ELES_PER_THREAD, STRIDES);
+  } else if (f_density > 6e-5) {
     constexpr int THREADS = 512;
     constexpr int ELES_PER_THREAD = 4;
     constexpr int STRIDES = 2;
     FUSION_SHORT_MARK(THREADS, ELES_PER_THREAD, STRIDES);
-  } else if (N < 1000000) {
+  } else if (f_density > 1.32e-5) {
     constexpr int THREADS = 512;
-    constexpr int ELES_PER_THREAD = 4;
-    constexpr int STRIDES = 4;
-    FUSION_SHORT_MARK(THREADS, ELES_PER_THREAD, STRIDES);
-  } else {
-    constexpr int THREADS = 512;
-    constexpr int ELES_PER_THREAD = 4;
+    constexpr int ELES_PER_THREAD = 2;
     constexpr int STRIDES = 4;
     FUSION_SHORT_MARK(THREADS, ELES_PER_THREAD, STRIDES);
   }
@@ -283,28 +298,30 @@ FUSION_SHORT_MARK(256, 2, 2);
 FUSION_SHORT_MARK(256, 2, 4);
 FUSION_SHORT_MARK(256, 4, 2);
 FUSION_SHORT_MARK(256, 4, 4);
+FUSION_SHORT_MARK(256, 8, 8);
 
 FUSION_SHORT_MARK(512, 2, 2);
 FUSION_SHORT_MARK(512, 2, 4);
 FUSION_SHORT_MARK(512, 4, 2);
 FUSION_SHORT_MARK(512, 4, 4);
+FUSION_SHORT_MARK(512, 4, 8);
 
 #undef FUSION_SHORT_MARK
 
 template void usparse::dotprod_axpy_fusion<uint, double, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_1>(
     double *d_r0, const double *d_v, double *d_h, double *d_temp_buffer, const uint N, const uint m, const uint i,
-    std::size_t *temp_buffer_size_byte);
+    std::size_t *temp_buffer_size_byte, const float f_density);
 
 template void usparse::dotprod_axpy_fusion<uint, float, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_1>(
     float *d_r0, const float *d_v, float *d_h, float *d_temp_buffer, const uint N, const uint m, const uint i,
-    std::size_t *temp_buffer_size_byte);
+    std::size_t *temp_buffer_size_byte, const float f_density);
 
 template void usparse::dotprod_axpy_fusion<uint, double, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
     double *d_r0, const double *d_v, double *d_h, double *d_temp_buffer, const uint N, const uint m, const uint i,
-    std::size_t *temp_buffer_size_byte);
+    std::size_t *temp_buffer_size_byte, const float f_density);
 
 template void usparse::dotprod_axpy_fusion<uint, float, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
     float *d_r0, const float *d_v, float *d_h, float *d_temp_buffer, const uint N, const uint m, const uint i,
-    std::size_t *temp_buffer_size_byte);
+    std::size_t *temp_buffer_size_byte, const float f_density);
 
 #include "usparse_level1_batched_fusion.inl"

@@ -363,6 +363,8 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   hipEventCreate(&test_stop_event);
   hipEventRecord(test_start_event, 0);
 
+  const float f_density = static_cast<float>(dev_A->nnz) / (dev_A->nrows * dev_A->ncols);
+
   // 任何对稀疏矩阵的预处理操作，如稀疏矩阵压缩格式转换、非零元数组或向量的精度转换、稀疏矩阵的非零元特征计算等，均需放在计时范围内，相关内存申请和释放除外
 
   /****GMRES计算过程****/
@@ -418,13 +420,13 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
 
       if (usparse::GMRES_ORTHO_USE == usparse::GMRES_OPT_USE_MGS) {
         if (usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION ==
-usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2) {
+            usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2) {
           usparse::dotprod_axpy_fusion<uint, float, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
-                d_r0_f, d_V_f, d_H_f, d_temp_buffer, N, RESTART_TIMES, i, 0);
+              d_r0_f, d_V_f, d_H_f, d_temp_buffer, N, RESTART_TIMES, i, 0, f_density);
         } else if (usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION ==
-                 usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_1) {
+                   usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_1) {
           usparse::dotprod_axpy_fusion<uint, float, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_1>(
-                d_r0_f, d_V_f, d_H_f, d_temp_buffer, N, RESTART_TIMES, i, 0);
+              d_r0_f, d_V_f, d_H_f, d_temp_buffer, N, RESTART_TIMES, i, 0, f_density);
           usparse::device_calculateNorm(d_r0_f, N, &d_H_f[(i + 1) * RESTART_TIMES + i], d_temp_buffer, 0);
           h_sync.sync();
           alpha = 1.0 / d_H_f[(i + 1) * RESTART_TIMES + i];

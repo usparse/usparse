@@ -41,6 +41,8 @@ template <typename T> static void Usparse_dotprod_axpy_fusion(benchmark::State &
 
   const int i = I; // todo: change this value (i must <= RESTART_TIMES)
   const int m = RESTART_TIMES;
+  
+  const float f_density = 0.5; // TODO: just for passing the compiling
 
   T *d_r0 = nullptr;
   T *d_V = nullptr;
@@ -55,12 +57,12 @@ template <typename T> static void Usparse_dotprod_axpy_fusion(benchmark::State &
   std::size_t buffer_size = 0;
   T *d_temp_buffer = nullptr;
   usparse::dotprod_axpy_fusion<uint, T, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
-      nullptr, nullptr, nullptr, d_temp_buffer, (uint)N, (uint)m, (uint)i, &buffer_size);
+      nullptr, nullptr, nullptr, d_temp_buffer, (uint)N, (uint)m, (uint)i, &buffer_size, f_density);
   TEST_HIP_CHECK(hipMalloc(&d_temp_buffer, buffer_size));
 
   for (auto _ : state) {
     usparse::dotprod_axpy_fusion<uint, T, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
-        d_r0, d_V, d_H, d_temp_buffer, (uint)N, (uint)m, (uint)i, 0);
+        d_r0, d_V, d_H, d_temp_buffer, (uint)N, (uint)m, (uint)i, 0, f_density);
     hipDeviceSynchronize();
   }
 
