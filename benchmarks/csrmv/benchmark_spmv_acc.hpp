@@ -21,6 +21,8 @@
 #include "hip-thread-row/thread_row.h"
 #include "hip-vector-row/vector_row.h"
 
+#include "../../library/internal/usparse_internal.h"
+
 struct SpMVAccAdaptive : CsrSpMV {
   void csr_spmv_impl(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
                      const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
@@ -110,7 +112,8 @@ struct SpMVAccVecRow : CsrSpMV {
                      const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
     hip::timer::event_timer calc_timer;
     calc_timer.start();
-    vec_row_sparse_spmv(trans, alpha, beta, d_csr_desc, x, y);
+    usparse::spmv::internal::usparse_csrmv_imp(usparse::usparse_operation::operation_none, alpha, beta, d_csr_desc, x,
+                                               y, nullptr, usparse::spmv::usparse_csrmv_algorithms::CsrVector);
     calc_timer.stop(true);
     double calc_time_cost = calc_timer.time_use;
     if (bmt != nullptr) {
@@ -125,7 +128,8 @@ struct SpMVAccLineEnhance : CsrSpMV {
                      const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
     hip::timer::event_timer calc_timer;
     calc_timer.start();
-    adaptive_enhance_sparse_spmv(trans, alpha, beta, d_csr_desc, x, y);
+    usparse::spmv::internal::usparse_csrmv_imp(usparse::usparse_operation::operation_none, alpha, beta, d_csr_desc, x,
+                                               y, nullptr, usparse::spmv::usparse_csrmv_algorithms::LineEnhance);
     calc_timer.stop(true);
     double calc_time_cost = calc_timer.time_use;
     if (bmt != nullptr) {

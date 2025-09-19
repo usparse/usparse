@@ -5,46 +5,36 @@
 #ifndef USPARSE_HIP_USPARSE_H
 #define USPARSE_HIP_USPARSE_H
 
+#include "usparse_handle.h"
+#include "usparse_mat_info.h"
 #include "usparse_matrix.h"
 #include "usparse_types.h"
 
 namespace usparse {
 
-  namespace mat {
-    struct usparse_mat_info {
-      usparse_int *info; // todo.
-    };
-
-    usparse_status usparse_create_mat_info(usparse_mat_info *info);
-
-    usparse_status usparse_destroy_mat_info(usparse_mat_info *info);
-  } // namespace mat
-
   /**
-   * Currently, we can only process float and double types.
+   * Currently, we can only process usparse_fp32 and usparse_fp64 types.
    */
   namespace spmv {
     enum class usparse_csrmv_algorithms { Flat, LineEnhance, CsrAdaptivePlus, CsrVector, Adaptive };
 
-    usparse_status usparse_scsrmv_analysis(const usparse_operation trans,
-                                           const csr_desc<usparse_int, float> *host_csr_mat,
-                                           const csr_desc<usparse_int, float> *dev_csr_mat, mat::usparse_mat_info *info,
-                                           const usparse_csrmv_algorithms algo);
+    enum class usparse_coomv_algorithms { Flat, LineEnhance, CsrAdaptivePlus, CsrVector, Adaptive };
 
-    usparse_status usparse_dcsrmv_analysis(const usparse_operation trans,
-                                           const csr_desc<usparse_int, double> *host_csr_mat,
-                                           const csr_desc<usparse_int, double> *dev_csr_mat,
+    usparse_status usparse_scsrmv_analysis(const usparse_operation trans,
+                                           const csr_desc<usparse_int, usparse_fp32> dev_csr_mat,
                                            mat::usparse_mat_info *info, const usparse_csrmv_algorithms algo);
 
-    usparse_status usparse_scsrmv(const usparse_operation trans, const float *alpha, const float *beta,
-                                  const csr_desc<usparse_int, float> *host_csr_mat,
-                                  const csr_desc<usparse_int, float> *dev_csr_mat, const float *x, float *y,
-                                  mat::usparse_mat_info *info, const usparse_csrmv_algorithms algo);
+    usparse_status usparse_dcsrmv_analysis(const usparse_operation trans,
+                                           const csr_desc<usparse_int, usparse_fp64> dev_csr_mat,
+                                           mat::usparse_mat_info *info, const usparse_csrmv_algorithms algo);
 
-    usparse_status usparse_dcsrmv(const usparse_operation trans, const double *alpha, const double *beta,
-                                  const csr_desc<usparse_int, double> *host_csr_mat,
-                                  const csr_desc<usparse_int, double> *dev_csr_mat, const double *x, double *y,
-                                  mat::usparse_mat_info *info, const usparse_csrmv_algorithms algo);
+    usparse_status usparse_scsrmv(const usparse_operation trans, const usparse_fp32 alpha, const usparse_fp32 beta,
+                                  const csr_desc<usparse_int, usparse_fp32> dev_csr_mat, const usparse_fp32 *x,
+                                  usparse_fp32 *y, mat::usparse_mat_info *info, const usparse_csrmv_algorithms algo);
+
+    usparse_status usparse_dcsrmv(const usparse_operation trans, const usparse_fp64 alpha, const usparse_fp64 beta,
+                                  const csr_desc<usparse_int, usparse_fp64> dev_csr_mat, const usparse_fp64 *x,
+                                  usparse_fp64 *y, mat::usparse_mat_info *info, const usparse_csrmv_algorithms algo);
 
     usparse_status usparse_csrmv_clear(mat::usparse_mat_info *info);
   } // namespace spmv
