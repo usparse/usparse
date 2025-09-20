@@ -320,12 +320,30 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   init_device_matrix_float(&d_V_f, &d_H_f, &d_vi_f, &d_sn_f, &d_cs_f, &d_r0_f, &d_A_val_f, &d_s_f, &d_b_f, N,
                            RESTART_TIMES, dev_A->nnz);
 
-  HIP_CHECK(hipMalloc(&d_beta_f, sizeof(float)));
   HIP_CHECK(hipMalloc(&d_b, N * sizeof(double)));
-  HIP_CHECK(hipMalloc(&d_temp_buffer, (N / 256 + (N % 256 == 0 ? 0 : 1)) * sizeof(float)));
-  HIP_CHECK(hipMalloc(&d_gs_buffer, RESTART_TIMES * (N / 256 + (N % 256 == 0 ? 0 : 1)) * sizeof(float)));
   HIP_CHECK(hipMemcpy(dev_x, x_d, N * sizeof(double), hipMemcpyHostToDevice));
   HIP_CHECK(hipMemcpy(d_b, _b, N * sizeof(double), hipMemcpyHostToDevice));
+
+  utils::warmup();
+  
+  // auto start = std::chrono::high_resolution_clock::now(); // 禁止修改
+  // =======如果已移植为DCU代码，请更换为下列计时==========
+  hipEvent_t test_start_event, test_stop_event;
+  sync_handle h_sync;
+  hipEventCreate(&test_start_event);
+  hipEventCreate(&test_stop_event);
+  hipEventRecord(test_start_event, 0);
+  // 任何对稀疏矩阵的预处理操作，如稀疏矩阵压缩格式转换、非零元数组或向量的精度转换、稀疏矩阵的非零元特征计算等，均需放在计时范围内，相关内存申请和释放除外
+
+  if (usparse::GMRES_ORTHO_USE == usparse::GMRES_OPT_USE_GS) {
+    HIP_CHECK(hipMalloc(&d_gs_buffer, RESTART_TIMES * (N / 256 + (N % 256 == 0 ? 0 : 1)) * sizeof(float)));
+    // TODO: strategy selection.
+  }
+
+  // additional 1 float for d_beta_f.
+  const int tmp_buf_len = N / 256 + (N % 256 == 0 ? 0 : 1);
+  HIP_CHECK(hipMalloc(&d_temp_buffer, (tmp_buf_len + 1) * sizeof(float)));
+  d_beta_f = d_temp_buffer + tmp_buf_len;
 
   // force conversion precision form dev_A.val to d_A_val_f
   usparse::device_cast(dev_A->vals, d_A_val_f, dev_A->nnz);
@@ -338,15 +356,6 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   const usparse::usparse_csrmv_algo csrmv_algo = select_csrmv_algo(d_csr_desc);
   usparse::device_adaptive_analysis(0, 1.0, 0.0, d_csr_desc, csrmv_algo, &csrmv_info);
 
-  utils::warmup();
-
-  // auto start = std::chrono::high_resolution_clock::now(); // 禁止修改
-  // =======如果已移植为DCU代码，请更换为下列计时==========
-  hipEvent_t test_start_event, test_stop_event;
-  sync_handle h_sync;
-  hipEventCreate(&test_start_event);
-  hipEventCreate(&test_stop_event);
-  hipEventRecord(test_start_event, 0);
 
   const float f_density = static_cast<float>(dev_A->nnz) / (dev_A->nrows * dev_A->ncols);
 
@@ -524,7 +533,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   destory_device_matrix(d_r0, d_V, d_s, d_H, d_cs, d_sn, d_vi);
   destory_device_float(d_V_f, d_H_f, d_vi_f, d_sn_f, d_cs_f, d_r0_f, d_A_val_f, d_s_f, d_b_f);
 
-  HIP_CHECK(hipFree(d_beta_f));
+  // HIP_CHECK(hipFree(d_beta_f));
   HIP_CHECK(hipFree(d_b));
   HIP_CHECK(hipFree(d_temp_buffer));
   return make_tuple(iteration, test_time, resid / init_res); // 禁止修改
