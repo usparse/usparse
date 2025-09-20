@@ -60,6 +60,11 @@ int main(int argc, char *argv[]) {
   auto d_csr_desc = d_var_csr_desc.as_const();
   // ==============禁止修改上列代码==============
 
+  // warming up start
+  gmres_float(&A_double, &x_double[0], &b_double[0], &dev_A, dev_x, dev_y, d_csr_desc);
+  HIP_CHECK(hipMemset(dev_x, 0, A_double.nrows * sizeof(double))); // reset the solve result.
+  // warming up end.
+
   auto res = gmres_float(&A_double, &x_double[0], &b_double[0], &dev_A, dev_x, dev_y, d_csr_desc);
   // auto res = gmres(&A_double, &x_double[0], &b_double[0], &dev_A, dev_x, dev_y,
   //                  d_csr_desc); // GMRES算法核心，需重点优化
