@@ -369,18 +369,27 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
     // spmv(A_d->rows, A_d->cols, A_d->vals, x_d, r0.data(), N); // 不可修改此步操作中相关数据的存储精度和SpMV计算精度
     // copy x from host to device
 
-    // compute y = AX
-    usparse::device_adaptive_spmv<int, double, BEAT_Y_POLICY_ZERO>(0, 1.0, 0.0, d_csr_desc, dev_x, dev_y, csrmv_algo, &csrmv_info);
+    // if it is the first time, dev_x is 0. Ax is also 0.
+    if(iteration != 0) {
+      // compute y = Ax
+      usparse::device_adaptive_spmv<int, double, BEAT_Y_POLICY_ZERO>(0, 1.0, 0.0, d_csr_desc, dev_x, dev_y, csrmv_algo, &csrmv_info);
 
-    usparse::device_cast<uint, double, float>(dev_y, d_r0_f, N); // dev_y => d_r0_f
+      usparse::device_cast<uint, double, float>(dev_y, d_r0_f, N); // dev_y => d_r0_f
 
-    // float
-    usparse::device_daxpy<uint, float, float>(-1.0, d_b_f, d_r0_f, N);
+      // float
+      usparse::device_daxpy<uint, float, float>(-1.0, d_b_f, d_r0_f, N); // d_r0_f += -1.0 * d_b_f.
 
-    usparse::device_calculateNorm<uint, float>(d_r0_f, N, d_beta_f, d_temp_buffer, 0);
-    h_sync.sync();
+      usparse::device_calculateNorm<uint, float>(d_r0_f, N, d_beta_f, d_temp_buffer, 0);
+      h_sync.sync();
 
-    beta = *d_beta_f;
+      beta = *d_beta_f;
+    } else {
+      // if it is the first iteration. the above code in if branch can be simplified as following.
+      // d_r0_f = -d_b_f
+      usparse::device_copy_v2(d_b_f, d_r0_f, (float)(-1.0), N);
+      // d_beta_f = norm(-d_b_f); which is also beta.
+      *d_beta_f = (float) beta;
+    }
 
     usparse::device_dscal<uint, float>(-1.0 / beta, d_r0_f, N);
 

@@ -76,6 +76,18 @@ namespace usparse {
   void device_dcopy(const DATA_TYPE *src, DATA_TYPE *dst, const INDEX_TYPE N);
 
   /**
+   * copy vector of size N from dst to src. and multiple a scale.
+   * dst = alpha * src.
+   * @tparam INDEX_TYPE index data type.
+   * @tparam DATA_TYPE data type in the vector.
+   * @param src input source vector of size N.
+   * @param dst output destination vector of size N.
+   * @param N the vector size.
+   */
+  template <typename INDEX_TYPE, typename DATA_TYPE>
+  void device_copy_v2(const DATA_TYPE *src, DATA_TYPE *dst, const DATA_TYPE alpha, const INDEX_TYPE N);
+
+  /**
    * Forced conversion precision from dst to src.
    * @tparam INDEX_TYPE index data type.
    * @tparam FOREM_TYPE data type of src.
