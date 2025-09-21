@@ -37,6 +37,7 @@ set(USPARSE_SOURCE_FILES ${USPARSE_SOURCE_FILES}
         level1/usparse_blas_level1.cpp
         level2/csrmv.cpp
         level3/csrsm_kernels.cpp
+        ../internal/usparse_internal_spmv.cc
         )
 
 # build static lib
@@ -45,7 +46,7 @@ hip_add_library(${USPARSE_LIB_NAME} STATIC ${USPARSE_SOURCE_FILES} ${USPARSE_HEA
 target_include_directories(
         ${USPARSE_LIB_NAME}
         PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}$<SEMICOLON>${USPARSE_HEADER_PATH}/../$<SEMICOLON>${PROJECT_BINARY_DIR}/generated>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}$<SEMICOLON>${USPARSE_HEADER_PATH}$<SEMICOLON>${USPARSE_HEADER_PATH}/../$<SEMICOLON>${PROJECT_BINARY_DIR}/generated>
         $<INSTALL_INTERFACE:include>
 )
 

@@ -10,11 +10,8 @@
 
 #include "usparse_matrix.h"
 #include "flat_imp_one_pass.hpp"
+#include "flat_mtx_info.h"
 #include "../spmv_api_config.hpp"
-
-struct csrmv_flat_mtx_info {
-  int *break_points = nullptr;
-};
 
 template <int WF_SIZE, int R, int BLOCKS, int THREADS, typename I, typename T>
 __global__ void spmv_flat_kernel(int m, const T alpha, const T beta, const I *__restrict__ row_offset,

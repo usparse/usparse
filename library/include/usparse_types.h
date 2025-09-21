@@ -15,7 +15,9 @@ namespace usparse {
     usparse_status_invalid_size = 3,
   };
 
-  typedef int usparse_int;
+  using usparse_int = int;
+  using usparse_fp32 = float;
+  using usparse_fp64 = double;
 } // namespace usparse
 
 #endif // USPARSE_HIP_USPARSE_TYPES_H
