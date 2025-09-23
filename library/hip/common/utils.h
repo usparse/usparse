@@ -25,13 +25,17 @@ template <typename T> __forceinline__ __device__ void __builtin_nontemporal_stor
 #define device_ldg(ptr) __ldg(ptr)
 
 #define device_fma(p, q, r) fma(p, q, r)
+#define device_fmaf(p, q, r) fmaf(p, q, r)
 
 #ifdef __HIP_PLATFORM_HCC__
-#define asm_v_fma_f64(p, q, r) asm volatile("v_fma_f64 %0, %1, %2, %3" : "=v"(r) : "v"(p), "v"(q), "v"(r));
+//#define asm_v_fma_f64(p, q, r) asm volatile("v_fma_f64 %0, %1, %2, %3" : "=v"(r) : "v"(p), "v"(q), "v"(r));
+#define asm_v_fma_f64(p, q, r) (r = device_fma(p, q, r));
+#define asm_v_fma_f32(p, q, r) (r = device_fmaf(p, q, r));
 #endif // __HIP_PLATFORM_HCC__
 
 #ifndef __HIP_PLATFORM_HCC__
 #define asm_v_fma_f64(p, q, r) (r = device_fma(p, q, r));
+#define asm_v_fma_f32(p, q, r) (r = device_fmaf(p, q, r));
 #endif // __HIP_PLATFORM_HCC__
 
 // register and __shfl_down based wavefront reduction

@@ -12,15 +12,23 @@
 #include "benchmark_config.h"
 
 // todo: move the config to the flat implementation under src directory
-template <int FLAT_PRE_CALC_BP_KERNEL_VERSION = FLAT_PRE_CALC_BP_KERNEL_VERSION_V1>
-void adaptive_flat_sparse_spmv(int trans, const double alpha, const double beta,
-                               const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt);
+template <typename INDEX_TYPE, typename DATA_TYPE,
+          int FLAT_PRE_CALC_BP_KERNEL_VERSION = FLAT_PRE_CALC_BP_KERNEL_VERSION_V1>
+void adaptive_flat_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
+                               const csr_desc<INDEX_TYPE, DATA_TYPE> d_csr_desc, const DATA_TYPE *x, DATA_TYPE *y,
+                               BenchmarkTime *bmt);
 
-template <int FLAT_PRE_CALC_BP_KERNEL_VERSION = FLAT_PRE_CALC_BP_KERNEL_VERSION_V1>
-void flat_sparse_spmv(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                      const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt);
+template <typename INDEX_TYPE, typename DATA_TYPE,
+          int FLAT_PRE_CALC_BP_KERNEL_VERSION = FLAT_PRE_CALC_BP_KERNEL_VERSION_V1>
+void flat_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
+                      const csr_desc<INDEX_TYPE, DATA_TYPE> h_csr_desc,
+                      const csr_desc<INDEX_TYPE, DATA_TYPE> d_csr_desc, const DATA_TYPE *x, DATA_TYPE *y,
+                      BenchmarkTime *bmt);
 
-void segment_sum_flat_sparse_spmv(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                                  const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt);
+template <typename INDEX_TYPE, typename DATA_TYPE>
+void segment_sum_flat_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
+                                  const csr_desc<INDEX_TYPE, DATA_TYPE> h_csr_desc,
+                                  const csr_desc<INDEX_TYPE, DATA_TYPE> d_csr_desc, const DATA_TYPE *x, DATA_TYPE *y,
+                                  BenchmarkTime *bmt);
 
 #endif // SPMV_ACC_BENCHMARK_SPMV_ACC_FLAT_HPP

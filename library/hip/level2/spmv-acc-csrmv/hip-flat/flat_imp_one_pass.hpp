@@ -76,9 +76,9 @@ __global__ void spmv_flat_one_pass_kernel(int m, const T alpha, const T beta, co
   }
 }
 
-#define FLAT_KERNEL_ONE_PASS_WRAPPER(R, REDUCE_OPTION, REDUCE_VEC_SIZE, BLOCKS, THREADS)                               \
-  (spmv_flat_one_pass_kernel<__WF_SIZE__, R, REDUCE_OPTION, REDUCE_VEC_SIZE, THREADS, int,                             \
-                             double>)<<<(BLOCKS), (THREADS)>>>(m, alpha, beta, rowptr, break_points, colindex, value,  \
-                                                               x, y)
+#define FLAT_KERNEL_ONE_PASS_WRAPPER(INDEX_TYPE, FP, R, REDUCE_OPTION, REDUCE_VEC_SIZE, BLOCKS, THREADS)                           \
+  (spmv_flat_one_pass_kernel<__WF_SIZE__, R, REDUCE_OPTION, REDUCE_VEC_SIZE, THREADS, INDEX_TYPE,                             \
+                             FP>)<<<(BLOCKS), (THREADS)>>>(m, alpha, beta, rowptr, break_points, colindex, value, x,   \
+                                                           y)
 
 #endif // SPMV_ACC_FLAT_IMP_ONE_PASS_HPP

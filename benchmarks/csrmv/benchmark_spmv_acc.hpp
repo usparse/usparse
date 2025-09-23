@@ -41,7 +41,8 @@ struct SpMVAccAdaptive : CsrSpMV {
 struct SpMVAccFlat : CsrSpMV {
   void csr_spmv_impl(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
                      const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
-    flat_sparse_spmv<FLAT_PRE_CALC_BP_KERNEL_VERSION_V1>(trans, alpha, beta, h_csr_desc, d_csr_desc, x, y, bmt);
+    flat_sparse_spmv<int, double, FLAT_PRE_CALC_BP_KERNEL_VERSION_V1>(trans, alpha, beta, h_csr_desc, d_csr_desc, x, y,
+                                                                      bmt);
   }
   bool verify_beta_y() { return true; }
 };
@@ -49,7 +50,8 @@ struct SpMVAccFlat : CsrSpMV {
 struct SpMVAccFlatV2 : CsrSpMV {
   void csr_spmv_impl(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
                      const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
-    flat_sparse_spmv<FLAT_PRE_CALC_BP_KERNEL_VERSION_V2>(trans, alpha, beta, h_csr_desc, d_csr_desc, x, y, bmt);
+    flat_sparse_spmv<int, double, FLAT_PRE_CALC_BP_KERNEL_VERSION_V2>(trans, alpha, beta, h_csr_desc, d_csr_desc, x, y,
+                                                                      bmt);
   }
   bool verify_beta_y() { return true; }
 };
@@ -57,7 +59,7 @@ struct SpMVAccFlatV2 : CsrSpMV {
 struct SpMVAccFlatSegSum : CsrSpMV {
   void csr_spmv_impl(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
                      const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
-    segment_sum_flat_sparse_spmv(trans, alpha, beta, h_csr_desc, d_csr_desc, x, y, bmt);
+    segment_sum_flat_sparse_spmv<int, double>(trans, alpha, beta, h_csr_desc, d_csr_desc, x, y, bmt);
   }
   bool verify_beta_y() { return true; }
 };
