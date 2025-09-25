@@ -17,6 +17,12 @@ namespace usparse {
   constexpr int GMRES_OPT_USE_GS = 1; // Gram-Schmidt
 
   constexpr int GMRES_ORTHO_USE = GMRES_OPT_USE_GS;
+
+  // precision verification
+  constexpr bool GMRES_OPT_CLOSE_VERIFICATION = false;
+  constexpr bool GMRES_OPT_OPEN_VERIFICATION = true;
+
+  constexpr bool GMRES_OPT_VERIFY_SWITCH = GMRES_OPT_OPEN_VERIFICATION;
 }
 
 #endif // USPARSE_GMRES_OPTIMIZATION_CONFIG_H

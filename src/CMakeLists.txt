@@ -13,11 +13,14 @@ add_executable(
     main.cpp
     gmres.cpp
     init.cpp
+    verification.cpp
     )
 
 target_include_directories(gmres-host PUBLIC ${PROJECT_SOURCE_DIR}/inc)
 
 target_link_libraries(gmres-host PRIVATE
         roc::rocsparse
+        hipblas
+        hipsparse
         ${USPARSE_KERNEL_LIB_NAME}
         )

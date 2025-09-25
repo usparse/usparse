@@ -490,6 +490,15 @@ usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2) {
   float test_time = 0.0;                                              // 禁止修改
   hipEventElapsedTime(&test_time, test_start_event, test_stop_event); // 禁止修改
 
+  if (usparse::GMRES_OPT_VERIFY_SWITCH) {
+    double ver_nrom = Verification(dev_A, dev_x, d_b, d_r0, N);
+    if (ver_nrom < REL_RESID_LIMIT) {
+      printf("verify precision : pass !   resid_ver =  %.14f  \n", ver_nrom);
+    } else {
+      printf("verify precision : no pass!  resid_ver = %.14f \n", ver_nrom);
+    }
+  }
+
   // destory data
   // todo: destroy csrmv info.
   destory_device_matrix(d_r0, d_V, d_s, d_H, d_cs, d_sn, d_vi);
