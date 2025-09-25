@@ -94,6 +94,7 @@ void init_device_matrix(double **d_r0, double **d_V, double **d_s, double **d_H,
 
   // s设置为0.0
   HIP_CHECK(hipMemset(*d_s, 0.0, (m + 1) * sizeof(double)));
+  HIP_CHECK(hipMemset(*d_r0, 0.0, N * sizeof(double)));
 }
 
 void init_device_matrix_float(float **d_V_f, float **d_H_f, float **d_vi_f, float **d_sn_f, float **d_cs_f,

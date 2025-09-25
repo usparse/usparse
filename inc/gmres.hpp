@@ -7,6 +7,7 @@
 
 #include "init.hpp"
 #include "sparseMatrix.hpp"
+#include "verification.hpp"
 #include <hip/hip_runtime.h>
 
 using RESULT = std::tuple<int, float, double>;
