@@ -76,7 +76,10 @@ void test_spmv(std::string mtx_path, type_coo h_coo, host_vectors<dtype> h_vecto
   dtype beta = 1.0;
 
   statistics::print_coomv_statistics_header();
-  COOMV_BENCHMARK(UsparseCooMVFlat, "usaprse-flat", true);
+  COOMV_BENCHMARK(UsparseCoomvNaiveFlat, "usparse-naive-flat", true);
+  COOMV_BENCHMARK(UsparseCoomvVector, "usparse-vector", true);
+  COOMV_BENCHMARK(UsparseCoomvFlat, "usparse-flat", true);
+  COOMV_BENCHMARK(UsparseCoomvLine_Enhance, "usparse-line-enhance", true);
 
 #ifdef __HIP_PLATFORM_HCC__
   // rocsparse
