@@ -18,11 +18,16 @@ template <typename I, typename T> VerifyResult<I, T> verify_y(T *dy, T *hy, I N)
 
 void verify(double *dy, double *hy, int n);
 
-void host_spmv(dtype alpha, dtype beta, const dtype *value, const int *rowptr, const int *colindex, int m, int n, int a,
-               const dtype *x, dtype *y);
+void host_coo_spmv(const dtype *value, const int *row_index, const int *colindex, int m, int n, int nnz, const dtype *x,
+                   dtype *y);
+void host_coo_spmv(dtype alpha, dtype beta, const dtype *value, const int *row_index, const int *colindex, int m, int n,
+                   int nnz, const dtype *x, dtype *y);
 
-void host_spmv(const dtype *value, const int *rowptr, const int *colindex, int m, int n, int a, const dtype *x,
-               dtype *y);
+void host_csr_spmv(dtype alpha, dtype beta, const dtype *value, const int *rowptr, const int *colindex, int m, int n,
+                   int a, const dtype *x, dtype *y);
+
+void host_csr_spmv(const dtype *value, const int *rowptr, const int *colindex, int m, int n, int a, const dtype *x,
+                   dtype *y);
 
 #ifdef gpu
 void rocsparse(type_csr d_csr, dtype *dev_x, dtype *dev_y, dtype &alpha, dtype &beta);

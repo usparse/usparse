@@ -62,6 +62,28 @@ template <typename T> struct host_vectors {
   T *hhY;    // store the correct results produced by host or device verification.
 };
 
+void create_host_data(type_coo _coo, host_vectors<dtype> &h_vecs, bool overwrite_hx = false) {
+  dtype *temp_coo_dense_vec;
+  if (!overwrite_hx) {
+    temp_coo_dense_vec = new dtype[_coo.cols];
+    memcpy(temp_coo_dense_vec, h_vecs.hX, _coo.cols * sizeof(double)); // backup hX
+  }
+
+  generate_vector(_coo.cols, h_vecs.hX);
+  generate_vector(_coo.rows, h_vecs.temphY);
+  generate_vector(_coo.rows, h_vecs.hY); // 实际数据依然来自随机生成
+  generate_vector(_coo.rows, h_vecs.hhY);
+
+  // 统一主机端和设备端的向量值
+  memcpy(h_vecs.hY, h_vecs.temphY, _coo.rows * sizeof(double));
+  memcpy(h_vecs.hhY, h_vecs.temphY, _coo.rows * sizeof(double));
+
+  if (!overwrite_hx) {
+    memcpy(h_vecs.hX, temp_coo_dense_vec, _coo.cols * sizeof(double)); // 外部读取数据恢复 hX
+    delete[] temp_coo_dense_vec;
+  }
+}
+
 void create_host_data(type_csr _csr, host_vectors<dtype> &h_vecs, bool overwrite_hx = false) {
   dtype *temp_csr_dense_vec;
   if (!overwrite_hx) {
@@ -113,6 +135,30 @@ type_csr create_device_data(type_csr h_csr, dtype *hX, dtype *hY, dtype *&dX, dt
   HIP_CHECK(hipMemcpy(dX, hX, A_num_cols * sizeof(dtype), hipMemcpyHostToDevice))
   HIP_CHECK(hipMemcpy(dY, hY, A_num_rows * sizeof(dtype), hipMemcpyHostToDevice))
   return dev_csr;
+}
+
+type_coo create_device_data(type_coo h_coo, dtype *hX, dtype *hY, dtype *&dX, dtype *&dY) {
+  const int A_num_rows = h_coo.rows;
+  const int A_num_cols = h_coo.cols;
+  const int A_nnz = h_coo.nnz;
+
+  type_coo dev_coo;
+  dev_coo.rows = A_num_rows;
+  dev_coo.cols = A_num_cols;
+  dev_coo.nnz = A_nnz;
+
+  HIP_CHECK(hipMalloc((void **)&dev_coo.row_index, A_nnz * sizeof(int)))
+  HIP_CHECK(hipMalloc((void **)&dev_coo.col_index, A_nnz * sizeof(int)))
+  HIP_CHECK(hipMalloc((void **)&dev_coo.values, A_nnz * sizeof(dtype)))
+  HIP_CHECK(hipMalloc((void **)&dX, A_num_cols * sizeof(dtype)))
+  HIP_CHECK(hipMalloc((void **)&dY, A_num_rows * sizeof(dtype)))
+
+  HIP_CHECK(hipMemcpy(dev_coo.row_index, h_coo.row_index, A_nnz * sizeof(int), hipMemcpyHostToDevice))
+  HIP_CHECK(hipMemcpy(dev_coo.col_index, h_coo.col_index, A_nnz * sizeof(int), hipMemcpyHostToDevice))
+  HIP_CHECK(hipMemcpy(dev_coo.values, h_coo.values, A_nnz * sizeof(dtype), hipMemcpyHostToDevice))
+  HIP_CHECK(hipMemcpy(dX, hX, A_num_cols * sizeof(dtype), hipMemcpyHostToDevice))
+  HIP_CHECK(hipMemcpy(dY, hY, A_num_rows * sizeof(dtype), hipMemcpyHostToDevice))
+  return dev_coo;
 }
 
 void destroy_device_data(type_csr d_csr, dtype *&dX, dtype *&dY) {

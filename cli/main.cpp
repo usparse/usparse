@@ -130,8 +130,8 @@ void test_spmv(std::string mtx_path, type_csr h_csr, host_vectors<dtype> h_vecto
   HIP_CHECK(hipMemcpy(h_vectors.hhY, dev_y, d_csr.rows * sizeof(dtype), hipMemcpyDeviceToHost));
 #else
   // host side verification
-  host_spmv(alpha, beta, h_csr.values, h_csr.row_ptr, h_csr.col_index, h_csr.rows, h_csr.cols, h_csr.nnz, h_vectors.hX,
-            h_vectors.hhY);
+  host_csr_spmv(alpha, beta, h_csr.values, h_csr.row_ptr, h_csr.col_index, h_csr.rows, h_csr.cols, h_csr.nnz,
+                h_vectors.hX, h_vectors.hhY);
 #endif
 
   verify(h_vectors.hY, h_vectors.hhY, h_csr.rows);
