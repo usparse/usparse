@@ -14,7 +14,7 @@ struct UsparseCooMVFlat : CooSpMV {
     hip::timer::event_timer calc_timer;
     calc_timer.start();
     usparse::spmv::internal::usparse_coomv_imp(usparse::usparse_operation::operation_none, alpha, beta, d_coo_desc, x,
-                                               y, nullptr, usparse::spmv::usparse_coomv_algorithms::Flat);
+                                               y, nullptr, usparse::spmv::usparse_coomv_algorithms::NaiveFlat);
     calc_timer.stop(true);
     double calc_time_cost = calc_timer.time_use;
     if (bmt != nullptr) {

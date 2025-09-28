@@ -18,7 +18,7 @@ namespace usparse {
   namespace spmv {
     enum class usparse_csrmv_algorithms { Flat, LineEnhance, CsrAdaptivePlus, CsrVector, Adaptive };
 
-    enum class usparse_coomv_algorithms { Flat, LineEnhance, CsrAdaptivePlus, CsrVector, Adaptive };
+    enum class usparse_coomv_algorithms { NaiveFlat, Flat, LineEnhance, AdaptivePlus, Vector, Adaptive };
 
     usparse_status usparse_scsrmv_analysis(const usparse_operation trans,
                                            const csr_desc<usparse_int, usparse_fp32> dev_csr_mat,

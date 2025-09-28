@@ -5,6 +5,7 @@
 #include "usparse_internal.h"
 
 #include "../hip/level2/coomv_kernels/coomv_flat_kernel.h"
+#include "../hip/level2/coomv_kernels/coomv_spmv_acc_wrappers.h"
 #include "../hip/level2/spmv-acc-csrmv/hip-flat/spmv_hip_acc_imp.h"
 #include "../hip/level2/spmv-acc-csrmv/hip-csr-adaptive-plus/csr_adaptive_plus_spmv.h"
 #include "../hip/level2/spmv-acc-csrmv/hip-line-enhance/line_enhance_spmv.h"
@@ -113,7 +114,11 @@ template <typename INDEX_TYPE, typename DATA_TYPE>
 usparse::usparse_status usparse::spmv::internal::usparse_coomv_analysis_imp(
     const usparse::usparse_operation trans, const usparse::coo_desc<INDEX_TYPE, DATA_TYPE> dev_coo_mat,
     usparse::mat::usparse_mat_info *info, const usparse::spmv::usparse_coomv_algorithms algo) {
-  // coo does not need analysis
+  if(algo != usparse::spmv::usparse_coomv_algorithms::NaiveFlat) {
+    // create matrix analysis info for coomv calculation.
+    info->coomv_info = new usparse::spmv::internal::coomv_conversion_mtx_info<INDEX_TYPE>();
+    usparse::spmv::internal::coomv_conv_analysis(trans, dev_coo_mat, info->coomv_info, algo);
+  }
   return usparse::usparse_status::usparse_status_success;
 }
 
@@ -122,12 +127,19 @@ usparse::usparse_status usparse::spmv::internal::usparse_coomv_imp(
     const usparse::usparse_operation trans, const DATA_TYPE alpha, const DATA_TYPE beta,
     const usparse::coo_desc<INDEX_TYPE, DATA_TYPE> dev_coo_mat, const DATA_TYPE *x, DATA_TYPE *y,
     usparse::mat::usparse_mat_info *info, const usparse::spmv::usparse_coomv_algorithms algo) {
-  adaptive_flat_coo_sparse_spmv<INDEX_TYPE, DATA_TYPE, BEAT_Y_POLICY_AUTO>(trans, alpha, beta, dev_coo_mat, x, y);
+  if(algo == usparse::spmv::usparse_coomv_algorithms::NaiveFlat) {
+    adaptive_flat_coo_sparse_spmv<INDEX_TYPE, DATA_TYPE, BEAT_Y_POLICY_AUTO>(trans, alpha, beta, dev_coo_mat, x, y);
+  } else {
+    sparse::spmv::internal::coomv_conv_calculate(trans, alpha, beta, dev_coo_mat, x, y, info->coomv_info, algo)
+  }
   return usparse::usparse_status::usparse_status_success;
 }
 
 usparse::usparse_status usparse::spmv::internal::usparse_coomv_clear_imp(usparse::mat::usparse_mat_info *info) {
-  // coo does not need analysis cleaning
+  if(info != nullptr) { // for algorithms that are not NaiveFlat
+    usparse::spmv::internal::coomv_conv_clear<usparse::usparse_int>(info->coomv_info);
+    delete info->coomv_info;
+  }
   return usparse::usparse_status::usparse_status_success;
 }
 

@@ -16,6 +16,7 @@ namespace usparse {
   };
 
   using usparse_int = int;
+  using usparse_uint = uint;
   using usparse_fp32 = float;
   using usparse_fp64 = double;
 } // namespace usparse

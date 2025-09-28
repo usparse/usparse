@@ -30,14 +30,18 @@ set(USPARSE_HEADER_FILES ${USPARSE_HEADER_FILES}
         ${USPARSE_HEADER_PATH}/usparse.h
         ${USPARSE_HEADER_PATH}/usparse_matrix.h
         ${USPARSE_HEADER_PATH}/usparse_types.h
+        conversion/coo2csr.h
         level1/usparse_blas_level1.h
         level2/coomv_kernels/coomv_flat_kernel.h
+        level2/coomv_kernels/coomv_spmv_acc_wrappers.h
         )
 
 set(USPARSE_SOURCE_FILES ${USPARSE_SOURCE_FILES}
+        conversion/coo2csr.cpp
         level1/usparse_blas_level1.cpp
         level2/csrmv.cpp
         level2/coomv_kernels/coomv_flat_kernel.cc
+        level2/coomv_kernels/coomv_spmv_acc_wrappers.cc
         level3/csrsm_kernels.cpp
         ../internal/usparse_internal_spmv.cc
         )
