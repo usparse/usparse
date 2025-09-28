@@ -87,16 +87,28 @@ void adaptive_flat_coo_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_
                                    const usparse::coo_desc<INDEX_TYPE, DATA_TYPE> d_coo_desc, const DATA_TYPE *x,
                                    DATA_TYPE *y) {
   constexpr int THREADS_PER_BLOCK = 512;
-  constexpr int R = 2;
   const INDEX_TYPE nnz = d_coo_desc.nnz;
 
   coo_flat_set_beta_y<DATA_TYPE, INDEX_TYPE, BEAT_Y_POLICY>(y, d_coo_desc.rows, beta);
 
-  const int HIP_BLOCKS = nnz / (R * THREADS_PER_BLOCK) + ((nnz % (R * THREADS_PER_BLOCK) == 0) ? 0 : 1);
-  (coomv_flat_one_pass_kernel<__WF_SIZE__, R, THREADS_PER_BLOCK, INDEX_TYPE,
-                              DATA_TYPE>)<<<HIP_BLOCKS, THREADS_PER_BLOCK>>>(d_coo_desc.rows, d_coo_desc.nnz,
-                                                                             d_coo_desc.row_index, d_coo_desc.col_index,
-                                                                             d_coo_desc.values, alpha, beta, x, y);
+#define CALL_FLAT_KERNEL(R)                                                                                            \
+  const int HIP_BLOCKS = nnz / (R * THREADS_PER_BLOCK) + ((nnz % (R * THREADS_PER_BLOCK) == 0) ? 0 : 1);               \
+  (coomv_flat_one_pass_kernel<__WF_SIZE__, R, THREADS_PER_BLOCK, INDEX_TYPE,                                           \
+                              DATA_TYPE>)<<<HIP_BLOCKS, THREADS_PER_BLOCK>>>(                                          \
+      d_coo_desc.rows, d_coo_desc.nnz, d_coo_desc.row_index, d_coo_desc.col_index, d_coo_desc.values, alpha, beta, x,  \
+      y);
+
+  if (nnz < 100000) {
+    constexpr int R = 2;
+    CALL_FLAT_KERNEL(R);
+  } else if (nnz < 1000000) {
+    constexpr int R = 4;
+    CALL_FLAT_KERNEL(R);
+  } else {
+    constexpr int R = 4;
+    CALL_FLAT_KERNEL(R);
+  }
+#undef CALL_FLAT_KERNEL
 }
 
 template void

@@ -82,12 +82,12 @@ struct CsrSpMV {
     // host side verification
     if (verify_beta_y()) {
       // y = alpha*A*x + beta*y
-      host_spmv(alpha, beta, h_csr.values, h_csr.row_ptr, h_csr.col_index, h_csr.rows, h_csr.cols, h_csr.nnz,
-                h_vectors.hX, h_vectors.hhY);
+      host_csr_spmv(alpha, beta, h_csr.values, h_csr.row_ptr, h_csr.col_index, h_csr.rows, h_csr.cols, h_csr.nnz,
+                    h_vectors.hX, h_vectors.hhY);
     } else {
       // y = A*x
-      host_spmv(h_csr.values, h_csr.row_ptr, h_csr.col_index, h_csr.rows, h_csr.cols, h_csr.nnz, h_vectors.hX,
-                h_vectors.hhY);
+      host_csr_spmv(h_csr.values, h_csr.row_ptr, h_csr.col_index, h_csr.rows, h_csr.cols, h_csr.nnz, h_vectors.hX,
+                    h_vectors.hhY);
     }
 
     const VerifyResult<int, double> verify_result = verify_y(h_vectors.hY, h_vectors.hhY, h_csr.rows);

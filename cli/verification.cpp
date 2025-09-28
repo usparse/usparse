@@ -53,8 +53,26 @@ void verify(double *dy, double *hy, int n) {
   std::cout << "Congratulation, pass " << total_validation + 1 << " validation!\n" << std::endl;
 }
 
-void host_spmv(dtype alpha, dtype beta, const dtype *value, const int *rowptr, const int *colindex, int m, int n, int a,
-               const dtype *x, dtype *y) {
+void host_coo_spmv(dtype alpha, dtype beta, const dtype *value, const int *row_index, const int *colindex, int m, int n,
+                   int nnz, const dtype *x, dtype *y) {
+  for (int i = 0; i < m; i++) {
+    y[i] = beta * y[i];
+  }
+
+  for (int i = 0; i < nnz; i++) {
+    const int row = row_index[i];
+    y[row] += alpha * value[i] * x[colindex[i]];
+  }
+}
+
+void host_coo_spmv(const dtype *value, const int *row_index, const int *colindex, int m, int n, int nnz, const dtype *x,
+                   dtype *y) {
+
+  host_coo_spmv(1, 0, value, row_index, colindex, m, n, nnz, x, y);
+}
+
+void host_csr_spmv(dtype alpha, dtype beta, const dtype *value, const int *rowptr, const int *colindex, int m, int n,
+                   int a, const dtype *x, dtype *y) {
   // calculate the matrix-vector multiply where matrix is stored in the form of CSR
   for (int i = 0; i < m; i++) {
     dtype y0 = 0;
@@ -65,8 +83,8 @@ void host_spmv(dtype alpha, dtype beta, const dtype *value, const int *rowptr, c
   }
 }
 
-void host_spmv(const dtype *value, const int *rowptr, const int *colindex, int m, int n, int a, const dtype *x,
-               dtype *y) {
+void host_csr_spmv(const dtype *value, const int *rowptr, const int *colindex, int m, int n, int a, const dtype *x,
+                   dtype *y) {
   // calculate the matrix-vector multiply where matrix is stored in the form of CSR
   for (int i = 0; i < m; i++) {
     dtype y0 = 0;

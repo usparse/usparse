@@ -8,7 +8,7 @@
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
 
-#include "benchmark_config.h"
+#include "benchmark_utils_config.h"
 
 // another timer implementation using hip Event.
 namespace hip {

@@ -6,6 +6,7 @@
 #define SPMV_ACC_SPARSE_FORMAT_H
 
 #include <algorithm>
+#include <cstddef>
 #include <cstring>
 #include <memory>
 #include <string>
@@ -58,9 +59,19 @@ public:
   I cols = 0;
   I nnz = 0;
 
-  std::unique_ptr<I[]> row_index = nullptr;
-  std::unique_ptr<I[]> col_index = nullptr;
-  std::unique_ptr<T[]> values = nullptr;
+  I *row_index = nullptr;
+  I *col_index = nullptr;
+  T *values = nullptr;
+
+  void alloc(I _rows, I _cols, I _nnz) {
+    this->nnz = _nnz;
+    this->rows = _rows;
+    this->cols = _cols;
+
+    this->row_index = new I[_nnz];
+    this->col_index = new I[_nnz];
+    this->values = new T[_nnz];
+  }
 };
 
 /**
@@ -128,7 +139,26 @@ public:
   }
 
   coo_mtx<I, T> to_coo() {
-    // todo:
+    type_entry *entries = data.get();
+    std::size_t N = this->nnz;
+
+    // sort by row id, then column id
+#ifdef _OPENMP
+    const int max_threads = omp_get_max_threads();
+    sort::quickSort_parallel<long, Entry<I, T>>(entries, static_cast<long>(N), static_cast<long>(max_threads));
+#endif
+#ifndef _OPENMP
+    std::sort(entries, entries + N);
+#endif
+
+    coo_mtx<I, T> coo;
+    coo.alloc(this->header.num_rows, this->header.num_columns, this->nnz);
+    for (size_t i = 0; i < nnz; i++) {
+      coo.row_index[i] = entries[i].r;
+      coo.col_index[i] = entries[i].c;
+      coo.values[i] = entries[i].v;
+    }
+    return coo;
   }
 
   /**
