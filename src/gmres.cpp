@@ -395,7 +395,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
 
     usparse::device_dcopy<uint, float>(d_r0_f, d_V_f, N);
 
-    HIP_CHECK(hipMemset(d_s_f, 0.0, (RESTART_TIMES + 1) * sizeof(float)));
+    usparse::device_memset<uint,float>(d_s_f, (RESTART_TIMES + 1));
     HIP_CHECK(hipMemcpy(&d_s_f[0], d_beta_f, sizeof(float), hipMemcpyDeviceToDevice));
 
     resid = std::abs(beta);

@@ -19,6 +19,14 @@ namespace usparse {
     }
   }
 
+  template <typename INDEX_TYPE, typename DATA_TYPE>
+  __global__ void __launch_bounds__(512) memset_kernel(DATA_TYPE *src, const INDEX_TYPE N) {
+    const int tid = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
+    if (tid < N) {
+      src[tid] = static_cast<DATA_TYPE>(0);
+    }
+  }
+
   // todo: pass THREADS as tparam
   template <typename INDEX_TYPE, typename DATA_TYPE, int THREADS>
   __global__ void calculateNorm_kernel(const DATA_TYPE *vec, INDEX_TYPE N, DATA_TYPE *d_temp_buffer) {
@@ -220,6 +228,13 @@ void usparse::device_cast(const FORM_TYPE *src, TO_TYPE *dst, const INDEX_TYPE N
 }
 
 template <typename INDEX_TYPE, typename DATA_TYPE>
+void usparse::device_memset(DATA_TYPE *src, const INDEX_TYPE N) {
+  constexpr int THREADS_PER_BLOCK = 512;
+  const int BLOCKS = N / THREADS_PER_BLOCK + (N % THREADS_PER_BLOCK == 0 ? 0 : 1);
+  memset_kernel<<<BLOCKS, THREADS_PER_BLOCK>>>(src, N);
+}
+
+template <typename INDEX_TYPE, typename DATA_TYPE>
 void usparse::device_scale_set(const DATA_TYPE alpha, DATA_TYPE *data, const INDEX_TYPE N) {
   constexpr unsigned int THREADS = 256;
   const unsigned int grid_size = (N + THREADS - 1) / THREADS;
@@ -259,3 +274,6 @@ template void usparse::device_copy_v2<uint, float>(const float *src, float *dst,
 
 template void usparse::device_cast<uint, double, float>(const double *src, float *dst, const uint N);
 template void usparse::device_cast<uint, float, double>(const float *src, double *dst, const uint N);
+
+template void usparse::device_memset<uint, double>(double *src, const uint N);
+template void usparse::device_memset<uint, float>(float *src, const uint N);
