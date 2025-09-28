@@ -37,6 +37,28 @@ namespace usparse {
                                   usparse_fp64 *y, mat::usparse_mat_info *info, const usparse_csrmv_algorithms algo);
 
     usparse_status usparse_csrmv_clear(mat::usparse_mat_info *info);
+
+    usparse_status usparse_scoomv_analysis(const usparse_operation trans,
+                                           const coo_desc<usparse_int, usparse_fp32> host_coo_mat,
+                                           const coo_desc<usparse_int, usparse_fp32> dev_coo_mat,
+                                           mat::usparse_mat_info *info, const usparse_coomv_algorithms algo);
+
+    usparse_status usparse_dcoomv_analysis(const usparse_operation trans,
+                                           const coo_desc<usparse_int, usparse_fp64> host_coo_mat,
+                                           const coo_desc<usparse_int, usparse_fp64> dev_coo_mat,
+                                           mat::usparse_mat_info *info, const usparse_coomv_algorithms algo);
+
+    usparse_status usparse_scoomv(const usparse_operation trans, const usparse_fp32 alpha, const usparse_fp32 beta,
+                                  const coo_desc<usparse_int, usparse_fp32> host_coo_mat,
+                                  const coo_desc<usparse_int, usparse_fp32> dev_coo_mat, const usparse_fp32 *x,
+                                  usparse_fp32 *y, mat::usparse_mat_info *info, const usparse_coomv_algorithms algo);
+
+    usparse_status usparse_dcoomv(const usparse_operation trans, const usparse_fp64 alpha, const usparse_fp64 beta,
+                                  const coo_desc<usparse_int, usparse_fp64> host_coo_mat,
+                                  const coo_desc<usparse_int, usparse_fp64> dev_coo_mat, const usparse_fp64 *x,
+                                  usparse_fp64 *y, mat::usparse_mat_info *info, const usparse_coomv_algorithms algo);
+
+    usparse_status usparse_coomv_clear(mat::usparse_mat_info *info);
   } // namespace spmv
 
   namespace spgemm {

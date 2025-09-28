@@ -4,6 +4,7 @@
 
 #include "usparse_internal.h"
 
+#include "../hip/level2/coomv_kernels/coomv_flat_kernel.h"
 #include "../hip/level2/spmv-acc-csrmv/hip-flat/spmv_hip_acc_imp.h"
 #include "../hip/level2/spmv-acc-csrmv/hip-csr-adaptive-plus/csr_adaptive_plus_spmv.h"
 #include "../hip/level2/spmv-acc-csrmv/hip-line-enhance/line_enhance_spmv.h"
@@ -106,3 +107,48 @@ usparse::usparse_status usparse_dcsrmv(const usparse::usparse_operation trans, c
 usparse::usparse_status usparse_csrmv_clear(usparse::mat::usparse_mat_info *info) {
   return usparse::spmv::internal::usparse_csrmv_clear_imp(info);
 }
+
+// For coo spmv implementation
+template <typename INDEX_TYPE, typename DATA_TYPE>
+usparse::usparse_status usparse::spmv::internal::usparse_coomv_analysis_imp(
+    const usparse::usparse_operation trans, const usparse::coo_desc<INDEX_TYPE, DATA_TYPE> dev_coo_mat,
+    usparse::mat::usparse_mat_info *info, const usparse::spmv::usparse_coomv_algorithms algo) {
+  // coo does not need analysis
+  return usparse::usparse_status::usparse_status_success;
+}
+
+template <typename INDEX_TYPE, typename DATA_TYPE>
+usparse::usparse_status usparse::spmv::internal::usparse_coomv_imp(
+    const usparse::usparse_operation trans, const DATA_TYPE alpha, const DATA_TYPE beta,
+    const usparse::coo_desc<INDEX_TYPE, DATA_TYPE> dev_coo_mat, const DATA_TYPE *x, DATA_TYPE *y,
+    usparse::mat::usparse_mat_info *info, const usparse::spmv::usparse_coomv_algorithms algo) {
+  adaptive_flat_coo_sparse_spmv<INDEX_TYPE, DATA_TYPE, BEAT_Y_POLICY_AUTO>(trans, alpha, beta, dev_coo_mat, x, y);
+  return usparse::usparse_status::usparse_status_success;
+}
+
+usparse::usparse_status usparse::spmv::internal::usparse_coomv_clear_imp(usparse::mat::usparse_mat_info *info) {
+  // coo does not need analysis cleaning
+  return usparse::usparse_status::usparse_status_success;
+}
+
+template usparse::usparse_status
+usparse::spmv::internal::usparse_coomv_analysis_imp<usparse::usparse_int, usparse::usparse_fp64>(
+    const usparse::usparse_operation trans,
+    const usparse::coo_desc<usparse::usparse_int, usparse::usparse_fp64> dev_coo_mat,
+    usparse::mat::usparse_mat_info *info, const usparse::spmv::usparse_coomv_algorithms algo);
+
+template usparse::usparse_status
+usparse::spmv::internal::usparse_coomv_analysis_imp<usparse::usparse_int, usparse::usparse_fp32>(
+    const usparse::usparse_operation trans,
+    const usparse::coo_desc<usparse::usparse_int, usparse::usparse_fp32> dev_coo_mat,
+    usparse::mat::usparse_mat_info *info, const usparse::spmv::usparse_coomv_algorithms algo);
+
+template usparse::usparse_status usparse::spmv::internal::usparse_coomv_imp(
+    const usparse::usparse_operation trans, const usparse::usparse_fp64 alpha, const usparse::usparse_fp64 beta,
+    const usparse::coo_desc<usparse::usparse_int, usparse::usparse_fp64> dev_coo_mat, const usparse::usparse_fp64 *x,
+    usparse::usparse_fp64 *y, usparse::mat::usparse_mat_info *info, const usparse::spmv::usparse_coomv_algorithms algo);
+
+template usparse::usparse_status usparse::spmv::internal::usparse_coomv_imp(
+    const usparse::usparse_operation trans, const usparse::usparse_fp32 alpha, const usparse::usparse_fp32 beta,
+    const usparse::coo_desc<usparse::usparse_int, usparse::usparse_fp32> dev_coo_mat, const usparse::usparse_fp32 *x,
+    usparse::usparse_fp32 *y, usparse::mat::usparse_mat_info *info, const usparse::spmv::usparse_coomv_algorithms algo);
