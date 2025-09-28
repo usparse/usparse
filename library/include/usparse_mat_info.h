@@ -22,7 +22,9 @@ namespace usparse {
       usparse::spmv::internal::coomv_conversion_mtx_info<usparse::usparse_int> *coomv_info = nullptr;
     };
 
-    usparse_status usparse_create_mat_info(usparse_mat_info *info);
+    inline usparse_status usparse_create_mat_info(usparse_mat_info *info) {
+      return usparse::usparse_status::usparse_status_success;
+    }
 
     usparse_status usparse_destroy_mat_info(usparse_mat_info *info);
   } // namespace mat
