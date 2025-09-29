@@ -1,7 +1,9 @@
 ---
-sidebar_position: 2
+sidebar_position: 4
 ---
 
 # Sparse Level2 Functions
 
-Documentation with English is currently not supported.
+:::info
+This page is working in process.
+:::
