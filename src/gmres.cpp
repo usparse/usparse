@@ -447,6 +447,10 @@ usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2) {
       } else { // GMRES_OPT_USE_GS
         if (usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION ==
             usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2) {
+          usparse::gs_fusion<uint, float, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
+              d_r0_f, d_V_f, d_H_f, d_gs_buffer, N, RESTART_TIMES, i, 0);
+        } else if (usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION ==
+                   usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_1) {
           usparse::gs_dotproduct<uint, float>(d_r0_f, d_V_f, d_H_f, d_gs_buffer, N, (uint)i, 0);
 
           h_sync.sync();
