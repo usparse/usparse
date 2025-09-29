@@ -5,6 +5,8 @@
 #ifndef USPARSE_KERNELS_LEVEL1_USPARSE_LEVEL1_H
 #define USPARSE_KERNELS_LEVEL1_USPARSE_LEVEL1_H
 
+#include "usparse_level1_batched.h"
+
 namespace usparse {
 
   template <typename INDEX_TYPE, typename DATA_TYPE>

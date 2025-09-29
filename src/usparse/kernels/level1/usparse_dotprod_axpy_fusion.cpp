@@ -306,3 +306,5 @@ template void usparse::dotprod_axpy_fusion<uint, double, usparse::GMRES_OPT_USE_
 template void usparse::dotprod_axpy_fusion<uint, float, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
     float *d_r0, const float *d_v, float *d_h, float *d_temp_buffer, const uint N, const uint m, const uint i,
     std::size_t *temp_buffer_size_byte);
+
+#include "usparse_level1_batched_fusion.inl"

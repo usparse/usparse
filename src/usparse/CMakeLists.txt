@@ -6,6 +6,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 set(USPARSE_HEADER_FILES ${USPARSE_HEADER_FILES}
         usparse_gmres.h
         kernels/level1/usparse_level1.h
+        kernels/level1/usparse_level1_batched.h
         kernels/level2/usparse_csrmv.h
         kernels/level2/usparse_rotation.h
         kernels/level2/usparse_solver_tri.h
@@ -19,6 +20,7 @@ set(USPARSE_HEADER_FILES ${USPARSE_HEADER_FILES}
 set(USPARSE_SOURCE_FILES ${USPARSE_SOURCE_FILES}
         kernels/level1/usparse_dotprod_axpy_fusion.cpp
         kernels/level1/usparse_level1.cpp
+        kernels/level1/usparse_level1_batched.cpp
         kernels/level2/usparse_csrmv.cpp
         kernels/level2/usparse_rotation.cpp
         kernels/level2/usparse_solver_tri.cpp
