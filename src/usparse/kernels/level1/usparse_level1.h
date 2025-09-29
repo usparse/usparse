@@ -102,6 +102,16 @@ namespace usparse {
   void device_cast(const FORM_TYPE *src, TO_TYPE *dst, const INDEX_TYPE N);
 
   /**
+   * Set the value of src to 0.0
+   * @tparam INDEX_TYPE index data type.
+   * @tparam DATA_TYPE data type of src.
+   * @param src input source vector of size N.
+   * @param N the vector size.
+   */
+  template <typename INDEX_TYPE, typename DATA_TYPE>
+  void device_memset(DATA_TYPE *src, const INDEX_TYPE N);
+
+  /**
    * set all elements in a vector to the given scale value: alpha.
    *
    * for(i = 0:N) {
