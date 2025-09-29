@@ -1,11 +1,11 @@
 ---
-sidebar_position: 4
+sidebar_position: 7
 ---
 
 # gmres: generalized minimum residual method
 
 Solve system of linear equations — generalized minimum residual method
 
-:::warning
-Documentation with English is currently not supported.
+:::info
+This page is working in process.
 :::

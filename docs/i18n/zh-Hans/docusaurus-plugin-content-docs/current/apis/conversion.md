@@ -2,6 +2,8 @@
 sidebar_position: 6
 ---
 
-# Congratulations!
+# Data Type Conversion
 
+:::warning
 Documentation with English is currently not supported.
+:::
