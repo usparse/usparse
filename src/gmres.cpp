@@ -480,8 +480,14 @@ usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2) {
         }
       }
 
-      usparse::device_rotation2((uint)(RESTART_TIMES), d_H_f, d_cs_f, d_sn_f, d_s_f, (uint)(i)); // todo: uint to int
-      h_sync.sync();
+      if (usparse::GMRES_USE_HOST_ROTATION) {
+        h_sync.sync();
+        usparse::host_rotation2((uint)(RESTART_TIMES), d_H_f, d_cs_f, d_sn_f, d_s_f, (uint)(i)); // todo: uint to int
+      } else {
+        usparse::device_rotation2((uint)(RESTART_TIMES), d_H_f, d_cs_f, d_sn_f, d_s_f, (uint)(i)); // todo: uint to int
+        h_sync.sync();
+      }
+
       tmp = d_s_f[i + 1];
       resid = std::abs(tmp);
       // std::cout << "iteration " << iteration << ", resid = " << resid/init_res << std::endl;

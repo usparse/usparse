@@ -10,6 +10,9 @@
 
 namespace usparse {
   template <typename INDEX_TYPE, typename DATA_TYPE>
+  void host_rotation2(INDEX_TYPE Am, DATA_TYPE *d_H, DATA_TYPE *d_cs, DATA_TYPE *d_sn, DATA_TYPE *d_s, INDEX_TYPE i);
+
+  template <typename INDEX_TYPE, typename DATA_TYPE>
   void device_rotation2(INDEX_TYPE Am, DATA_TYPE *d_H, DATA_TYPE *d_cs, DATA_TYPE *d_sn, DATA_TYPE *d_s, INDEX_TYPE i);
 }
 

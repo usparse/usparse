@@ -25,6 +25,7 @@ namespace usparse {
   constexpr bool GMRES_OPT_VERIFY_SWITCH = GMRES_OPT_OPEN_VERIFICATION;
 
   constexpr bool GMRES_USE_HOST_TRI_SOLVER = false;
+  constexpr bool GMRES_USE_HOST_ROTATION = false;
 }
 
 #endif // USPARSE_GMRES_OPTIMIZATION_CONFIG_H

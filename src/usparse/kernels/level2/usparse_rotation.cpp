@@ -9,14 +9,15 @@
 
 namespace usparse {
   template <typename INDEX_TYPE, typename DATA_TYPE>
-  __device__ __forceinline__ void applyRotation(DATA_TYPE &dx, DATA_TYPE &dy, DATA_TYPE &cs, DATA_TYPE &sn) {
+  __host__ __device__ __forceinline__ void applyRotation(DATA_TYPE &dx, DATA_TYPE &dy, DATA_TYPE &cs, DATA_TYPE &sn) {
     DATA_TYPE temp = cs * dx + sn * dy;
     dy = (-sn) * dx + cs * dy;
     dx = temp;
   }
 
   template <typename INDEX_TYPE, typename DATA_TYPE>
-  __device__ __forceinline__ void generateRotation(DATA_TYPE &dx, DATA_TYPE &dy, DATA_TYPE &cs, DATA_TYPE &sn) {
+  __host__ __device__ __forceinline__ void generateRotation(DATA_TYPE &dx, DATA_TYPE &dy, DATA_TYPE &cs,
+                                                            DATA_TYPE &sn) {
     if (dx == DATA_TYPE(0)) {
       cs = DATA_TYPE(0);
       sn = DATA_TYPE(1);
@@ -30,8 +31,8 @@ namespace usparse {
   }
 
   template <typename INDEX_TYPE, typename DATA_TYPE>
-  __global__ void rotation2_kernel(INDEX_TYPE Am, DATA_TYPE *H, DATA_TYPE *cs, DATA_TYPE *sn, DATA_TYPE *s,
-                                   INDEX_TYPE i) {
+  __host__ __device__ __forceinline__ void rotation2_kernel_imp(INDEX_TYPE Am, DATA_TYPE *H, DATA_TYPE *cs,
+                                                                DATA_TYPE *sn, DATA_TYPE *s, INDEX_TYPE i) {
     for (INDEX_TYPE k = 0; k < i; k++) {
       applyRotation<INDEX_TYPE, DATA_TYPE>(H[k * Am + i], H[(k + 1) * Am + i], cs[k], sn[k]);
     }
@@ -39,13 +40,30 @@ namespace usparse {
     applyRotation<INDEX_TYPE, DATA_TYPE>(H[i * Am + i], H[(i + 1) * Am + i], cs[i], sn[i]);
     applyRotation<INDEX_TYPE, DATA_TYPE>(s[i], s[i + 1], cs[i], sn[i]);
   }
+
+  template <typename INDEX_TYPE, typename DATA_TYPE>
+  __global__ void rotation2_kernel(INDEX_TYPE Am, DATA_TYPE *H, DATA_TYPE *cs, DATA_TYPE *sn, DATA_TYPE *s,
+                                   INDEX_TYPE i) {
+    rotation2_kernel_imp<INDEX_TYPE, DATA_TYPE>(Am, H, cs, sn, s, i);
+  }
 } // namespace usparse
+
+template <typename INDEX_TYPE, typename DATA_TYPE>
+void usparse::host_rotation2(INDEX_TYPE Am, DATA_TYPE *d_H, DATA_TYPE *d_cs, DATA_TYPE *d_sn, DATA_TYPE *d_s,
+                             INDEX_TYPE i) {
+  rotation2_kernel_imp<INDEX_TYPE, DATA_TYPE>(Am, d_H, d_cs, d_sn, d_s, i);
+}
 
 template <typename INDEX_TYPE, typename DATA_TYPE>
 void usparse::device_rotation2(INDEX_TYPE Am, DATA_TYPE *d_H, DATA_TYPE *d_cs, DATA_TYPE *d_sn, DATA_TYPE *d_s,
                                INDEX_TYPE i) {
   rotation2_kernel<<<1, 1>>>(Am, d_H, d_cs, d_sn, d_s, i);
 }
+
+template void usparse::host_rotation2<uint, double>(uint Am, double *d_H, double *d_cs, double *d_sn, double *d_s,
+                                                    uint i);
+
+template void usparse::host_rotation2<uint, float>(uint Am, float *d_H, float *d_cs, float *d_sn, float *d_s, uint i);
 
 template void usparse::device_rotation2<uint, double>(uint Am, double *d_H, double *d_cs, double *d_sn, double *d_s,
                                                       uint i);
