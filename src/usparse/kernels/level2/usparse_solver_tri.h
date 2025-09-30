@@ -7,6 +7,9 @@
 
 namespace usparse {
   template <typename INDEX_TYPE, typename DATA_TYPE>
+  void host_sovlerTri(INDEX_TYPE Am, INDEX_TYPE i, DATA_TYPE *H, DATA_TYPE *s);
+
+  template <typename INDEX_TYPE, typename DATA_TYPE>
   void device_sovlerTri(INDEX_TYPE Am, INDEX_TYPE i, DATA_TYPE *H, DATA_TYPE *s);
 }
 

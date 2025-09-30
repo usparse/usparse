@@ -492,8 +492,13 @@ usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2) {
     } while (i + 1 < RESTART_TIMES && iteration <= ITERATION_LIMIT);
 
     // 求解上三角系统
-    usparse::device_sovlerTri(RESTART_TIMES, i, d_H_f, d_s_f);
-    h_sync.sync();
+    if (usparse::GMRES_USE_HOST_TRI_SOLVER) {
+      h_sync.sync(); // wait kernel to finish
+      usparse::host_sovlerTri(RESTART_TIMES, i, d_H_f, d_s_f);
+    } else {
+      usparse::device_sovlerTri(RESTART_TIMES, i, d_H_f, d_s_f);
+      h_sync.sync();
+    }
 
     // 更新解: <float, double>
     for (j = 0; j <= i; j++) {
