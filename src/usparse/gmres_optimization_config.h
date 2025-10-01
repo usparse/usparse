@@ -18,7 +18,7 @@ namespace usparse {
 
   // orthogonalization Methodss
   constexpr int GMRES_OPT_USE_MGS = 0; // Modified Gram-Schmidt
-  constexpr int GMRES_OPT_USE_GS = 1; // Gram-Schmidt
+  constexpr int GMRES_OPT_USE_GS = 1;  // Gram-Schmidt
 
   constexpr int GMRES_ORTHO_USE = GMRES_OPT_USE_GS;
 
@@ -30,6 +30,6 @@ namespace usparse {
 
   constexpr bool GMRES_USE_HOST_TRI_SOLVER = false;
   constexpr bool GMRES_USE_HOST_ROTATION = false;
-}
+} // namespace usparse
 
 #endif // USPARSE_GMRES_OPTIMIZATION_CONFIG_H

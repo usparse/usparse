@@ -140,8 +140,8 @@ namespace usparse {
   }
 
   template <typename INDEX_TYPE, typename DATA_TYPE>
-  __global__ void __launch_bounds__(512) scale_dcopy_kernel(const DATA_TYPE *src, DATA_TYPE *dst, const DATA_TYPE alpha,
-                                                            const INDEX_TYPE N) {
+  __global__ void __launch_bounds__(512)
+      scale_dcopy_kernel(const DATA_TYPE *src, DATA_TYPE *dst, const DATA_TYPE alpha, const INDEX_TYPE N) {
     const int tid = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
     if (tid < N) {
       dst[tid] = alpha * src[tid];
@@ -227,8 +227,7 @@ void usparse::device_cast(const FORM_TYPE *src, TO_TYPE *dst, const INDEX_TYPE N
   cast_kernel<<<BLOCKS, THREADS_PER_BLOCK>>>(src, dst, N);
 }
 
-template <typename INDEX_TYPE, typename DATA_TYPE>
-void usparse::device_memset(DATA_TYPE *src, const INDEX_TYPE N) {
+template <typename INDEX_TYPE, typename DATA_TYPE> void usparse::device_memset(DATA_TYPE *src, const INDEX_TYPE N) {
   constexpr int THREADS_PER_BLOCK = 512;
   const int BLOCKS = N / THREADS_PER_BLOCK + (N % THREADS_PER_BLOCK == 0 ? 0 : 1);
   memset_kernel<<<BLOCKS, THREADS_PER_BLOCK>>>(src, N);
@@ -270,7 +269,7 @@ template void usparse::device_dcopy<uint, double>(const double *src, double *dst
 template void usparse::device_dcopy<uint, float>(const float *src, float *dst, const uint N);
 
 template void usparse::device_copy_v2<uint, double>(const double *src, double *dst, const double alpha, const uint N);
-template void usparse::device_copy_v2<uint, float>(const float *src, float *dst,  const float alpha, const uint N);
+template void usparse::device_copy_v2<uint, float>(const float *src, float *dst, const float alpha, const uint N);
 
 template void usparse::device_cast<uint, double, float>(const double *src, float *dst, const uint N);
 template void usparse::device_cast<uint, float, double>(const float *src, double *dst, const uint N);

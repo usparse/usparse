@@ -13,7 +13,6 @@
 #include "tests_utils.hpp"
 #include "usparse_gmres.h"
 
-
 TEST(ustbSparseTest, spmv_vector_row) {
   constexpr int N = 100000;
   constexpr int nnz_per_row = 20;

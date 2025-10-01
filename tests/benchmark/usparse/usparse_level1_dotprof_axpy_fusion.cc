@@ -10,8 +10,8 @@
 #include <hip/hip_runtime_api.h>
 #include <rocsparse/rocsparse.h>
 
-#include "usparse_gmres.h"
 #include "../../unit/tests_utils.hpp"
+#include "usparse_gmres.h"
 
 // benchmarking usparse::dotprod_axpy_fusion
 template <typename T> static void Usparse_dotprod_axpy_fusion(benchmark::State &state) {
@@ -41,7 +41,7 @@ template <typename T> static void Usparse_dotprod_axpy_fusion(benchmark::State &
 
   const int i = I; // todo: change this value (i must <= RESTART_TIMES)
   const int m = RESTART_TIMES;
-  
+
   const float f_density = 0.5; // TODO: just for passing the compiling
 
   T *d_r0 = nullptr;

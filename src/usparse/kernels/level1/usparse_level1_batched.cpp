@@ -16,7 +16,6 @@
 
 constexpr int RESTART_TIMES = 20;
 
-
 namespace usparse {
 
   template <typename INDEX_TYPE, typename DATA_TYPE, int THREADS>
