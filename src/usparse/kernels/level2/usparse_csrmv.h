@@ -17,9 +17,16 @@ namespace usparse {
     hipsparseMatDescr_t descrA;
   };
 
+  struct hipsparse_csr_adaptive_info {
+    rocsparse_handle handle;
+    rocsparse_mat_descr descrA;
+    rocsparse_mat_info info;
+  };
+
   struct csrmv_mat_info {
     csrmv_flat_mtx_info flat_info;
     hipsparse_spmv_info hipsparse_default_info;
+    hipsparse_csr_adaptive_info hipsparse_csr_adaptive_info;
   };
 
   using usparse_csrmv_algo = int;
@@ -28,7 +35,8 @@ namespace usparse {
   constexpr usparse_csrmv_algo usparse_csrmv_algo_flat = 2;
   constexpr usparse_csrmv_algo usparse_csrmv_algo_vector = 3;
   constexpr usparse_csrmv_algo usparse_csrmv_algo_thread_row = 4;
-  constexpr usparse_csrmv_algo usparse_csrmv_algo_hipsparse_default = 5; // call hipsparseScsrmv directly.
+  constexpr usparse_csrmv_algo usparse_csrmv_algo_hipsparse_default = 5;      // call hipsparseScsrmv directly.
+  constexpr usparse_csrmv_algo usparse_csrmv_algo_hipsparse_csr_adaptive = 6; // call another api.
 
   template <typename INDEX_TYPE, typename VALUE_TYPE>
   void device_csrmv(const INDEX_TYPE nrows, const INDEX_TYPE ncols, const INDEX_TYPE nnz, const INDEX_TYPE *csr_row_ptr,
