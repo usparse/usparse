@@ -12,6 +12,10 @@ namespace usparse {
 
   constexpr int GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION = GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2;
 
+  constexpr int GMRES_OPT_MGS_FUSION_PARAMETER_STRATEGY_CLASSIC = 1;
+  constexpr int GMRES_OPT_MGS_FUSION_PARAMETER_STRATEGY_COMPLEX = 2;
+  constexpr int GMRES_OPT_MGS_FUSION_PARAMETER_STRATEGY = GMRES_OPT_MGS_FUSION_PARAMETER_STRATEGY_COMPLEX;
+
   // orthogonalization Methodss
   constexpr int GMRES_OPT_USE_MGS = 0; // Modified Gram-Schmidt
   constexpr int GMRES_OPT_USE_GS = 1; // Gram-Schmidt

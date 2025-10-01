@@ -249,6 +249,27 @@ void usparse::dotprod_axpy_fusion(DATA_TYPE *d_r0, const DATA_TYPE *d_v, DATA_TY
   dotprod_axpy_fusion_internal_imp<INDEX_TYPE, DATA_TYPE, THREADS, ELES_PER_THREAD, STRIDES, OPT_LEVEL>(               \
       d_r0, d_v, d_h, d_temp_buffer, N, m, i, temp_buffer_size_byte);
 
+  if (usparse::GMRES_OPT_MGS_FUSION_PARAMETER_STRATEGY == usparse::GMRES_OPT_MGS_FUSION_PARAMETER_STRATEGY_CLASSIC) {
+    if (N < 163840) { // 163840
+      constexpr int THREADS = 512;
+      constexpr int ELES_PER_THREAD = 4;
+      constexpr int STRIDES = 2;
+      FUSION_SHORT_MARK(THREADS, ELES_PER_THREAD, STRIDES);
+    } else if (N < 1000000) {
+      constexpr int THREADS = 512;
+      constexpr int ELES_PER_THREAD = 4;
+      constexpr int STRIDES = 4;
+      FUSION_SHORT_MARK(THREADS, ELES_PER_THREAD, STRIDES);
+    } else {
+      constexpr int THREADS = 512;
+      constexpr int ELES_PER_THREAD = 4;
+      constexpr int STRIDES = 4;
+      FUSION_SHORT_MARK(THREADS, ELES_PER_THREAD, STRIDES);
+    }
+    return;
+  }
+
+  // else: using GMRES_OPT_MGS_FUSION_PARAMETER_STRATEGY_COMPLEX
   if (N < 1700000 && N > 1210000) {
     constexpr int THREADS = 512;
     constexpr int ELES_PER_THREAD = 4;
