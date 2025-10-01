@@ -8,11 +8,25 @@
 #include "../spmv/api/types.h"
 #include "../spmv/hip-flat/flat_config.h"
 #include "../spmv/hip-flat/spmv_hip_acc_imp.h"
+#include <hipsparse/hipsparse.h>
 
 namespace usparse {
 
+  struct hipsparse_spmv_info {
+    hipsparseHandle_t handle;
+    hipsparseMatDescr_t descrA;
+  };
+
+  struct hipsparse_csr_adaptive_info {
+    rocsparse_handle handle;
+    rocsparse_mat_descr descrA;
+    rocsparse_mat_info info;
+  };
+
   struct csrmv_mat_info {
     csrmv_flat_mtx_info flat_info;
+    hipsparse_spmv_info hipsparse_default_info;
+    hipsparse_csr_adaptive_info hipsparse_csr_adaptive_info;
   };
 
   using usparse_csrmv_algo = int;
@@ -21,20 +35,9 @@ namespace usparse {
   constexpr usparse_csrmv_algo usparse_csrmv_algo_flat = 2;
   constexpr usparse_csrmv_algo usparse_csrmv_algo_vector = 3;
   constexpr usparse_csrmv_algo usparse_csrmv_algo_thread_row = 4;
-
-  template <typename INDEX_TYPE, typename VALUE_TYPE>
-  void device_csrmv(const INDEX_TYPE nrows, const INDEX_TYPE ncols, const INDEX_TYPE nnz, const INDEX_TYPE *csr_row_ptr,
-                    const INDEX_TYPE *csr_col_index, const VALUE_TYPE *csr_values, const VALUE_TYPE *dev_x,
-                    VALUE_TYPE *dev_y, rocsparse_handle *handle, rocsparse_mat_descr *descrA, rocsparse_mat_info *info);
-
-  /**
-   * rocsparse_scrsmv: support float precision.
-   */
-  template <typename INDEX_TYPE, typename VALUE_TYPE>
-  void device_scsrmv(const INDEX_TYPE nrows, const INDEX_TYPE ncols, const INDEX_TYPE nnz,
-                     const INDEX_TYPE *csr_row_ptr, const INDEX_TYPE *csr_col_index, const VALUE_TYPE *csr_values,
-                     const VALUE_TYPE *dev_x, VALUE_TYPE *dev_y, rocsparse_handle *handle, rocsparse_mat_descr *descrA,
-                     rocsparse_mat_info *info);
+  constexpr usparse_csrmv_algo usparse_csrmv_algo_hipsparse_default = 5;      // call hipsparseScsrmv directly.
+  constexpr usparse_csrmv_algo usparse_csrmv_algo_hipsparse_csr_adaptive = 6; // call another api.
+  constexpr usparse_csrmv_algo usparse_csrmv_algo_hipsparse_csr_vector = 7;   // call csr-vector api.
 
   template <typename INDEX_TYPE, typename VALUE_TYPE>
   void device_adaptive_analysis(int trans, const VALUE_TYPE alpha, const VALUE_TYPE beta,
