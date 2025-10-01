@@ -41,33 +41,19 @@ void spmv(const uint *rowPtr, const uint *colInd, const double *values, const do
 }
 
 template <typename T> usparse::usparse_csrmv_algo select_csrmv_algo(const csr_desc<int, T> d_csr_desc) {
-  const int density = d_csr_desc.nnz / d_csr_desc.rows;
+  const float avg_nnz_per_row = static_cast<float>(d_csr_desc.nnz) / d_csr_desc.rows;
+  const bool is_very_sparse = (avg_nnz_per_row < 7.0f);
+  const bool is_medium_density = (avg_nnz_per_row >= 7.0f && avg_nnz_per_row < 25.0f);
+  const bool is_very_large = (d_csr_desc.rows > 1000000);
+  const bool is_medium_large = (d_csr_desc.rows >= 100000 && d_csr_desc.rows <= 300000);
+  const bool is_low_medium_density = (avg_nnz_per_row >= 21.5f && avg_nnz_per_row < 25.0f);
 
-  if (density > 50.0) {
-    if (d_csr_desc.nnz > 10000000 && d_csr_desc.rows > 1000000) {
-      return usparse::usparse_csrmv_algo_line_enhance;
-    } else {
-      return usparse::usparse_csrmv_algo_flat;
-    }
-  } else if (density > 15.0) {
-    if (d_csr_desc.nnz > 5000000) {
-      return usparse::usparse_csrmv_algo_flat;
-    } else if (d_csr_desc.rows > 500000) {
-      return usparse::usparse_csrmv_algo_line_enhance;
-    } else {
-      return usparse::usparse_csrmv_algo_flat;
-    }
-  } else {
-    if (d_csr_desc.nnz < 1000000 || d_csr_desc.rows > 1000000) {
-      return usparse::usparse_csrmv_algo_line_enhance;
-    } else {
-      if (density > 8.0) {
-        return usparse::usparse_csrmv_algo_flat;
-      } else {
-        return usparse::usparse_csrmv_algo_line_enhance;
-      }
-    }
+  if ((is_very_sparse && is_medium_large) || (is_medium_density && is_very_large) ||
+      (is_low_medium_density && is_medium_large)) {
+    return usparse::usparse_csrmv_algo_line_enhance;
   }
+
+  return usparse::usparse_csrmv_algo_flat;
 }
 
 struct sync_handle {

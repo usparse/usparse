@@ -142,27 +142,129 @@ void adaptive_enhance_sparse_spmv_fp64(int trans, const double alpha, const doub
   // common parameters:
   constexpr int ROWS_PER_BLOCK = 64;
   const int density = nnz / n;
-  if (density < 10) {
-    constexpr int R = 2;
-    constexpr int THREADS_PER_BLOCK = 256;
-    constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_DIRECT;
-    constexpr int VEC_SIZE = 1;
-    int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
-    LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS, THREADS_PER_BLOCK);
-  } else if (density < 50) {
-    constexpr int R = 4;
-    constexpr int THREADS_PER_BLOCK = 512;
-    constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_VEC;
-    constexpr int VEC_SIZE = 4;
-    int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
-    LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS, THREADS_PER_BLOCK);
+
+  if (density < 5) {
+    if (n < 80000) {
+      constexpr int R = 1;
+      constexpr int THREADS_PER_BLOCK = 256;
+      constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_DIRECT;
+      constexpr int VEC_SIZE = 1;
+      int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
+    } else if (n < 300000) {
+      constexpr int R = 1;
+      constexpr int THREADS_PER_BLOCK = 512;
+      constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_DIRECT;
+      constexpr int VEC_SIZE = 1;
+      int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
+    } else {
+      constexpr int R = 1;
+      constexpr int THREADS_PER_BLOCK = 256;
+      constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_DIRECT;
+      constexpr int VEC_SIZE = 1;
+      int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
+    }
+  } else if (density < 8) {
+    if (nnz < 800000) {
+      constexpr int R = 1;
+      constexpr int THREADS_PER_BLOCK = 256;
+      constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_DIRECT;
+      constexpr int VEC_SIZE = 1;
+      int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
+    } else {
+      constexpr int R = 1;
+      constexpr int THREADS_PER_BLOCK = 512;
+      constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_DIRECT;
+      constexpr int VEC_SIZE = 1;
+      int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
+    }
+  } else if (density < 15) {
+    if (n < 150000) {
+      constexpr int R = 1;
+      constexpr int THREADS_PER_BLOCK = 256;
+      constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_DIRECT;
+      constexpr int VEC_SIZE = 1;
+      int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
+    } else if (n < 800000) {
+      constexpr int R = 2;
+      constexpr int THREADS_PER_BLOCK = 512;
+      constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_DIRECT;
+      constexpr int VEC_SIZE = 1;
+      int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
+    } else {
+      constexpr int R = 4;
+      constexpr int THREADS_PER_BLOCK = 512;
+      constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_DIRECT;
+      constexpr int VEC_SIZE = 1;
+      int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
+    }
+  } else if (density < 35) {
+    if (n < 100000) {
+      constexpr int R = 3;
+      constexpr int THREADS_PER_BLOCK = 512;
+      constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_VEC;
+      constexpr int VEC_SIZE = 4;
+      int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
+    } else if (n < 500000) {
+      constexpr int R = 3;
+      constexpr int THREADS_PER_BLOCK = 512;
+      constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_VEC;
+      constexpr int VEC_SIZE = 8;
+      int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
+    } else {
+      constexpr int R = 4;
+      constexpr int THREADS_PER_BLOCK = 512;
+      constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_VEC;
+      constexpr int VEC_SIZE = 8;
+      int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
+    }
+  } else if (density < 100) {
+    if (n < 100000) {
+      constexpr int R = 3;
+      constexpr int THREADS_PER_BLOCK = 512;
+      constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_VEC;
+      constexpr int VEC_SIZE = 8;
+      int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
+    } else {
+      constexpr int R = 4;
+      constexpr int THREADS_PER_BLOCK = 512;
+      constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_VEC;
+      constexpr int VEC_SIZE = 8;
+      int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
+    }
   } else {
     constexpr int R = 4;
     constexpr int THREADS_PER_BLOCK = 512;
     constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_VEC;
     constexpr int VEC_SIZE = 8;
     int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
-    LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS, THREADS_PER_BLOCK);
+    LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                THREADS_PER_BLOCK);
   }
 }
 
@@ -177,26 +279,128 @@ void adaptive_enhance_sparse_spmv_fp32(int trans, const float alpha, const float
   // common parameters:
   constexpr int ROWS_PER_BLOCK = 64;
   const int density = nnz / n;
-  if (density < 10) {
-    constexpr int R = 2;
-    constexpr int THREADS_PER_BLOCK = 256;
-    constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_DIRECT;
-    constexpr int VEC_SIZE = 1;
-    int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
-    LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS, THREADS_PER_BLOCK);
-  } else if (density < 50) {
-    constexpr int R = 4;
-    constexpr int THREADS_PER_BLOCK = 512;
-    constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_VEC;
-    constexpr int VEC_SIZE = 4;
-    int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
-    LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS, THREADS_PER_BLOCK);
+
+  if (density < 5) {
+    if (n < 80000) {
+      constexpr int R = 1;
+      constexpr int THREADS_PER_BLOCK = 256;
+      constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_DIRECT;
+      constexpr int VEC_SIZE = 1;
+      int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
+    } else if (n < 300000) {
+      constexpr int R = 1;
+      constexpr int THREADS_PER_BLOCK = 512;
+      constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_DIRECT;
+      constexpr int VEC_SIZE = 1;
+      int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
+    } else {
+      constexpr int R = 1;
+      constexpr int THREADS_PER_BLOCK = 256;
+      constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_DIRECT;
+      constexpr int VEC_SIZE = 1;
+      int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
+    }
+  } else if (density < 8) {
+    if (nnz < 800000) {
+      constexpr int R = 1;
+      constexpr int THREADS_PER_BLOCK = 256;
+      constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_DIRECT;
+      constexpr int VEC_SIZE = 1;
+      int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
+    } else {
+      constexpr int R = 1;
+      constexpr int THREADS_PER_BLOCK = 512;
+      constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_DIRECT;
+      constexpr int VEC_SIZE = 1;
+      int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
+    }
+  } else if (density < 15) {
+    if (n < 150000) {
+      constexpr int R = 1;
+      constexpr int THREADS_PER_BLOCK = 256;
+      constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_DIRECT;
+      constexpr int VEC_SIZE = 1;
+      int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
+    } else if (n < 800000) {
+      constexpr int R = 2;
+      constexpr int THREADS_PER_BLOCK = 512;
+      constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_DIRECT;
+      constexpr int VEC_SIZE = 1;
+      int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
+    } else {
+      constexpr int R = 4;
+      constexpr int THREADS_PER_BLOCK = 512;
+      constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_DIRECT;
+      constexpr int VEC_SIZE = 1;
+      int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
+    }
+  } else if (density < 35) {
+    if (n < 100000) {
+      constexpr int R = 3;
+      constexpr int THREADS_PER_BLOCK = 512;
+      constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_VEC;
+      constexpr int VEC_SIZE = 4;
+      int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
+    } else if (n < 500000) {
+      constexpr int R = 3;
+      constexpr int THREADS_PER_BLOCK = 512;
+      constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_VEC;
+      constexpr int VEC_SIZE = 8;
+      int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
+    } else {
+      constexpr int R = 4;
+      constexpr int THREADS_PER_BLOCK = 512;
+      constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_VEC;
+      constexpr int VEC_SIZE = 8;
+      int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
+    }
+  } else if (density < 100) {
+    if (n < 100000) {
+      constexpr int R = 3;
+      constexpr int THREADS_PER_BLOCK = 512;
+      constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_VEC;
+      constexpr int VEC_SIZE = 8;
+      int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
+    } else {
+      constexpr int R = 4;
+      constexpr int THREADS_PER_BLOCK = 512;
+      constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_VEC;
+      constexpr int VEC_SIZE = 8;
+      int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
+    }
   } else {
     constexpr int R = 4;
     constexpr int THREADS_PER_BLOCK = 512;
     constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_VEC;
     constexpr int VEC_SIZE = 8;
     int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
-    LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS, THREADS_PER_BLOCK);
+    LINE_ENHANCE_KERNEL_WRAPPER(T, BEAT_Y_POLICY, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                THREADS_PER_BLOCK);
   }
 }
