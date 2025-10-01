@@ -8,11 +8,18 @@
 #include "../spmv/api/types.h"
 #include "../spmv/hip-flat/flat_config.h"
 #include "../spmv/hip-flat/spmv_hip_acc_imp.h"
+#include <hipsparse/hipsparse.h>
 
 namespace usparse {
 
+  struct hipsparse_spmv_info {
+    hipsparseHandle_t handle;
+    hipsparseMatDescr_t descrA;
+  };
+
   struct csrmv_mat_info {
     csrmv_flat_mtx_info flat_info;
+    hipsparse_spmv_info hipsparse_default_info;
   };
 
   using usparse_csrmv_algo = int;
@@ -21,6 +28,7 @@ namespace usparse {
   constexpr usparse_csrmv_algo usparse_csrmv_algo_flat = 2;
   constexpr usparse_csrmv_algo usparse_csrmv_algo_vector = 3;
   constexpr usparse_csrmv_algo usparse_csrmv_algo_thread_row = 4;
+  constexpr usparse_csrmv_algo usparse_csrmv_algo_hipsparse_default = 5; // call hipsparseScsrmv directly.
 
   template <typename INDEX_TYPE, typename VALUE_TYPE>
   void device_csrmv(const INDEX_TYPE nrows, const INDEX_TYPE ncols, const INDEX_TYPE nnz, const INDEX_TYPE *csr_row_ptr,
