@@ -37,6 +37,7 @@ namespace usparse {
   constexpr usparse_csrmv_algo usparse_csrmv_algo_thread_row = 4;
   constexpr usparse_csrmv_algo usparse_csrmv_algo_hipsparse_default = 5;      // call hipsparseScsrmv directly.
   constexpr usparse_csrmv_algo usparse_csrmv_algo_hipsparse_csr_adaptive = 6; // call another api.
+  constexpr usparse_csrmv_algo usparse_csrmv_algo_hipsparse_csr_vector = 7;   // call csr-vector api.
 
   template <typename INDEX_TYPE, typename VALUE_TYPE>
   void device_csrmv(const INDEX_TYPE nrows, const INDEX_TYPE ncols, const INDEX_TYPE nnz, const INDEX_TYPE *csr_row_ptr,

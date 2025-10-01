@@ -61,7 +61,8 @@ void usparse::device_adaptive_analysis(int trans, const VALUE_TYPE alpha, const 
     hipsparseCreateMatDescr(&descrA);
     info->hipsparse_default_info.handle = handle;
     info->hipsparse_default_info.descrA = descrA;
-  } else if (algo == usparse::usparse_csrmv_algo_hipsparse_csr_adaptive) {
+  } else if (algo == usparse::usparse_csrmv_algo_hipsparse_csr_adaptive ||
+             algo == usparse::usparse_csrmv_algo_hipsparse_csr_vector) {
     rocsparse_handle handle;
     rocsparse_create_handle(&handle);
     // Matrix descriptor
@@ -70,9 +71,11 @@ void usparse::device_adaptive_analysis(int trans, const VALUE_TYPE alpha, const 
     rocsparse_mat_info mat_info;
     rocsparse_create_mat_info(&mat_info);
 
-    // TODO: use analysis of type fp32
-    rocsparse_scsrmv_analysis(handle, rocsparse_operation_none, d_csr_desc.rows, d_csr_desc.cols, d_csr_desc.nnz,
-                              descrA, (float *)d_csr_desc.values, d_csr_desc.row_ptr, d_csr_desc.col_index, mat_info);
+    if (algo == usparse::usparse_csrmv_algo_hipsparse_csr_adaptive) {
+      // TODO: use analysis of type fp32
+      rocsparse_scsrmv_analysis(handle, rocsparse_operation_none, d_csr_desc.rows, d_csr_desc.cols, d_csr_desc.nnz,
+                                descrA, (float *)d_csr_desc.values, d_csr_desc.row_ptr, d_csr_desc.col_index, mat_info);
+    }
 
     info->hipsparse_csr_adaptive_info.handle = handle;
     info->hipsparse_csr_adaptive_info.descrA = descrA;
@@ -113,7 +116,8 @@ void usparse::device_adaptive_spmv(int trans, const VALUE_TYPE alpha, const VALU
                                       &halpha, info->hipsparse_default_info.descrA, dAval, dAptr, dAcol, dx, &hbeta,
                                       dy));
     }
-  } else if (algo == usparse::usparse_csrmv_algo_hipsparse_csr_adaptive) {
+  } else if (algo == usparse::usparse_csrmv_algo_hipsparse_csr_adaptive ||
+             algo == usparse::usparse_csrmv_algo_hipsparse_csr_vector) {
     VALUE_TYPE hip_alpha = alpha;
     VALUE_TYPE hip_beta = beta;
     if constexpr (std::is_same<VALUE_TYPE, double>::value) {
