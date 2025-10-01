@@ -108,8 +108,7 @@ namespace usparse {
    * @param src input source vector of size N.
    * @param N the vector size.
    */
-  template <typename INDEX_TYPE, typename DATA_TYPE>
-  void device_memset(DATA_TYPE *src, const INDEX_TYPE N);
+  template <typename INDEX_TYPE, typename DATA_TYPE> void device_memset(DATA_TYPE *src, const INDEX_TYPE N);
 
   /**
    * set all elements in a vector to the given scale value: alpha.

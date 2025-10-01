@@ -40,8 +40,7 @@ void spmv(const uint *rowPtr, const uint *colInd, const double *values, const do
   }
 }
 
-template <typename T>
-usparse::usparse_csrmv_algo select_csrmv_algo(const csr_desc<int, T> d_csr_desc) {
+template <typename T> usparse::usparse_csrmv_algo select_csrmv_algo(const csr_desc<int, T> d_csr_desc) {
   const int density = d_csr_desc.nnz / d_csr_desc.rows;
 
   if (density > 50.0) {
@@ -374,9 +373,10 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
     // copy x from host to device
 
     // if it is the first time, dev_x is 0. Ax is also 0.
-    if(iteration != 0) {
+    if (iteration != 0) {
       // compute y = Ax
-      usparse::device_adaptive_spmv<int, double, BEAT_Y_POLICY_ZERO>(0, 1.0, 0.0, d_csr_desc, dev_x, dev_y, csrmv_algo, &csrmv_info);
+      usparse::device_adaptive_spmv<int, double, BEAT_Y_POLICY_ZERO>(0, 1.0, 0.0, d_csr_desc, dev_x, dev_y, csrmv_algo,
+                                                                     &csrmv_info);
 
       usparse::device_cast<uint, double, float>(dev_y, d_r0_f, N); // dev_y => d_r0_f
 
@@ -392,14 +392,14 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
       // d_r0_f = -d_b_f
       usparse::device_copy_v2(d_b_f, d_r0_f, (float)(-1.0), N);
       // d_beta_f = norm(-d_b_f); which is also beta.
-      *d_beta_f = (float) beta;
+      *d_beta_f = (float)beta;
     }
 
     usparse::device_dscal<uint, float>(-1.0 / beta, d_r0_f, N);
 
     usparse::device_dcopy<uint, float>(d_r0_f, d_V_f, N);
 
-    usparse::device_memset<uint,float>(d_s_f, (RESTART_TIMES + 1));
+    usparse::device_memset<uint, float>(d_s_f, (RESTART_TIMES + 1));
     HIP_CHECK(hipMemcpy(&d_s_f[0], d_beta_f, sizeof(float), hipMemcpyDeviceToDevice));
 
     resid = std::abs(beta);

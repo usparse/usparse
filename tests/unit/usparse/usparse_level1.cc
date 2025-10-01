@@ -36,7 +36,7 @@ TEST(Level1Test, dotProduction) {
   TEST_HIP_CHECK(hipMemset(d_result, 0, 1 * sizeof(double)));
   TEST_HIP_CHECK(hipMemcpy(d_x, h_x, N * sizeof(double), hipMemcpyHostToDevice));
   TEST_HIP_CHECK(hipMemcpy(d_y, h_y, N * sizeof(double), hipMemcpyHostToDevice));
-  
+
   std::size_t buffer_size = 0;
   double *d_temp_buffer = nullptr;
   usparse::device_dotProduct<uint, double>(nullptr, nullptr, (uint)N, nullptr, d_temp_buffer, &buffer_size);
@@ -96,7 +96,7 @@ TEST(Level1Test, vecNorm) {
 
   // check result.
   // the default EAPECT_DOUBLE_EQ may not pass.
-  double relative_error = std::abs(dev_result_on_host - h_vec_norm)/dev_result_on_host;
+  double relative_error = std::abs(dev_result_on_host - h_vec_norm) / dev_result_on_host;
   EXPECT_NEAR(relative_error, 0.0, 1e-12);
 
   hipFree(d_vec);
