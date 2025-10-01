@@ -40,20 +40,6 @@ namespace usparse {
   constexpr usparse_csrmv_algo usparse_csrmv_algo_hipsparse_csr_vector = 7;   // call csr-vector api.
 
   template <typename INDEX_TYPE, typename VALUE_TYPE>
-  void device_csrmv(const INDEX_TYPE nrows, const INDEX_TYPE ncols, const INDEX_TYPE nnz, const INDEX_TYPE *csr_row_ptr,
-                    const INDEX_TYPE *csr_col_index, const VALUE_TYPE *csr_values, const VALUE_TYPE *dev_x,
-                    VALUE_TYPE *dev_y, rocsparse_handle *handle, rocsparse_mat_descr *descrA, rocsparse_mat_info *info);
-
-  /**
-   * rocsparse_scrsmv: support float precision.
-   */
-  template <typename INDEX_TYPE, typename VALUE_TYPE>
-  void device_scsrmv(const INDEX_TYPE nrows, const INDEX_TYPE ncols, const INDEX_TYPE nnz,
-                     const INDEX_TYPE *csr_row_ptr, const INDEX_TYPE *csr_col_index, const VALUE_TYPE *csr_values,
-                     const VALUE_TYPE *dev_x, VALUE_TYPE *dev_y, rocsparse_handle *handle, rocsparse_mat_descr *descrA,
-                     rocsparse_mat_info *info);
-
-  template <typename INDEX_TYPE, typename VALUE_TYPE>
   void device_adaptive_analysis(int trans, const VALUE_TYPE alpha, const VALUE_TYPE beta,
                                 const csr_desc<INDEX_TYPE, VALUE_TYPE> d_csr_desc, const usparse_csrmv_algo algo,
                                 csrmv_mat_info *info = nullptr);
