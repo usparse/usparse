@@ -18,7 +18,7 @@ DEPS := $(shell find $(DIR_INC) -name '*.hpp') \
 INCLUDES := $(addprefix -I,$(shell find $(DIR_INC) -type d)) \
             $(addprefix -I,$(shell find $(DIR_SRC) -type d))
 
-LIBS = -L$(ROCM_PATH)/lib64 -lrocsparse -lamdhip64
+LIBS = -L$(ROCM_PATH)/lib64 -lrocsparse -lamdhip64 -lhipsparse -lhipblas
 
 PROG = gmres
 
