@@ -270,12 +270,12 @@ void usparse::dotprod_axpy_fusion(DATA_TYPE *d_r0, const DATA_TYPE *d_v, DATA_TY
   }
 
   // else: using GMRES_OPT_MGS_FUSION_PARAMETER_STRATEGY_COMPLEX
-  if (N < 1700000 && N > 1210000) {
+  if (N > 980000 && N < 1700000) { // for middle matrix such as mtx24,mtx42, mtx43
     constexpr int THREADS = 512;
     constexpr int ELES_PER_THREAD = 4;
     constexpr int STRIDES = 8;
     FUSION_SHORT_MARK(THREADS, ELES_PER_THREAD, STRIDES);
-  } else if (N == 3523317) { // for large matrix such as mtx29
+  } else if (N > 1700000) { // for large matrix such as mtx29
     constexpr int THREADS = 256;
     constexpr int ELES_PER_THREAD = 8;
     constexpr int STRIDES = 8;
