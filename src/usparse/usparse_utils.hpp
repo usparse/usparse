@@ -66,4 +66,6 @@ private:
   }
 };
 
+extern double global_init_res;
+
 #endif // USPARSE_USPARSE_UTILS_HPP

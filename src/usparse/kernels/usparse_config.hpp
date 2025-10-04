@@ -8,4 +8,5 @@
 namespace usparse {
   constexpr int USPARSE_WAVEFRONT_SIZE = 64;
 }
+
 #endif // USPARSE_KERNELS__USPARSE_CONFIG_H

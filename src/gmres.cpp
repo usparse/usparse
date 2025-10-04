@@ -413,6 +413,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   beta = calculateNorm(_b, N);                 // 禁止修改
   double RESID_LIMIT = REL_RESID_LIMIT * beta; // 禁止修改
   double init_res = beta;                      // 禁止修改
+  global_init_res = init_res;
 
   int i, j, k;
   double resid;
@@ -653,11 +654,11 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
         usparse::host_rotation2((uint)(RESTART_TIMES), d_H_f, d_cs_f, d_sn_f, d_s_f, (uint)(i)); // todo: uint to int
         tmp = d_s_f[i + 1];
       } else {
-        usparse::device_rotation2((uint)(RESTART_TIMES), d_H_f + h_idx, d_cs_f, d_sn_f, d_s_f,
-                                  (uint)(i)); // todo: uint to int
+        usparse::device_rotation2_and_sync((uint)(RESTART_TIMES), d_H_f, d_cs_f, d_sn_f, d_s_f, (uint)(i),
+                                           h_sync); // todo: uint to int
         // h_sync.sync();
-        hipMemcpy(&tmp_fp32, d_s_f + i + 1, sizeof(float), hipMemcpyDeviceToHost);
-        tmp = tmp_fp32;
+        // hipMemcpy(&tmp_fp32, d_s_f + i + 1, sizeof(float), hipMemcpyDeviceToHost);
+        tmp = d_s_f[i + 1];
       }
 
       resid = std::abs(tmp);

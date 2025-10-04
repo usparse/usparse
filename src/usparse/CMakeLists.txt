@@ -27,6 +27,7 @@ set(USPARSE_SOURCE_FILES ${USPARSE_SOURCE_FILES}
         kernels/spmv/api/spmv_flat_imp.cpp
         kernels/spmv/api/spmv_line_enhance_imp.cpp
         kernels/spmv/api/spmv_vec_row_imp.cpp
+        kernels/spmv/common/DCU/utils/.global_mem_op-251004.backup.cpp
 )
 
 include(kernels/spmv/hip-flat/source_list.cmake)
