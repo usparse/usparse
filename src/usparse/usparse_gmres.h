@@ -19,5 +19,6 @@
 #include "kernels/spmv/api/spmv_line_enhance.h"
 #include "kernels/spmv/api/spmv_vec_row.h"
 #include "kernels/spmv/api/types.h"
+#include "usparse_utils.hpp"
 
 #endif // USPARSE_KERNELS_LEVEL2_USPARSE_GMRES_H
