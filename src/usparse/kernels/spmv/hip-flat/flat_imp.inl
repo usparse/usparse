@@ -100,8 +100,8 @@ __global__ void spmv_flat_kernel(int m, const T alpha, const T beta, const I *__
 }
 
 template <int BREAK_STRIDE, int BLOCKS, typename I>
-__global__ void pre_calc_break_point(const I *__restrict__ row_ptr, const I m, I *__restrict__ break_points,
-                                     const I bp_len) {
+__global__ void __launch_bounds__(512)
+    pre_calc_break_point(const I *__restrict__ row_ptr, const I m, I *__restrict__ break_points, const I bp_len) {
   const int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   const int global_threads_num = blockDim.x * gridDim.x;
 
