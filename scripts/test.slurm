@@ -12,7 +12,7 @@ module purge
 module load compiler/dtk/25.04
 export CC=hipcc CXX=hipcc
 
-make clean && make
+make clean && make -j 16
 
 if [ ! -f ./gmres ]; then
     echo "Compilation failed, executable ./gmres not found."
