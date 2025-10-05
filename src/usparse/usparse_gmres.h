@@ -13,6 +13,7 @@
 #include "kernels/level2/usparse_csrmv.h"
 #include "kernels/level2/usparse_rotation.h"
 #include "kernels/level2/usparse_solver_tri.h"
+#include "kernels/primitives/usparse_reduce.hpp"
 #include "kernels/spmv/api/building_config.h"
 #include "kernels/spmv/api/spmv_flat.h"
 #include "kernels/spmv/api/spmv_line_enhance.h"

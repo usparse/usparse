@@ -262,6 +262,123 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
   return make_tuple(iteration, test_time, resid / init_res); // 禁止修改
 }
 
+// In this kernel, we:
+// 1: set d_V <- d_b / beta.
+// 2: set d_s <- zero.
+// Note: we set d_s[0] <- beta using memory copy outside this kernel.
+template <typename I, typename T>
+__global__ void __launch_bounds__(512)
+    big_fusion_outter_itl_v0(const T *d_b, T *d_V, T *d_s, const T beta, const I N, const I S_LEN) {
+  const int gid = blockDim.x * blockIdx.x + threadIdx.x;
+  const T beta_recip = 1 / beta;
+  if (gid < N) {
+    d_V[gid] = beta_recip * d_b[gid];
+  }
+  if (gid < S_LEN) {
+    d_s[gid] = static_cast<T>(0);
+  }
+}
+
+template <typename I, typename T>
+void big_fusion_outter_itl_v0_wrapper(const T *d_b, T *d_V, T *d_s, const T beta, const I N, const I S_LEN) {
+  constexpr int THREADS = 512;
+  const int BLOCKS = N / THREADS + (N % THREADS == 0 ? 0 : 1);
+  (big_fusion_outter_itl_v0<I, T>)<<<BLOCKS, THREADS>>>(d_b, d_V, d_s, beta, N, S_LEN);
+}
+
+template <typename I, typename T1, typename T2, int THREADS>
+__global__ void __launch_bounds__(512) big_fusion_outter_itl_v1_part1(const T1 *dev_y, T2 *d_r0, const T2 *d_b, T2 *d_s,
+                                                                      T2 *d_temp_buffer, const I N, const I S_LEN) {
+  const int gid = blockDim.x * blockIdx.x + threadIdx.x;
+  const int bid = blockIdx.x;
+  const int tid_in_block = threadIdx.x;
+
+  T2 local_sum = static_cast<T2>(0);
+  if (gid < N) {
+    local_sum = static_cast<T2>(dev_y[gid]) - d_b[gid];
+    d_r0[gid] = local_sum;
+    local_sum = local_sum * local_sum;
+  }
+  if (gid < S_LEN) {
+    d_s[gid] = static_cast<T2>(0);
+  }
+  // reduce part1: reduce in each block
+  const T2 block_sum =
+      usparse::line_enhance_block_reduce<int, T2, THREADS, usparse::USPARSE_WAVEFRONT_SIZE>(local_sum, tid_in_block);
+  if (tid_in_block == 0) {
+    d_temp_buffer[blockIdx.x] = block_sum;
+  }
+}
+
+template <typename I, typename T, int THREADS, bool IS_FINAL>
+__global__ void __launch_bounds__(512)
+    big_fusion_outter_itl_v1_part2(T *dev_result, T *d_temp_buffer, const I data_len) {
+  const int tid_in_block = threadIdx.x;
+  const int gid = blockDim.x * blockIdx.x + threadIdx.x;
+
+  // reduce part2: reduce among blocks.
+  T local_sum = static_cast<T>(0);
+
+  if (IS_FINAL) { // data_len <= THREADS
+    if (blockIdx.x == 0) {
+      if (tid_in_block < data_len) {
+        local_sum = d_temp_buffer[tid_in_block];
+      }
+
+      T final_sum =
+          usparse::line_enhance_block_reduce<int, T, THREADS, usparse::USPARSE_WAVEFRONT_SIZE>(local_sum, tid_in_block);
+      if (tid_in_block == 0) {
+        dev_result[0] = sqrt(final_sum);
+      }
+    }
+  } else { // data_len > THREADS
+    T local_sum = static_cast<T>(0);
+    if (gid < data_len) {
+      local_sum = d_temp_buffer[gid];
+    }
+    const T block_sum =
+        usparse::line_enhance_block_reduce<int, T, THREADS, usparse::USPARSE_WAVEFRONT_SIZE>(local_sum, tid_in_block);
+    if (tid_in_block == 0) {
+      d_temp_buffer[blockIdx.x] = block_sum;
+    }
+  }
+}
+
+template <typename I, typename T>
+__global__ void __launch_bounds__(512)
+    big_fusion_outter_itl_v1_part3(const T *d_r0, T *d_V, const T *d_beta, const I N) {
+  const int gid = blockDim.x * blockIdx.x + threadIdx.x;
+  const T beta = d_beta[0]; // bcast it.
+  const T beta_recip = 1 / beta;
+  if (gid < N) {
+    d_V[gid] = -d_r0[gid] * beta_recip;
+  }
+}
+
+template <typename I, typename T1, typename T2>
+void big_fusion_outter_itl_v1(T1 *dev_y, T2 *d_r0, const T2 *d_b, T2 *d_V, T2 *d_s, T2 *d_temp_buffer, T2 *d_beta,
+                              const I N, const I S_LEN) {
+  constexpr int THREADS = 512;
+  const int BLOCKS = N / THREADS + (N % THREADS == 0 ? 0 : 1);
+  // convert data type and perform norm (reduce inside block)
+  big_fusion_outter_itl_v1_part1<uint, double, float, THREADS>
+      <<<BLOCKS, THREADS>>>(dev_y, d_r0, d_b, d_s, d_temp_buffer, N, S_LEN);
+  // perform norm
+  if (BLOCKS <= THREADS) {
+    // reduce among `BLOCKS` blocks and sqrt
+    big_fusion_outter_itl_v1_part2<uint, float, THREADS, true><<<1, THREADS>>>(d_beta, d_temp_buffer, BLOCKS);
+  } else {
+    const int SECOND_BLOCKS = BLOCKS / THREADS + (BLOCKS % THREADS == 0 ? 0 : 1);
+    // reduce among `BLOCKS` blocks
+    big_fusion_outter_itl_v1_part2<uint, float, THREADS, false>
+        <<<SECOND_BLOCKS, THREADS>>>(d_beta, d_temp_buffer, BLOCKS);
+    // reduce among `SECOND_BLOCKS` blocks and sqrt
+    big_fusion_outter_itl_v1_part2<uint, float, THREADS, true><<<1, THREADS>>>(d_beta, d_temp_buffer, SECOND_BLOCKS);
+  }
+  // d_V = -d_r0/beta
+  big_fusion_outter_itl_v1_part3<uint, float><<<BLOCKS, THREADS>>>(d_r0, d_V, d_beta, N);
+}
+
 RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, double *dev_x, double *dev_y,
                    csr_desc<int, double> d_csr_desc) {
   // 稀疏矩阵A_d需默认以CSR格式压缩存储，使用DCU优化时，该矩阵A和右端向量b传输到DCU端的开销，以及结果向量x传输到CPU端的开销可不算在计时范围
@@ -367,35 +484,76 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
     // spmv(A_d->rows, A_d->cols, A_d->vals, x_d, r0.data(), N); // 不可修改此步操作中相关数据的存储精度和SpMV计算精度
     // copy x from host to device
 
+    const uint S_LEN = RESTART_TIMES + 1; // the length of array s. (we assume S_LEN < N).
+    constexpr bool USE_FUSION = true;     // todo: move to config file.
+
     // if it is the first time, dev_x is 0. Ax is also 0.
     if (iteration != 0) {
       // compute y = Ax
       usparse::device_adaptive_spmv<int, double, BEAT_Y_POLICY_ZERO>(0, 1.0, 0.0, d_csr_desc, dev_x, dev_y, csrmv_algo,
                                                                      &csrmv_info);
+      if (!USE_FUSION) {
+        usparse::device_cast<uint, double, float>(dev_y, d_r0_f, N); // dev_y => d_r0_f
 
-      usparse::device_cast<uint, double, float>(dev_y, d_r0_f, N); // dev_y => d_r0_f
+        // float
+        usparse::device_daxpy<uint, float, float>(-1.0, d_b_f, d_r0_f, N); // d_r0_f += -1.0 * d_b_f.
 
-      // float
-      usparse::device_daxpy<uint, float, float>(-1.0, d_b_f, d_r0_f, N); // d_r0_f += -1.0 * d_b_f.
+        usparse::device_calculateNorm<uint, float>(d_r0_f, N, d_beta_f, d_temp_buffer, 0);
+        h_sync.sync();
 
-      usparse::device_calculateNorm<uint, float>(d_r0_f, N, d_beta_f, d_temp_buffer, 0);
-      h_sync.sync();
+        beta = *d_beta_f;
+        usparse::device_dscal<uint, float>(-1.0 / beta, d_r0_f, N);
 
-      beta = *d_beta_f;
+        usparse::device_dcopy<uint, float>(d_r0_f, d_V_f, N);
+
+        usparse::device_memset<uint, float>(d_s_f, (RESTART_TIMES + 1));
+        HIP_CHECK(hipMemcpy(&d_s_f[0], d_beta_f, sizeof(float), hipMemcpyDeviceToDevice));
+      } else {
+        // input: dev_y (double[])
+        // output: d_r0_f <- (float [])(dev_y) - d_b_f
+        // output: beta: norm(d_r0_f)
+        // output: d_s_f <- 0.0;
+        // output: d_beta_f[0]: beta
+
+        // output: d_V_f <- -d_r0_f/beta
+        // output: d_s_f[0] = beta.
+
+        big_fusion_outter_itl_v1<uint, double, float>(dev_y, d_r0_f, d_b_f, d_V_f, d_s_f, d_temp_buffer, d_beta_f, N,
+                                                      S_LEN);
+        float beta_host_f32 = 0.0;
+        HIP_CHECK(hipMemcpy(&beta_host_f32, d_beta_f, sizeof(float), hipMemcpyDeviceToHost)); // sync kernel
+        beta = beta_host_f32;                                                                 // fp32 to fp64
+
+        // note: d2d can be async on DCU, but we dont need sync. Because it is ready before using `d_s_f`.
+        HIP_CHECK(hipMemcpy(&d_s_f[0], d_beta_f, sizeof(float), hipMemcpyDeviceToDevice));
+      }
     } else {
       // if it is the first iteration. the above code in if branch can be simplified as following.
-      // d_r0_f = -d_b_f
-      usparse::device_copy_v2(d_b_f, d_r0_f, (float)(-1.0), N);
-      // d_beta_f = norm(-d_b_f); which is also beta.
-      *d_beta_f = (float)beta;
+      // d_V_f = d_r0_f = -d_b_f.
+      if (!USE_FUSION) {
+        usparse::device_copy_v2(d_b_f, d_r0_f, (float)(-1.0), N);
+        // d_beta_f = norm(-d_b_f); which is also beta.
+        // d_s_f[0] = d_beta_f[0] = (float)beta.
+        *d_beta_f = (float)beta;
+
+        usparse::device_dscal<uint, float>(-1.0 / beta, d_r0_f, N);
+
+        usparse::device_dcopy<uint, float>(d_r0_f, d_V_f, N);
+
+        usparse::device_memset<uint, float>(d_s_f, (RESTART_TIMES + 1));
+        HIP_CHECK(hipMemcpy(&d_s_f[0], d_beta_f, sizeof(float), hipMemcpyDeviceToDevice));
+      } else {
+        // input: d_b_f
+        // output: d_r0_f: (d_b_f) * (1.0/beta). (omitted. because d_r0_f is overwrite later)
+        // output: d_V_f: d_r0_f
+        // output: d_s_f: 0.0; d_s_f[0] = beta.
+        // output: d_beta_f: beta. (omitted)
+        big_fusion_outter_itl_v0_wrapper<uint, float>(d_b_f, d_V_f, d_s_f, beta, N, S_LEN);
+        const float beta_fp32 = beta;
+        // copying d_s_f does not need sync: it is ready before using `d_s_f`.
+        HIP_CHECK(hipMemcpy(&d_s_f[0], &beta_fp32, sizeof(float), hipMemcpyHostToDevice));
+      }
     }
-
-    usparse::device_dscal<uint, float>(-1.0 / beta, d_r0_f, N);
-
-    usparse::device_dcopy<uint, float>(d_r0_f, d_V_f, N);
-
-    usparse::device_memset<uint, float>(d_s_f, (RESTART_TIMES + 1));
-    HIP_CHECK(hipMemcpy(&d_s_f[0], d_beta_f, sizeof(float), hipMemcpyDeviceToDevice));
 
     resid = std::abs(beta);
     i = -1;
