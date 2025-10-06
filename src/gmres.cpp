@@ -56,52 +56,6 @@ template <typename T> usparse::usparse_csrmv_algo select_csrmv_algo(const csr_de
   return usparse::usparse_csrmv_algo_flat;
 }
 
-struct sync_handle {
-  static constexpr int SYNC_POLICY = 2;
-
-  static constexpr int SYNC_POLICY_DEVICE_SYNC = 0;
-  static constexpr int SYNC_POLICY_EVENT_SYNC = 1;
-  static constexpr int SYNC_POLICY_MEMCOPY_SYNC = 2;
-
-  inline sync_handle() {
-    if (SYNC_POLICY == SYNC_POLICY_DEVICE_SYNC) {
-      return;
-    } else if (SYNC_POLICY == SYNC_POLICY_EVENT_SYNC) {
-      hipEventCreate(&sync_kernel_event);
-    } else if (SYNC_POLICY == SYNC_POLICY_MEMCOPY_SYNC) {
-      mem_malloc();
-    }
-  }
-
-  inline void sync() {
-    if (SYNC_POLICY == SYNC_POLICY_DEVICE_SYNC) {
-      hipDeviceSynchronize();
-    } else if (SYNC_POLICY == SYNC_POLICY_EVENT_SYNC) {
-      hipEventRecord(sync_kernel_event);
-      hipEventSynchronize(sync_kernel_event);
-    } else if (SYNC_POLICY == SYNC_POLICY_MEMCOPY_SYNC) {
-      mem_copy();
-    }
-  }
-
-private:
-  int *host_data;
-  int *dev_data;
-
-  hipEvent_t sync_kernel_event;
-
-private:
-  void mem_malloc() {
-    HIP_CHECK(hipHostMalloc((int **)&host_data, 1 * sizeof(int)));
-    HIP_CHECK(hipMalloc((int **)&dev_data, 1 * sizeof(int)));
-  }
-
-  void mem_copy() {
-    // HIP_CHECK(hipMemcpy(dev_data, host_data, 1 * sizeof(int), hipMemcpyHostToDevice));
-    hipMemcpyHtoD(dev_data, host_data, 1 * sizeof(int)); // TODO: HIP_CHECK
-  }
-};
-
 RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, double *dev_x, double *dev_y,
              csr_desc<int, double> d_csr_desc) {
   // 稀疏矩阵A_d需默认以CSR格式压缩存储，使用DCU优化时，该矩阵A和右端向量b传输到DCU端的开销，以及结果向量x传输到CPU端的开销可不算在计时范围
@@ -441,6 +395,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   // 稀疏矩阵A_d需默认以CSR格式压缩存储，使用DCU优化时，该矩阵A和右端向量b传输到DCU端的开销，以及结果向量x传输到CPU端的开销可不算在计时范围
   // 若要采用其他的稀疏矩阵压缩格式，需从DCU端的CSR矩阵开始转换，且格式转换的代码必须包含到计时范围内
   const uint N = A_d->nrows;
+  const uint NNZ = A_d->nnz;
 
   std::vector<double> r0(N);
   std::vector<double> V((RESTART_TIMES + 1) * N);
@@ -459,6 +414,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   beta = calculateNorm(_b, N);                 // 禁止修改
   double RESID_LIMIT = REL_RESID_LIMIT * beta; // 禁止修改
   double init_res = beta;                      // 禁止修改
+  global_init_res = init_res;
 
   int i, j, k;
   double resid;
@@ -615,7 +571,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
     resid = std::abs(beta);
     i = -1;
 
-    if (resid <= RESID_LIMIT || iteration >= ITERATION_LIMIT) {
+    if ((resid <= RESID_LIMIT && resid < 9.9e-7 * global_init_res) || iteration >= ITERATION_LIMIT) {
       break;
     }
     do {
@@ -699,11 +655,12 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
         usparse::host_rotation2((uint)(RESTART_TIMES), d_H_f, d_cs_f, d_sn_f, d_s_f, (uint)(i)); // todo: uint to int
         tmp = d_s_f[i + 1];
       } else {
-        usparse::device_rotation2((uint)(RESTART_TIMES), d_H_f + h_idx, d_cs_f, d_sn_f, d_s_f,
-                                  (uint)(i)); // todo: uint to int
+        usparse::device_rotation2_and_sync((uint)(RESTART_TIMES), d_H_f + h_idx, d_cs_f, d_sn_f, d_s_f, (uint)(i),
+                                           h_sync, N,
+                                           NNZ); // todo: uint to int
         // h_sync.sync();
-        hipMemcpy(&tmp_fp32, d_s_f + i + 1, sizeof(float), hipMemcpyDeviceToHost);
-        tmp = tmp_fp32;
+        // hipMemcpy(&tmp_fp32, d_s_f + i + 1, sizeof(float), hipMemcpyDeviceToHost);
+        tmp = d_s_f[i + 1];
       }
 
       resid = std::abs(tmp);

@@ -13,7 +13,6 @@
 
 #include "sparseMatrix.hpp"
 #include "usparse_gmres.h"
-#include "utils.hpp"
 
 using RESULT = std::tuple<int, float, double>;
 

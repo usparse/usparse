@@ -5,6 +5,7 @@
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
 
+#include "usparse_utils.hpp"
 #include "usparse_rotation.h"
 
 namespace usparse {
@@ -61,14 +62,40 @@ void usparse::device_rotation2(const INDEX_TYPE Am, DATA_TYPE *d_H, DATA_TYPE *d
   rotation2_kernel<<<1, 1>>>(Am, d_H, d_cs, d_sn, d_s, i);
 }
 
+template <typename INDEX_TYPE, typename DATA_TYPE>
+void usparse::host_rotation2_and_sync(const INDEX_TYPE Am, DATA_TYPE *d_H, DATA_TYPE *d_cs, DATA_TYPE *d_sn,
+                                      DATA_TYPE *d_s, INDEX_TYPE i, sync_handle &handle) {
+  host_rotation2(Am, d_H, d_cs, d_sn, d_s, i);
+}
+
+template <typename INDEX_TYPE, typename DATA_TYPE>
+void usparse::device_rotation2_and_sync(const INDEX_TYPE Am, DATA_TYPE *d_H, DATA_TYPE *d_cs, DATA_TYPE *d_sn,
+                                        DATA_TYPE *d_s, INDEX_TYPE i, sync_handle &handle, INDEX_TYPE N,
+                                        INDEX_TYPE NNZ) {
+  rotation2_kernel<<<1, 1>>>(Am, d_H, d_cs, d_sn, d_s, i);
+  handle.sync();
+}
+
 template void usparse::host_rotation2<uint, double>(const uint Am, double *d_H, double *d_cs, double *d_sn, double *d_s,
                                                     uint i);
 
 template void usparse::host_rotation2<uint, float>(const uint Am, float *d_H, float *d_cs, float *d_sn, float *d_s,
                                                    uint i);
 
+template void usparse::host_rotation2_and_sync<uint, double>(const uint Am, double *d_H, double *d_cs, double *d_sn,
+                                                             double *d_s, uint i, sync_handle &handle);
+
+template void usparse::host_rotation2_and_sync<uint, float>(const uint Am, float *d_H, float *d_cs, float *d_sn,
+                                                            float *d_s, uint i, sync_handle &handle);
+
 template void usparse::device_rotation2<uint, double>(const uint Am, double *d_H, double *d_cs, double *d_sn,
                                                       double *d_s, uint i);
 
 template void usparse::device_rotation2<uint, float>(const uint Am, float *d_H, float *d_cs, float *d_sn, float *d_s,
                                                      uint i);
+
+template void usparse::device_rotation2_and_sync<uint, double>(const uint Am, double *d_H, double *d_cs, double *d_sn,
+                                                               double *d_s, uint i, sync_handle &handle, uint N, uint NNZ);
+
+template void usparse::device_rotation2_and_sync<uint, float>(const uint Am, float *d_H, float *d_cs, float *d_sn,
+                                                              float *d_s, uint i, sync_handle &handle, uint N, uint NNZ);
