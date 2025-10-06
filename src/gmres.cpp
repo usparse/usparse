@@ -379,6 +379,60 @@ void big_fusion_outter_itl_v1(T1 *dev_y, T2 *d_r0, const T2 *d_b, T2 *d_V, T2 *d
   big_fusion_outter_itl_v1_part3<uint, float><<<BLOCKS, THREADS>>>(d_r0, d_V, d_beta, N);
 }
 
+template <typename I, typename ST, typename VT, typename XT, int II>
+__global__ void big_fusion_v2_batched_axpy_kernel(const ST *d_s_f, const VT *d_V_f, XT *dev_x, const I N, const I VN) {
+  // loop j in i+1:
+  //   dev_x = dev_x + d_s_f[j] * d_V_f;
+  // end loop
+  const int gid = blockDim.x * blockIdx.x + threadIdx.x;
+  if (gid < N) {
+    VT x = static_cast<VT>(dev_x[gid]); // XT to VT
+#pragma unroll
+    for (int j = 0; j <= II; j++) {
+      const ST alpha = d_s_f[j];
+      x += alpha * d_V_f[VN * j + gid];
+    }
+    dev_x[gid] = static_cast<XT>(x);
+  }
+}
+
+template <typename I, typename ST, typename VT, typename XT>
+inline void big_fusion_v2_batched_axpy(const ST *d_s_f, const VT *d_V_f, XT *dev_x, const I ii, const I N, const I VN) {
+  constexpr int THREADS = 512;
+  const int BLOCKS = N / THREADS + (N % THREADS == 0 ? 0 : 1);
+
+#define SWITCH_CASE_SHORT_CODE(II)                                                                                     \
+  case (II):                                                                                                           \
+    big_fusion_v2_batched_axpy_kernel<I, ST, VT, XT, II><<<BLOCKS, THREADS>>>(d_s_f, d_V_f, dev_x, N, VN);             \
+    break;
+
+  switch (ii) {
+    SWITCH_CASE_SHORT_CODE(0);
+    SWITCH_CASE_SHORT_CODE(1);
+    SWITCH_CASE_SHORT_CODE(2);
+    SWITCH_CASE_SHORT_CODE(3);
+    SWITCH_CASE_SHORT_CODE(4);
+    SWITCH_CASE_SHORT_CODE(5);
+    SWITCH_CASE_SHORT_CODE(6);
+    SWITCH_CASE_SHORT_CODE(7);
+    SWITCH_CASE_SHORT_CODE(8);
+    SWITCH_CASE_SHORT_CODE(9);
+    SWITCH_CASE_SHORT_CODE(10);
+    SWITCH_CASE_SHORT_CODE(11);
+    SWITCH_CASE_SHORT_CODE(12);
+    SWITCH_CASE_SHORT_CODE(13);
+    SWITCH_CASE_SHORT_CODE(14);
+    SWITCH_CASE_SHORT_CODE(15);
+    SWITCH_CASE_SHORT_CODE(16);
+    SWITCH_CASE_SHORT_CODE(17);
+    SWITCH_CASE_SHORT_CODE(18);
+    SWITCH_CASE_SHORT_CODE(19);
+    SWITCH_CASE_SHORT_CODE(20);
+  default:;
+  }
+#undef SWITCH_CASE_SHORT_CODE
+}
+
 RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, double *dev_x, double *dev_y,
                    csr_desc<int, double> d_csr_desc) {
   // 稀疏矩阵A_d需默认以CSR格式压缩存储，使用DCU优化时，该矩阵A和右端向量b传输到DCU端的开销，以及结果向量x传输到CPU端的开销可不算在计时范围
@@ -664,9 +718,21 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
     }
 
     // 更新解: <float, double>
-    for (j = 0; j <= i; j++) {
-      tmp = d_s_f[j];
-      usparse::device_daxpy<uint, float, double>(tmp, d_V_f + j * N, dev_x, N);
+    if (!USE_FUSION) {
+      for (j = 0; j <= i; j++) {
+        const float tmp = d_s_f[j];
+        usparse::device_daxpy<uint, float, double>(tmp, d_V_f + j * N, dev_x, N);
+      }
+    } else {
+      if (i == 0) {
+        for (j = 0; j <= i; j++) {
+          tmp = d_s_f[j];
+          usparse::device_daxpy<uint, float, double>(tmp, d_V_f + j * N, dev_x, N);
+        }
+      } else {
+        // todo: change N+1 if V length channges
+        big_fusion_v2_batched_axpy<uint, float, float, double>(d_s_f, d_V_f, dev_x, i, N, N + 0);
+      }
     }
   } while (resid > RESID_LIMIT && iteration <= ITERATION_LIMIT);
 
