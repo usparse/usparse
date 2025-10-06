@@ -179,12 +179,13 @@ namespace usparse {
     // load d_r0 into reg x:
     load_v_into_reg(g_threads_num, gid, reg_x, d_r0, N);
 
+    const int h_base_ptr = i * (i + 3) / 2;
     for (int k = 0; k <= i; k++) {
       const DATA_TYPE *d_vk = d_v + k * N;
       // load d_v[k] into register reg_y
       load_v_into_reg<INDEX_TYPE, DATA_TYPE, ELES_PER_THREAD, STRIDES>(g_threads_num, gid, reg_y, d_vk, N);
 
-      const INDEX_TYPE h_index = k * RESTART_TIMES + i; // todo: RESTART_TIMES == m
+      const INDEX_TYPE h_index = h_base_ptr + k; // todo: RESTART_TIMES == m
       // dot product using cg
       dot_prod_cg<INDEX_TYPE, DATA_TYPE, THREADS, ELES_PER_THREAD, STRIDES>(grid, gid, reg_x, reg_y, d_temp_buffer,
                                                                             &(d_h[h_index]));
@@ -200,7 +201,7 @@ namespace usparse {
       // store back to d_r0;
       store_v_to_device<INDEX_TYPE, DATA_TYPE, ELES_PER_THREAD, STRIDES>(g_threads_num, gid, reg_x, d_r0, N);
     } else { // GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2
-      const INDEX_TYPE h_idx = (i + 1) * RESTART_TIMES + i;
+      const INDEX_TYPE h_idx = h_base_ptr + (i + 1);
       calculate_norm_cg<INDEX_TYPE, DATA_TYPE, THREADS, ELES_PER_THREAD, STRIDES>(grid, gid, reg_x, d_temp_buffer,
                                                                                   &(d_h[h_idx]));
 

@@ -102,7 +102,7 @@ void init_device_matrix_float(float **d_V_f, float **d_H_f, float **d_vi_f, floa
                               uint nnz) {
   // init matrix
   HIP_CHECK(hipMalloc((void **)d_V_f, (m + 1) * N * sizeof(float)));
-  HIP_CHECK(hipMalloc((void **)d_H_f, (m + 1) * m * sizeof(float)));
+  HIP_CHECK(hipMalloc((void **)d_H_f, ((m + 3) * m ) / 2 * sizeof(float)));
   HIP_CHECK(hipMalloc((void **)d_vi_f, N * sizeof(float)));
   HIP_CHECK(hipMalloc((void **)d_cs_f, m * sizeof(float)));
   HIP_CHECK(hipMalloc((void **)d_sn_f, m * sizeof(float)));

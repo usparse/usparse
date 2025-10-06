@@ -12,9 +12,10 @@ namespace usparse {
   __host__ __device__ __forceinline__ void sovlerTri_kernel_imp(const INDEX_TYPE Am, const INDEX_TYPE i,
                                                                 const DATA_TYPE *H, DATA_TYPE *s) {
     for (int j = i; j >= 0; j--) {
-      s[j] /= H[Am * j + j];
+      int idx = j * (j + 3) / 2;
+      s[j] /= H[(idx + j)];
       for (int k = j - 1; k >= 0; k--) {
-        s[k] -= H[k * Am + j] * s[j];
+        s[k] -= H[(idx + k)] * s[j];
       }
     }
   }
