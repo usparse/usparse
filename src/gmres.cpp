@@ -96,7 +96,10 @@ private:
     HIP_CHECK(hipMalloc((int **)&dev_data, 1 * sizeof(int)));
   }
 
-  void mem_copy() { HIP_CHECK(hipMemcpy(dev_data, host_data, 1 * sizeof(int), hipMemcpyHostToDevice)); }
+  void mem_copy() {
+    // HIP_CHECK(hipMemcpy(dev_data, host_data, 1 * sizeof(int), hipMemcpyHostToDevice));
+    hipMemcpyHtoD(dev_data, host_data, 1 * sizeof(int)); // TODO: HIP_CHECK
+  }
 };
 
 RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, double *dev_x, double *dev_y,
