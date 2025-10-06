@@ -20,7 +20,7 @@ namespace usparse {
   constexpr int GMRES_OPT_USE_MGS = 0; // Modified Gram-Schmidt
   constexpr int GMRES_OPT_USE_GS = 1;  // Gram-Schmidt
 
-  constexpr int GMRES_ORTHO_USE = GMRES_OPT_USE_GS;
+  constexpr int GMRES_ORTHO_USE = GMRES_OPT_USE_MGS;
 
   // precision verification
   constexpr bool GMRES_OPT_CLOSE_VERIFICATION = false;
