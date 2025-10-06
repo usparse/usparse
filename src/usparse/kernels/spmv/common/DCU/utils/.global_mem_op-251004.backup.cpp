@@ -21,7 +21,7 @@ void usparse::device_rotation2_and_sync<MY_INDEX, MY_DataType>(const MY_INDEX Am
   const float density = static_cast<float>(NNZ) / N;
 
   if (N > 3000000) {
-    const double resid_b_limit = 9.36e-7 * global_init_res;
+    const double resid_b_limit = 9.398e-7 * global_init_res;
     const double RESID_LIMIT = 1e-6 * global_init_res;
     double resid = std::abs(d_s[i + 1]);
 

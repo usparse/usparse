@@ -571,7 +571,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
     resid = std::abs(beta);
     i = -1;
 
-    if (resid <= RESID_LIMIT || iteration >= ITERATION_LIMIT) {
+    if ((resid <= RESID_LIMIT && resid < 9.9e-7 * global_init_res) || iteration >= ITERATION_LIMIT) {
       break;
     }
     do {
