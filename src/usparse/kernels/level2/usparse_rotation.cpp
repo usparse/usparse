@@ -35,10 +35,10 @@ namespace usparse {
   __host__ __device__ __forceinline__ void rotation2_kernel_imp(const INDEX_TYPE Am, DATA_TYPE *H, DATA_TYPE *cs,
                                                                 DATA_TYPE *sn, DATA_TYPE *s, INDEX_TYPE i) {
     for (INDEX_TYPE k = 0; k < i; k++) {
-      applyRotation<INDEX_TYPE, DATA_TYPE>(H[k * Am + i], H[(k + 1) * Am + i], cs[k], sn[k]);
+      applyRotation<INDEX_TYPE, DATA_TYPE>(H[k], H[(k + 1)], cs[k], sn[k]);
     }
-    generateRotation<INDEX_TYPE, DATA_TYPE>(H[i * Am + i], H[(i + 1) * Am + i], cs[i], sn[i]);
-    applyRotation<INDEX_TYPE, DATA_TYPE>(H[i * Am + i], H[(i + 1) * Am + i], cs[i], sn[i]);
+    generateRotation<INDEX_TYPE, DATA_TYPE>(H[i], H[(i + 1)], cs[i], sn[i]);
+    applyRotation<INDEX_TYPE, DATA_TYPE>(H[i], H[(i + 1)], cs[i], sn[i]);
     applyRotation<INDEX_TYPE, DATA_TYPE>(s[i], s[i + 1], cs[i], sn[i]);
   }
 
