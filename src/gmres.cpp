@@ -96,7 +96,10 @@ private:
     HIP_CHECK(hipMalloc((int **)&dev_data, 1 * sizeof(int)));
   }
 
-  void mem_copy() { HIP_CHECK(hipMemcpy(dev_data, host_data, 1 * sizeof(int), hipMemcpyHostToDevice)); }
+  void mem_copy() {
+    // HIP_CHECK(hipMemcpy(dev_data, host_data, 1 * sizeof(int), hipMemcpyHostToDevice));
+    hipMemcpyHtoD(dev_data, host_data, 1 * sizeof(int)); // TODO: HIP_CHECK
+  }
 };
 
 RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, double *dev_x, double *dev_y,
@@ -690,16 +693,19 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
         }
       }
 
+      float tmp_fp32;
       if (usparse::GMRES_USE_HOST_ROTATION) {
         h_sync.sync();
         usparse::host_rotation2((uint)(RESTART_TIMES), d_H_f, d_cs_f, d_sn_f, d_s_f, (uint)(i)); // todo: uint to int
+        tmp = d_s_f[i + 1];
       } else {
         usparse::device_rotation2((uint)(RESTART_TIMES), d_H_f + h_idx, d_cs_f, d_sn_f, d_s_f,
                                   (uint)(i)); // todo: uint to int
-        h_sync.sync();
+        // h_sync.sync();
+        hipMemcpy(&tmp_fp32, d_s_f + i + 1, sizeof(float), hipMemcpyDeviceToHost);
+        tmp = tmp_fp32;
       }
 
-      tmp = d_s_f[i + 1];
       resid = std::abs(tmp);
       // std::cout << "iteration " << iteration << ", resid = " << resid/init_res << std::endl;
 
@@ -708,25 +714,29 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
       }
     } while (i + 1 < RESTART_TIMES && iteration <= ITERATION_LIMIT);
 
+    constexpr bool USE_BATCHED_AXPY = USE_FUSION;
     // 求解上三角系统
     if (usparse::GMRES_USE_HOST_TRI_SOLVER) {
       h_sync.sync(); // wait kernel to finish
       usparse::host_sovlerTri(RESTART_TIMES, i, d_H_f, d_s_f);
     } else {
       usparse::device_sovlerTri(RESTART_TIMES, i, d_H_f, d_s_f);
-      h_sync.sync();
+      if (!USE_BATCHED_AXPY) {
+        h_sync.sync();
+      }
     }
 
     // 更新解: <float, double>
-    if (!USE_FUSION) {
+    if (!USE_BATCHED_AXPY) { // naive approach
       for (j = 0; j <= i; j++) {
         const float tmp = d_s_f[j];
         usparse::device_daxpy<uint, float, double>(tmp, d_V_f + j * N, dev_x, N);
       }
-    } else {
+    } else { // batched axpy
       if (i == 0) {
         for (j = 0; j <= i; j++) {
-          tmp = d_s_f[j];
+          h_sync.sync();
+          tmp = d_s_f[j]; // todo: use memory load.
           usparse::device_daxpy<uint, float, double>(tmp, d_V_f + j * N, dev_x, N);
         }
       } else {
