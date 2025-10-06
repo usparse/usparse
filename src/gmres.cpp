@@ -395,6 +395,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   // 稀疏矩阵A_d需默认以CSR格式压缩存储，使用DCU优化时，该矩阵A和右端向量b传输到DCU端的开销，以及结果向量x传输到CPU端的开销可不算在计时范围
   // 若要采用其他的稀疏矩阵压缩格式，需从DCU端的CSR矩阵开始转换，且格式转换的代码必须包含到计时范围内
   const uint N = A_d->nrows;
+  const uint NNZ = A_d->nnz;
 
   std::vector<double> r0(N);
   std::vector<double> V((RESTART_TIMES + 1) * N);
@@ -654,8 +655,8 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
         usparse::host_rotation2((uint)(RESTART_TIMES), d_H_f, d_cs_f, d_sn_f, d_s_f, (uint)(i)); // todo: uint to int
         tmp = d_s_f[i + 1];
       } else {
-        usparse::device_rotation2_and_sync((uint)(RESTART_TIMES), d_H_f, d_cs_f, d_sn_f, d_s_f, (uint)(i),
-                                           h_sync); // todo: uint to int
+        usparse::device_rotation2_and_sync((uint)(RESTART_TIMES), d_H_f, d_cs_f, d_sn_f, d_s_f, (uint)(i), h_sync, N,
+                                           NNZ); // todo: uint to int
         // h_sync.sync();
         // hipMemcpy(&tmp_fp32, d_s_f + i + 1, sizeof(float), hipMemcpyDeviceToHost);
         tmp = d_s_f[i + 1];
