@@ -59,14 +59,15 @@ USPARSE_TUNER_BENCH(dotProdAxpyFusion_Tuner) {
 
     std::size_t buffer_size = 0;
     T *d_temp_buffer = nullptr;
+    auto VN = usparse::get_r0_v_mem_len(N);
     usparse::dotprod_axpy_fusion<uint, T, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
-        nullptr, nullptr, nullptr, d_temp_buffer, (uint)N, (uint)m, (uint)i, &buffer_size, f_density);
+        nullptr, nullptr, nullptr, d_temp_buffer, (uint)N, (uint)VN, (uint)m, (uint)i, &buffer_size, f_density);
     TEST_HIP_CHECK(hipMalloc(&d_temp_buffer, buffer_size));
 
     for (auto _ : states) {
       usparse::dotprod_axpy_fusion_internal_imp<uint, T, THREADS, ELES_PER_THREAD, STRIDES,
                                                 usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
-          d_r0, d_V, d_H, d_temp_buffer, (uint)N, (uint)m, (uint)i, nullptr);
+          d_r0, d_V, d_H, d_temp_buffer, (uint)N, (uint)VN, (uint)m, (uint)i, nullptr);
       hipDeviceSynchronize();
     }
 

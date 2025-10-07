@@ -1,4 +1,5 @@
 #include "init.hpp"
+#include "gmres_optimization_config.h"
 #include "usparse_gmres.h"
 #include <sys/types.h>
 
@@ -100,13 +101,16 @@ void init_device_matrix(double **d_r0, double **d_V, double **d_s, double **d_H,
 void init_device_matrix_float(float **d_V_f, float **d_H_f, float **d_vi_f, float **d_sn_f, float **d_cs_f,
                               float **d_r0_f, float **d_A_val_f, float **d_s_f, float **d_b_f, uint N, int m,
                               uint nnz) {
+  const int VN = usparse::get_r0_v_mem_len(N);
   // init matrix
-  HIP_CHECK(hipMalloc((void **)d_V_f, (m + 1) * N * sizeof(float)));
+  HIP_CHECK(hipMalloc((void **)d_V_f, (m + 1) * VN * sizeof(float)));
+  HIP_CHECK(hipMemset(*d_V_f, 0, (m + 1) * VN * sizeof(float)));
   HIP_CHECK(hipMalloc((void **)d_H_f, ((m + 3) * m ) / 2 * sizeof(float)));
   HIP_CHECK(hipMalloc((void **)d_vi_f, N * sizeof(float)));
   HIP_CHECK(hipMalloc((void **)d_cs_f, m * sizeof(float)));
   HIP_CHECK(hipMalloc((void **)d_sn_f, m * sizeof(float)));
-  HIP_CHECK(hipMalloc((void **)d_r0_f, N * sizeof(float)));
+  HIP_CHECK(hipMalloc((void **)d_r0_f, VN * sizeof(float)));
+  HIP_CHECK(hipMemset(*d_r0_f, 0, VN * sizeof(float)));
   HIP_CHECK(hipMalloc((void **)d_A_val_f, nnz * sizeof(float)));
   HIP_CHECK(hipMalloc((void **)d_s_f, (m + 1) * sizeof(float)));
   HIP_CHECK(hipMalloc((void **)d_b_f, N * sizeof(float)));
