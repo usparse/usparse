@@ -22,6 +22,8 @@ namespace usparse {
 
   constexpr int GMRES_ORTHO_USE = GMRES_OPT_USE_MGS;
 
+  constexpr bool MGS_ALIGN_MEM = true; // malloc alligned memory for r0 and V.
+
   // precision verification
   constexpr bool GMRES_OPT_CLOSE_VERIFICATION = false;
   constexpr bool GMRES_OPT_OPEN_VERIFICATION = true;
@@ -30,6 +32,20 @@ namespace usparse {
 
   constexpr bool GMRES_USE_HOST_TRI_SOLVER = false;
   constexpr bool GMRES_USE_HOST_ROTATION = false;
+
+  constexpr inline bool check_mem_align_enabled() {
+    // only enabled in leve2 and MGS method.
+    return (GMRES_ORTHO_USE == GMRES_OPT_USE_MGS && (usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION ==
+            usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2))? (MGS_ALIGN_MEM): false;
+  }
+
+  // use aligned memory for r0 and matrix V.
+  inline std::size_t get_r0_v_mem_len(const std::size_t N) {
+    constexpr int mem_align_unit = 512 * 8 * 8;
+    const int r0_v_mem_len_if_align = (N / mem_align_unit + 1) * mem_align_unit;
+    const int R0_V_MEM_LEN = check_mem_align_enabled() ? (r0_v_mem_len_if_align) : N;
+    return R0_V_MEM_LEN;
+  }
 } // namespace usparse
 
 #endif // USPARSE_GMRES_OPTIMIZATION_CONFIG_H

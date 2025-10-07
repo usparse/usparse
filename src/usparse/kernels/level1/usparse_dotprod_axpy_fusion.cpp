@@ -70,7 +70,7 @@ namespace usparse {
    * @param src_mem the device memory. source data.
    * @param length data length of the source data @param src_mem.
    */
-  template <typename INDEX_TYPE, typename DATA_TYPE, int ELES_PER_THREAD, int STRIDES>
+  template <typename INDEX_TYPE, typename DATA_TYPE, int ELES_PER_THREAD, int STRIDES, bool MEM_ALIGN_MODE = false>
   __device__ __forceinline__ void load_v_into_reg(const int &g_threads_num, const int &g_tid,
                                                   DATA_TYPE (&dest_reg)[STRIDES][ELES_PER_THREAD],
                                                   const DATA_TYPE src_mem[], const INDEX_TYPE &length) {
@@ -81,11 +81,15 @@ namespace usparse {
 #pragma unroll
       for (int j = 0; j < ELES_PER_THREAD; j++) {
         const INDEX_TYPE index = base_index + j;
-        if (index < length) {
+        if (MEM_ALIGN_MODE) { // direct loading
           dest_reg[i][j] = src_mem[index];
         } else {
-          // set register which is out of index to zero to prevent dirty data.
-          dest_reg[i][j] = static_cast<DATA_TYPE>(0);
+          if (index < length) {
+            dest_reg[i][j] = src_mem[index];
+          } else {
+            // set register which is out of index to zero to prevent dirty data.
+            dest_reg[i][j] = static_cast<DATA_TYPE>(0);
+          }
         }
       }
     }
@@ -160,10 +164,11 @@ namespace usparse {
 
   constexpr int RESTART_TIMES = 20; // todo:
 
-  template <typename INDEX_TYPE, typename DATA_TYPE, int THREADS, int ELES_PER_THREAD, int STRIDES, int OPT_LEVEL>
+  template <typename INDEX_TYPE, typename DATA_TYPE, int THREADS, int ELES_PER_THREAD, int STRIDES, int OPT_LEVEL,
+            bool MEM_ALIGN_MODE>
   __global__ void __launch_bounds__(512)
       dotprod_axpy_fusion_kernel(DATA_TYPE *d_r0, DATA_TYPE *d_v, DATA_TYPE *d_h, DATA_TYPE *d_temp_buffer,
-                                 const INDEX_TYPE N, const INDEX_TYPE m, const INDEX_TYPE i) {
+                                 const INDEX_TYPE N, const INDEX_TYPE VN, const INDEX_TYPE m, const INDEX_TYPE i) {
     // init cooperative groups
     cooperative_groups::grid_group grid = cooperative_groups::this_grid();
 
@@ -177,13 +182,17 @@ namespace usparse {
     DATA_TYPE reg_x[STRIDES][ELES_PER_THREAD];
     DATA_TYPE reg_y[STRIDES][ELES_PER_THREAD];
     // load d_r0 into reg x:
-    load_v_into_reg(g_threads_num, gid, reg_x, d_r0, N);
+    // When MEM_ALIGN_MODE == true, VN can be different from N.
+    // When MEM_ALIGN_MODE == false, VN equals to N.
+    load_v_into_reg<INDEX_TYPE, DATA_TYPE, ELES_PER_THREAD, STRIDES, MEM_ALIGN_MODE>(g_threads_num, gid, reg_x, d_r0,
+                                                                                     VN);
 
     const int h_base_ptr = i * (i + 3) / 2;
     for (int k = 0; k <= i; k++) {
-      const DATA_TYPE *d_vk = d_v + k * N;
+      const DATA_TYPE *d_vk = d_v + k * VN;
       // load d_v[k] into register reg_y
-      load_v_into_reg<INDEX_TYPE, DATA_TYPE, ELES_PER_THREAD, STRIDES>(g_threads_num, gid, reg_y, d_vk, N);
+      load_v_into_reg<INDEX_TYPE, DATA_TYPE, ELES_PER_THREAD, STRIDES, MEM_ALIGN_MODE>(g_threads_num, gid, reg_y, d_vk,
+                                                                                       VN);
 
       const INDEX_TYPE h_index = h_base_ptr + k; // todo: RESTART_TIMES == m
       // dot product using cg
@@ -212,7 +221,7 @@ namespace usparse {
 
       // store back to array d_v[i+1]
       // d_r0: The d_r0 array is not used after the current loop, just need to store d_v[i+1].
-      store_v_to_device<INDEX_TYPE, DATA_TYPE, ELES_PER_THREAD, STRIDES>(g_threads_num, gid, reg_x, d_v + (i + 1) * N,
+      store_v_to_device<INDEX_TYPE, DATA_TYPE, ELES_PER_THREAD, STRIDES>(g_threads_num, gid, reg_x, d_v + (i + 1) * VN,
                                                                          N);
     }
   }
@@ -220,8 +229,9 @@ namespace usparse {
 
 template <typename INDEX_TYPE, typename DATA_TYPE, int THREADS, int ELES_PER_THREAD, int STRIDES, int OPT_LEVEL>
 void usparse::dotprod_axpy_fusion_internal_imp(DATA_TYPE *d_r0, const DATA_TYPE *d_v, DATA_TYPE *d_h,
-                                               DATA_TYPE *d_temp_buffer, const INDEX_TYPE N, const INDEX_TYPE m,
-                                               const INDEX_TYPE i, std::size_t *temp_buffer_size_byte) {
+                                               DATA_TYPE *d_temp_buffer, const INDEX_TYPE N, const INDEX_TYPE VN,
+                                               const INDEX_TYPE m, const INDEX_TYPE i,
+                                               std::size_t *temp_buffer_size_byte) {
   constexpr int ELES_PER_BLOCK = THREADS * ELES_PER_THREAD * STRIDES;
   INDEX_TYPE BLOCKS = N / ELES_PER_BLOCK + (N % ELES_PER_BLOCK == 0 ? 0 : 1);
 
@@ -230,10 +240,11 @@ void usparse::dotprod_axpy_fusion_internal_imp(DATA_TYPE *d_r0, const DATA_TYPE 
     return;
   } else {
     void *kernelArgs[] = {(void *)&d_r0, (void *)&d_v, (void *)&d_h, (void *)&d_temp_buffer,
-                          (void *)&N,    (void *)&m,   (void *)&i};
-    hipError_t launchErr = hipLaunchCooperativeKernel(
-        dotprod_axpy_fusion_kernel<INDEX_TYPE, DATA_TYPE, THREADS, ELES_PER_THREAD, STRIDES, OPT_LEVEL>, BLOCKS,
-        THREADS, kernelArgs, 0, 0);
+                          (void *)&N,    (void *)&VN,  (void *)&m,   (void *)&i};
+    hipError_t launchErr =
+        hipLaunchCooperativeKernel(dotprod_axpy_fusion_kernel<INDEX_TYPE, DATA_TYPE, THREADS, ELES_PER_THREAD, STRIDES,
+                                                              OPT_LEVEL, usparse::check_mem_align_enabled()>,
+                                   BLOCKS, THREADS, kernelArgs, 0, 0);
 
     if (launchErr != hipSuccess) {
       std::cerr << "Kernel launch failed: " << hipGetErrorString(launchErr) << std::endl;
@@ -243,12 +254,12 @@ void usparse::dotprod_axpy_fusion_internal_imp(DATA_TYPE *d_r0, const DATA_TYPE 
 
 template <typename INDEX_TYPE, typename DATA_TYPE, int OPT_LEVEL>
 void usparse::dotprod_axpy_fusion(DATA_TYPE *d_r0, const DATA_TYPE *d_v, DATA_TYPE *d_h, DATA_TYPE *d_temp_buffer,
-                                  const INDEX_TYPE N, const INDEX_TYPE m, const INDEX_TYPE i,
+                                  const INDEX_TYPE N, const INDEX_TYPE VN, const INDEX_TYPE m, const INDEX_TYPE i,
                                   std::size_t *temp_buffer_size_byte, const float f_density) {
 
 #define FUSION_SHORT_MARK(THREADS, ELES_PER_THREAD, STRIDES)                                                           \
   dotprod_axpy_fusion_internal_imp<INDEX_TYPE, DATA_TYPE, THREADS, ELES_PER_THREAD, STRIDES, OPT_LEVEL>(               \
-      d_r0, d_v, d_h, d_temp_buffer, N, m, i, temp_buffer_size_byte);
+      d_r0, d_v, d_h, d_temp_buffer, N, VN, m, i, temp_buffer_size_byte);
 
   if (usparse::GMRES_OPT_MGS_FUSION_PARAMETER_STRATEGY == usparse::GMRES_OPT_MGS_FUSION_PARAMETER_STRATEGY_CLASSIC) {
     if (N < 163840) { // 163840
@@ -309,7 +320,7 @@ void usparse::dotprod_axpy_fusion(DATA_TYPE *d_r0, const DATA_TYPE *d_v, DATA_TY
 #define FUSION_SHORT_MARK(THREADS, ELES_PER_THREAD, STRIDES)                                                           \
   template void usparse::dotprod_axpy_fusion_internal_imp<uint, float, THREADS, ELES_PER_THREAD, STRIDES,              \
                                                           usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(    \
-      float *, const float *, float *, float *, const uint, const uint, const uint, std::size_t *);
+      float *, const float *, float *, float *, const uint, const uint, const uint, const uint, std::size_t *);
 
 FUSION_SHORT_MARK(128, 2, 2);
 FUSION_SHORT_MARK(128, 2, 4);
@@ -331,19 +342,19 @@ FUSION_SHORT_MARK(512, 4, 8);
 #undef FUSION_SHORT_MARK
 
 template void usparse::dotprod_axpy_fusion<uint, double, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_1>(
-    double *d_r0, const double *d_v, double *d_h, double *d_temp_buffer, const uint N, const uint m, const uint i,
-    std::size_t *temp_buffer_size_byte, const float f_density);
+    double *d_r0, const double *d_v, double *d_h, double *d_temp_buffer, const uint N, const uint VN, const uint m,
+    const uint i, std::size_t *temp_buffer_size_byte, const float f_density);
 
 template void usparse::dotprod_axpy_fusion<uint, float, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_1>(
-    float *d_r0, const float *d_v, float *d_h, float *d_temp_buffer, const uint N, const uint m, const uint i,
-    std::size_t *temp_buffer_size_byte, const float f_density);
+    float *d_r0, const float *d_v, float *d_h, float *d_temp_buffer, const uint N, const uint VN, const uint m,
+    const uint i, std::size_t *temp_buffer_size_byte, const float f_density);
 
 template void usparse::dotprod_axpy_fusion<uint, double, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
-    double *d_r0, const double *d_v, double *d_h, double *d_temp_buffer, const uint N, const uint m, const uint i,
-    std::size_t *temp_buffer_size_byte, const float f_density);
+    double *d_r0, const double *d_v, double *d_h, double *d_temp_buffer, const uint N, const uint VN, const uint m,
+    const uint i, std::size_t *temp_buffer_size_byte, const float f_density);
 
 template void usparse::dotprod_axpy_fusion<uint, float, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
-    float *d_r0, const float *d_v, float *d_h, float *d_temp_buffer, const uint N, const uint m, const uint i,
-    std::size_t *temp_buffer_size_byte, const float f_density);
+    float *d_r0, const float *d_v, float *d_h, float *d_temp_buffer, const uint N, const uint VN, const uint m,
+    const uint i, std::size_t *temp_buffer_size_byte, const float f_density);
 
 #include "usparse_level1_batched_fusion.inl"
