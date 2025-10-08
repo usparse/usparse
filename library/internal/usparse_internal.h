@@ -44,6 +44,17 @@ namespace usparse {
     } // namespace internal
   } // namespace spmv
 
+  namespace spmm {
+    namespace internal {
+      template <typename INDEX_TYPE, typename DATA_TYPE>
+      usparse::usparse_status
+      usparse_csrmm_imp(const usparse::usparse_handle handle, const usparse::usparse_operation A_trans,
+                        const usparse::usparse_operation B_trans, const DATA_TYPE alpha, const DATA_TYPE beta,
+                        const usparse::csr_desc<INDEX_TYPE, DATA_TYPE> dev_csr_mat_a, const DATA_TYPE *B_dense_val,
+                        const usparse::usparse_int B_cols, const INDEX_TYPE ldb, DATA_TYPE *C_dense_val,
+                        const INDEX_TYPE ldc, const usparse::spmm::usparse_csrmm_algorithms algo);
+    }
+  } // namespace spmm
 } // namespace usparse
 
 #endif // USPARSE_HIP_USPARSE_INTERNAL_H
