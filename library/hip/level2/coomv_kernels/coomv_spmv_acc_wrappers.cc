@@ -77,10 +77,16 @@ template void usparse::spmv::internal::coomv_conv_analysis<usparse::usparse_int,
     const usparse::coo_desc<usparse::usparse_int, usparse::usparse_fp64> d_coo_desc,
     coomv_conversion_mtx_info<usparse::usparse_int> *info, const usparse::spmv::usparse_coomv_algorithms algo);
 
-    template void usparse::spmv::internal::coomv_conv_analysis<usparse::usparse_int, usparse::usparse_fp32>(
+template void usparse::spmv::internal::coomv_conv_analysis<usparse::usparse_int, usparse::usparse_fp32>(
     const usparse::usparse_operation trans,
     const usparse::coo_desc<usparse::usparse_int, usparse::usparse_fp32> d_coo_desc,
     coomv_conversion_mtx_info<usparse::usparse_int> *info, const usparse::spmv::usparse_coomv_algorithms algo);
+
+template void usparse::spmv::internal::coomv_conv_calculate<usparse::usparse_int, usparse::usparse_fp32>(
+    const usparse::usparse_operation trans, const usparse::usparse_fp32 alpha, const usparse::usparse_fp32 beta,
+    const usparse::coo_desc<usparse::usparse_int, usparse::usparse_fp32> d_coo_desc, const usparse::usparse_fp32 *d_x,
+    usparse::usparse_fp32 *d_y, usparse::spmv::internal::coomv_conversion_mtx_info<usparse::usparse_int> *info,
+    const usparse::spmv::usparse_coomv_algorithms algo);
 
 template void usparse::spmv::internal::coomv_conv_calculate<usparse::usparse_int, usparse::usparse_fp64>(
     const usparse::usparse_operation trans, const usparse::usparse_fp64 alpha, const usparse::usparse_fp64 beta,
