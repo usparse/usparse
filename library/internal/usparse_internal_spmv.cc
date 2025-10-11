@@ -10,6 +10,7 @@
 #include "../hip/level2/spmv-acc-csrmv/hip-csr-adaptive-plus/csr_adaptive_plus_spmv.h"
 #include "../hip/level2/spmv-acc-csrmv/hip-line-enhance/line_enhance_spmv.h"
 #include "../hip/level2/spmv-acc-csrmv/hip-vector-row/vector_row.h"
+#include "building_config.h"
 
 /**
  * call matrix analysis for later csrmv computation.
@@ -130,7 +131,7 @@ usparse::usparse_status usparse::spmv::internal::usparse_coomv_imp(
   if(algo == usparse::spmv::usparse_coomv_algorithms::NaiveFlat) {
     adaptive_flat_coo_sparse_spmv<INDEX_TYPE, DATA_TYPE, BETA_Y_POLICY_AUTO>(trans, alpha, beta, dev_coo_mat, x, y);
   } else {
-    sparse::spmv::internal::coomv_conv_calculate(trans, alpha, beta, dev_coo_mat, x, y, info->coomv_info, algo)
+    usparse::spmv::internal::coomv_conv_calculate(trans, alpha, beta, dev_coo_mat, x, y, info->coomv_info, algo);
   }
   return usparse::usparse_status::usparse_status_success;
 }
