@@ -18,23 +18,28 @@
   }
 
 // https://github.com/ROCm/rocSPARSE/blob/develop_deprecated/clients/samples/example_spmm_csr.cpp
-void RocSparseCsrMM::csr_spmm_impl(int trans, const dtype alpha, const dtype beta,
-                                   const csr_desc<int, dtype> h_csr_desc, const csr_desc<int, dtype> d_csr_desc,
-                                   const int M, const int K, const int N, dtype *B_dev, dtype *C_dev,
-                                   BenchmarkTime *bmt) {
+template <typename I, typename T>
+void RocSparseCsrMM<I, T>::csr_spmm_impl(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,
+                                         const csr_desc<I, T> d_csr_desc, const I M, const I K, const I N, T *B_dev,
+                                         T *C_dev, BenchmarkTime *bmt) {
   hip::timer::event_timer calc_timer;
-  
+
   rocsparse_handle handle;
   rocsparse_create_handle(&handle);
-  
+
   rocsparse_mat_descr descr;
   ROCSPARSE_CHECK(rocsparse_create_mat_descr(&descr));
-  
-  calc_timer.start();
-  ROCSPARSE_CHECK(rocsparse_dcsrmm(handle, rocsparse_operation_none, rocsparse_operation_none, M, N, K, d_csr_desc.nnz,
-                                   &alpha, descr, d_csr_desc.values, d_csr_desc.row_ptr, d_csr_desc.col_index, B_dev, K,
-                                   &beta, C_dev, M)); // B and C are column-order
 
+  calc_timer.start();
+  if constexpr (std::is_same<T, float>::value) {
+    ROCSPARSE_CHECK(rocsparse_scsrmm(handle, rocsparse_operation_none, rocsparse_operation_none, M, N, K,
+                                     d_csr_desc.nnz, &alpha, descr, d_csr_desc.values, d_csr_desc.row_ptr,
+                                     d_csr_desc.col_index, B_dev, K, &beta, C_dev, M)); // B and C are column-order
+  } else if (std::is_same<T, double>::value) {
+    ROCSPARSE_CHECK(rocsparse_dcsrmm(handle, rocsparse_operation_none, rocsparse_operation_none, M, N, K,
+                                     d_csr_desc.nnz, &alpha, descr, d_csr_desc.values, d_csr_desc.row_ptr,
+                                     d_csr_desc.col_index, B_dev, K, &beta, C_dev, M)); // B and C are column-order
+  }
 
   calc_timer.stop(true);
 
@@ -44,8 +49,12 @@ void RocSparseCsrMM::csr_spmm_impl(int trans, const dtype alpha, const dtype bet
   }
 }
 
-bool RocSparseCsrMM::verify_beta_c() { return true; }
+template <typename I, typename T> bool RocSparseCsrMM<I, T>::verify_beta_c() { return true; }
 
-bool RocSparseCsrMM::trans_B_C() { return true; }
+template <typename I, typename T> bool RocSparseCsrMM<I, T>::trans_B_C() { return true; }
+
+template class RocSparseCsrMM<int, float>;
+
+template class RocSparseCsrMM<int, double>;
 
 #undef ROCSPARSE_CHECK

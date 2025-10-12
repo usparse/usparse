@@ -7,20 +7,20 @@
 
 #include "csr_spmm.hpp"
 
-struct UsparseCsrMMVector : CsrSpMM {
-  void csr_spmm_impl(int trans, const dtype alpha, const dtype beta, const csr_desc<int, dtype> h_csr_desc,
-                     const csr_desc<int, dtype> d_csr_desc, const int M, const int K, const int N, dtype *B_dev,
-                     dtype *C_dev, BenchmarkTime *bmt) override;
+template <typename I, typename T> struct UsparseCsrMMVector : CsrSpMM<I, T> {
+  void csr_spmm_impl(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,
+                     const csr_desc<I, T> d_csr_desc, const I M, const I K, const I N, T *B_dev, T *C_dev,
+                     BenchmarkTime *bmt) override;
 
   bool verify_beta_c() override;
 
   bool trans_B_C() override;
 };
 
-struct RocSparseCsrMM : CsrSpMM {
-  void csr_spmm_impl(int trans, const dtype alpha, const dtype beta, const csr_desc<int, dtype> h_csr_desc,
-                     const csr_desc<int, dtype> d_csr_desc, const int M, const int K, const int N, dtype *B_dev,
-                     dtype *C_dev, BenchmarkTime *bmt) override;
+template <typename I, typename T> struct RocSparseCsrMM : CsrSpMM<I, T> {
+  void csr_spmm_impl(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,
+                     const csr_desc<I, T> d_csr_desc, const I M, const I K, const I N, T *B_dev, T *C_dev,
+                     BenchmarkTime *bmt) override;
 
   bool verify_beta_c() override;
 

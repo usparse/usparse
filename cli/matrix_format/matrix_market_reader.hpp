@@ -41,7 +41,7 @@ namespace {
  * This class read COO format sparse matrix from file.
  * todo: currently, we only support float point number (does not support integer).
  * @tparam I type of integer
- * @tparam T type of float point number data
+ * @tparam T type of float point number data. T can be float, double or int for string the read value.
  * @note: the implementation of this function is copied and modified from
  * https://bitbucket.org/gpusmack/holaspmv/src/master/source/COO.cpp (MIT license).
  */
