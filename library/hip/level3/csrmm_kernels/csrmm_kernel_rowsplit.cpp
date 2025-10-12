@@ -11,6 +11,9 @@
 
 namespace usparse {
   namespace internal {
+        using DENSE_ORDER = int;
+    constexpr DENSE_ORDER DENSE_ORDER_COLUMN = 0;
+    constexpr DENSE_ORDER DENSE_ORDER_ROW = 1;
     namespace csrmm_kernels {
       /**
        * This algirithm come from paper "Design Principles for Sparse Matrix Multiplication",
@@ -25,7 +28,8 @@ namespace usparse {
        * It uses shared memory or other way instead.
        * For rocsparse, it conntains 2 kernels: csrmmnn_row_split_device,  csrmmnn_row_split_shared_device
        */
-      template <typename INDEX_TYPE, typename DATA_TYPE, int TB, int VEC_SIZE, bool TRANS, bool BALLOT_SUPPORTED>
+      template <typename INDEX_TYPE, typename DATA_TYPE, DENSE_ORDER B_ORDER, DENSE_ORDER C_ORDER, int TB, int VEC_SIZE,
+                bool TRANS, bool BALLOT_SUPPORTED>
       __global__ void csrmmnn_row_split_kernel(const DATA_TYPE alpha, const DATA_TYPE beta, const INDEX_TYPE A_nrows,
                                                const INDEX_TYPE A_ncols, const INDEX_TYPE A_nnz,
                                                const INDEX_TYPE B_ncols, const INDEX_TYPE *A_csr_row_ptr,
@@ -35,6 +39,7 @@ namespace usparse {
         INDEX_TYPE col_all[TB];
         DATA_TYPE val_all[TB];
         const INDEX_TYPE &BC_ncols = B_ncols;
+        const INDEX_TYPE &B_rows = A_ncols;
 
         const int thread_id = blockDim.x * blockIdx.x + threadIdx.x; // global thread idx
         const int warp_id = thread_id / VEC_SIZE;                    // global warp idx
@@ -43,10 +48,9 @@ namespace usparse {
 
         // TODO: B offset can be : ((blockIdx.y & 1) * WF_SIZE);
         const int BC_col_id = (blockIdx.y * VEC_SIZE) + lane_id;
-        const DATA_TYPE *B_offset = B_denseVal + BC_col_id; // the offset of the starting position of a row in matrix B
         INDEX_TYPE C_offset;
-        if (TRANS) { // trans
-          // TODO: C_offset = (lane_id + (blockIdx.y * WF_SIZE)) * A_nrows + row;
+        if (C_ORDER == DENSE_ORDER_COLUMN) { // trans
+          C_offset = BC_col_id * A_nrows + row;
         } else { // no trans
           // result to C[row][Block.y * VEC_SIZE + lane_id]
           C_offset = (row * BC_ncols) + BC_col_id;
@@ -83,7 +87,8 @@ namespace usparse {
                 __ballot(predicate); // VECTOR_SIZE must be 64 here. Because it does not support mask.
             const unsigned int num_non_zeros_in_vector = __popcll(non_zero_bits);
 
-            if (BALLOT_SUPPORTED) {
+            if (BALLOT_SUPPORTED) { // currently, it only supppr B_Row_Order and C_Row_Order
+              const DATA_TYPE *B_offset = B_denseVal + BC_col_id;
               // load matrix B: a wavefront collaboratively load values in row using col index of A.
               for (int kk = 0; kk < VEC_SIZE; kk += TB) {
                 // TB=2
@@ -108,7 +113,13 @@ namespace usparse {
   for (int kk = 0; kk < NN; kk++) {                                                                                    \
     const INDEX_TYPE col_inx = __shfl(col, 0 + kk, VEC_SIZE);                                                          \
     const DATA_TYPE val_ = __shfl(val, 0 + kk, VEC_SIZE);                                                              \
-    sum += val_ * __ldg(B_offset + B_ncols * col_inx);                                                                 \
+    if (B_ORDER == DENSE_ORDER_COLUMN) {                                                                               \
+      const DATA_TYPE *B_index = B_denseVal + B_rows * BC_col_id + col_inx;                                            \
+      sum += val_ * __ldg(B_index);                                                                                    \
+    } else {                                                                                                           \
+      const DATA_TYPE *B_index = B_denseVal + BC_col_id + B_ncols * col_inx;                                           \
+      sum += val_ * __ldg(B_index);                                                                                    \
+    }                                                                                                                  \
   }
 
               // use loop unrolling
@@ -215,7 +226,13 @@ namespace usparse {
                 for (int kk = 0; kk < num_non_zeros_in_vector; kk++) {
                   const INDEX_TYPE col_inx = __shfl(col, 0 + kk, VEC_SIZE); // bcast
                   const DATA_TYPE val_ = __shfl(val, 0 + kk, VEC_SIZE);
-                  sum += val_ * __ldg(B_offset + B_ncols * col_inx);
+                  if (B_ORDER == DENSE_ORDER_COLUMN) {
+                    const DATA_TYPE *B_index = B_denseVal + B_rows * BC_col_id + col_inx;
+                    sum += val_ * __ldg(B_index);
+                  } else {
+                    const DATA_TYPE *B_index = B_denseVal + BC_col_id + B_ncols * col_inx;
+                    sum += val_ * __ldg(B_index);
+                  }
                 }
                 break;
               }
@@ -240,7 +257,8 @@ namespace usparse {
 
       const int BLOCKS_X = A_csr.rows / ROWS_PER_BLOCK + (A_csr.rows % ROWS_PER_BLOCK == 0 ? 0 : 1);
       const int BLOCKS_Y = B_cols / VECTOR_SIZE + (B_cols % VECTOR_SIZE == 0 ? 0 : 1);
-      csrmm_kernels::csrmmnn_row_split_kernel<INDEX_TYPE, DATA_TYPE, TB, VECTOR_SIZE, false, false>
+      csrmm_kernels::csrmmnn_row_split_kernel<INDEX_TYPE, DATA_TYPE, DENSE_ORDER_ROW, DENSE_ORDER_ROW, TB,
+                                              VECTOR_SIZE, false, false>
           <<<dim3(BLOCKS_X, BLOCKS_Y), THREADS>>>(alpha, beta, A_csr.rows, A_csr.cols, A_csr.nnz, B_cols, A_csr.row_ptr,
                                                   A_csr.col_index, A_csr.values, B_dense_val, C_dense_val);
       return;

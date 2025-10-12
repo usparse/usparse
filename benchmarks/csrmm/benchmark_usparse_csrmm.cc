@@ -26,3 +26,5 @@ void UsparseCsrMMVector::csr_spmm_impl(int trans, const dtype alpha, const dtype
 }
 
 bool UsparseCsrMMVector::verify_beta_c() { return true; }
+
+bool UsparseCsrMMVector::trans_B_C() { return false; }

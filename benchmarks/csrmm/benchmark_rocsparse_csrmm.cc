@@ -46,4 +46,6 @@ void RocSparseCsrMM::csr_spmm_impl(int trans, const dtype alpha, const dtype bet
 
 bool RocSparseCsrMM::verify_beta_c() { return true; }
 
+bool RocSparseCsrMM::trans_B_C() { return true; }
+
 #undef ROCSPARSE_CHECK

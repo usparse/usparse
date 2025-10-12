@@ -13,6 +13,8 @@ struct UsparseCsrMMVector : CsrSpMM {
                      dtype *C_dev, BenchmarkTime *bmt) override;
 
   bool verify_beta_c() override;
+
+  bool trans_B_C() override;
 };
 
 struct RocSparseCsrMM : CsrSpMM {
@@ -21,6 +23,8 @@ struct RocSparseCsrMM : CsrSpMM {
                      dtype *C_dev, BenchmarkTime *bmt) override;
 
   bool verify_beta_c() override;
+
+  bool trans_B_C() override;
 };
 
 #endif // USPARSE_BENCHMARK_USPARSE_CSRMM_H
