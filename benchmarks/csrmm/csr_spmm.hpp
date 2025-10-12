@@ -20,7 +20,7 @@
 #include "verification.h"
 using dtype = double;
 
-template <typename I, typename T>
+template <typename I, typename T, bool TRANS_B, bool TRANS_C>
 void host_csr_spmm(const T alpha, const T beta, const I *csr_row_ptr, const I *csr_col_index, const T *csr_values,
                    const I A_rows, const I A_cols, const I A_nnz, const I M, const I K, const I N, const T *B_host,
                    T *C_host_check) {
@@ -35,15 +35,21 @@ void host_csr_spmm(const T alpha, const T beta, const I *csr_row_ptr, const I *c
       double a_val = csr_values[j];
 
       for (I k = 0; k < N; k++) {
-        C_host_check[i * N + k] += a_val * B_host[col_idx * N + k];
-        // if (i *N + k == 7517) {
-        //   printf("host: C[%d,%d] += A[%d,%d] * B[%d, %d]: delta=%f=%f*%f\n",
-        //     i, k, i, col_idx, col_idx, k, a_val * B_host[col_idx * N + k], a_val, B_host[col_idx * N + k]);
-        // }
+        T b = 0;
+        if (TRANS_B) {
+          b = B_host[k * K + col_idx];
+        } else {
+          b = B_host[col_idx * N + k];
+        }
+        const T cc = a_val * b;
+        if (TRANS_C) {
+          C_host_check[k * M + i] += cc;
+        } else {
+          C_host_check[i * N + k] += cc;
+        }
       }
     }
   }
-  // printf("host_check: C[0]: %f\n", C_host_check[0]);
 }
 
 struct CsrSpMM {
@@ -52,6 +58,8 @@ struct CsrSpMM {
    * true: calculate C = alpha*A*B + beta*C, false calculate: C = A*B
    */
   virtual bool verify_beta_c() = 0;
+
+  virtual bool trans_B_C() = 0;
 
   /**
    *
@@ -64,8 +72,8 @@ struct CsrSpMM {
    * @param bmt spmm elapsed time
    */
   virtual void csr_spmm_impl(int trans, const dtype alpha, const dtype beta, const csr_desc<int, dtype> h_csr_desc,
-                             const csr_desc<int, dtype> d_csr_desc, const int M, const int K, const int N,
-                             dtype *B_dev, dtype *C_dev, BenchmarkTime *bmt) = 0;
+                             const csr_desc<int, dtype> d_csr_desc, const int M, const int K, const int N, dtype *B_dev,
+                             dtype *C_dev, BenchmarkTime *bmt) = 0;
 
   void test(std::string mtx_path, const std::string &strategy_name, enum usparse::usparse_operation operation,
             dtype alpha, dtype beta, csr_desc<int, dtype> h_csr, csr_desc<int, dtype> d_csr, const int M, const int K,
@@ -93,14 +101,26 @@ struct CsrSpMM {
     HIP_CHECK(hipMemcpy(C_host, C_dev, M * N * sizeof(dtype), hipMemcpyDeviceToHost));
 
     // host side verification
-    if (verify_beta_c()) {
-      // C = alpha*A*B + beta*C
-      host_csr_spmm<int, dtype>(alpha, beta, h_csr.row_ptr, h_csr.col_index, h_csr.values, h_csr.rows, h_csr.cols,
-                                h_csr.nnz, M, K, N, B_host, C_host_check);
+    if (trans_B_C()) {
+      if (verify_beta_c()) {
+        // C = alpha*A*B + beta*C
+        host_csr_spmm<int, dtype, true, true>(alpha, beta, h_csr.row_ptr, h_csr.col_index, h_csr.values, h_csr.rows,
+                                              h_csr.cols, h_csr.nnz, M, K, N, B_host, C_host_check);
+      } else {
+        // C = A*B
+        host_csr_spmm<int, dtype, true, true>(1.0, 0.0, h_csr.row_ptr, h_csr.col_index, h_csr.values, h_csr.rows,
+                                              h_csr.cols, h_csr.nnz, M, K, N, B_host, C_host_check);
+      }
     } else {
-      // C = A*B
-      host_csr_spmm<int, dtype>(1.0, 0.0, h_csr.row_ptr, h_csr.col_index, h_csr.values, h_csr.rows, h_csr.cols,
-                                h_csr.nnz, M, K, N, B_host, C_host_check);
+      if (verify_beta_c()) {
+        // C = alpha*A*B + beta*C
+        host_csr_spmm<int, dtype, false, false>(alpha, beta, h_csr.row_ptr, h_csr.col_index, h_csr.values, h_csr.rows,
+                                                h_csr.cols, h_csr.nnz, M, K, N, B_host, C_host_check);
+      } else {
+        // C = A*B
+        host_csr_spmm<int, dtype, false, false>(1.0, 0.0, h_csr.row_ptr, h_csr.col_index, h_csr.values, h_csr.rows,
+                                                h_csr.cols, h_csr.nnz, M, K, N, B_host, C_host_check);
+      }
     }
 
     const VerifyResult<int, double> verify_result = verify_y(C_host, C_host_check, M * N);
