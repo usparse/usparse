@@ -62,7 +62,7 @@ template <typename T> struct host_vectors {
   T *hhY;    // store the correct results produced by host or device verification.
 };
 
-void create_host_data(type_coo _coo, host_vectors<dtype> &h_vecs, bool overwrite_hx = false) {
+inline void create_host_data(type_coo _coo, host_vectors<dtype> &h_vecs, bool overwrite_hx = false) {
   dtype *temp_coo_dense_vec;
   if (!overwrite_hx) {
     temp_coo_dense_vec = new dtype[_coo.cols];
@@ -84,7 +84,7 @@ void create_host_data(type_coo _coo, host_vectors<dtype> &h_vecs, bool overwrite
   }
 }
 
-void create_host_data(type_csr _csr, host_vectors<dtype> &h_vecs, bool overwrite_hx = false) {
+inline void create_host_data(type_csr _csr, host_vectors<dtype> &h_vecs, bool overwrite_hx = false) {
   dtype *temp_csr_dense_vec;
   if (!overwrite_hx) {
     temp_csr_dense_vec = new dtype[_csr.cols];
@@ -106,14 +106,14 @@ void create_host_data(type_csr _csr, host_vectors<dtype> &h_vecs, bool overwrite
   }
 }
 
-void destroy_host_data(host_vectors<dtype> &h_vecs) {
+inline void destroy_host_data(host_vectors<dtype> &h_vecs) {
   delete[] h_vecs.hhY;
   delete[] h_vecs.hY;
   delete[] h_vecs.temphY;
   delete[] h_vecs.hX;
 }
 
-type_csr create_device_data(type_csr h_csr, dtype *hX, dtype *hY, dtype *&dX, dtype *&dY) {
+inline type_csr create_device_data(type_csr h_csr, dtype *hX, dtype *hY, dtype *&dX, dtype *&dY) {
   const int A_num_rows = h_csr.rows;
   const int A_num_cols = h_csr.cols;
   const int A_nnz = h_csr.nnz;
@@ -137,7 +137,7 @@ type_csr create_device_data(type_csr h_csr, dtype *hX, dtype *hY, dtype *&dX, dt
   return dev_csr;
 }
 
-type_coo create_device_data(type_coo h_coo, dtype *hX, dtype *hY, dtype *&dX, dtype *&dY) {
+inline type_coo create_device_data(type_coo h_coo, dtype *hX, dtype *hY, dtype *&dX, dtype *&dY) {
   const int A_num_rows = h_coo.rows;
   const int A_num_cols = h_coo.cols;
   const int A_nnz = h_coo.nnz;
@@ -161,7 +161,7 @@ type_coo create_device_data(type_coo h_coo, dtype *hX, dtype *hY, dtype *&dX, dt
   return dev_coo;
 }
 
-void destroy_device_data(type_csr d_csr, dtype *&dX, dtype *&dY) {
+inline void destroy_device_data(type_csr d_csr, dtype *&dX, dtype *&dY) {
   HIP_CHECK(hipFree((void *)dY))
   HIP_CHECK(hipFree((void *)dX))
   HIP_CHECK(hipFree((void *)d_csr.values))

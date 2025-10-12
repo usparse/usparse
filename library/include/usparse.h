@@ -66,7 +66,26 @@ namespace usparse {
   } // namespace spgemm
 
   namespace spmm {
-    // todo:
+    // todo: analysis and clear api
+
+    enum class usparse_csrmm_algorithms { Vector, Adaptive };
+
+    /**
+     * C = alpha * A * B + beta * C. where A is CSR sparse matrix, B and C are dense matrix.
+     * A is m rows and k columns. B is k rows and n columns. C is m rows and n columns.
+     */
+    usparse_status usparse_scsrmm(const usparse_handle handle, const usparse_operation A_trans,
+                                  const usparse_operation B_trans, const usparse_fp32 alpha, const usparse_fp32 beta,
+                                  const csr_desc<usparse_int, usparse_fp32> dev_csr_mat_a,
+                                  const usparse_fp32 *B_dense_val, const usparse_int B_cols, const usparse_int ldb,
+                                  usparse_fp32 *C_dense_val, const usparse_int ldc, const usparse_csrmm_algorithms algo);
+
+    usparse_status usparse_dcsrmm(const usparse_handle handle, const usparse_operation A_trans,
+                                  const usparse_operation B_trans, const usparse_fp64 alpha, const usparse_fp64 beta,
+                                  const csr_desc<usparse_int, usparse_fp64> dev_csr_mat_a,
+                                  const usparse_fp64 *B_dense_val, const usparse_int B_cols, const usparse_int ldb,
+                                  usparse_fp64 *C_dense_val, const usparse_int ldc, const usparse_csrmm_algorithms algo);
+
   } // namespace spmm
 
   namespace sptrsv {
