@@ -35,10 +35,9 @@ namespace statistics {
               << "max_error" << std::endl;
   }
 
-  template <typename T>
-  void print_csrmm_statistics(const std::string &mtx_path, const std::string &strategy_name, const int rows,
-                              const int cols, const int nnz, BenchmarkTime bmt,
-                              const VerifyResult<int, T> verify_result) {
+  template <typename I, typename T>
+  void print_csrmm_statistics(const std::string &mtx_path, const std::string &strategy_name, const I rows, const I cols,
+                              const I nnz, BenchmarkTime bmt, const VerifyResult<I, T> verify_result) {
     const double calc_time_bandwidth = 0.0;
     const double calc_time_gflops = 0.0;
     const double total_time_bandwidth = 0.0;

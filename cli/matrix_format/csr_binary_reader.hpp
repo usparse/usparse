@@ -17,9 +17,10 @@
 /**
  * Class `csr_binary_reader` read csr binary format sparse matrix from file to memory.
  * @tparam I type of integer
- * @tparam T type of float number data
+ * @tparam T type of float number data to be stored in memory
+ * @tparam VALUE_TYPE_BIN type of float data in the binary file.
  */
-template <typename I, typename T> class csr_binary_reader : public var_csr_desc<I, T> {
+template <typename I, typename T, typename VALUE_TYPE_BIN = T> class csr_binary_reader : public var_csr_desc<I, T> {
   typedef var_csr_desc<I, T> P;
   typedef char *BytePtr;
 
@@ -95,7 +96,18 @@ public:
       }
       delete[] temp_int;
     } else { // float or complex, read directly.
-      fin.read((BytePtr)(P::values), sizeof(T) * P::nnz);
+      // todo:
+      if (std::is_same<VALUE_TYPE_BIN, T>::value) {
+        fin.read((BytePtr)(P::values), sizeof(T) * P::nnz);
+      } else {
+        // if the receive type is not the same as data type in the binary file, we need a conversion.
+        VALUE_TYPE_BIN *temp_buffer = new VALUE_TYPE_BIN[P::nnz];
+        fin.read((BytePtr)(temp_buffer), sizeof(VALUE_TYPE_BIN) * P::nnz);
+        for (I ii = 0; ii < P::nnz; ii++) {
+          P::values[ii] = static_cast<T>(temp_buffer[ii]);
+        }
+        delete[] temp_buffer;
+      }
     }
     fin.close();
   }

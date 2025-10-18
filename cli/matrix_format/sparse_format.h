@@ -175,8 +175,10 @@ public:
   }
 };
 
-typedef csr_mtx<int, dtype> type_csr;
+using type_sparse_default_index = int;
 
-typedef coo_mtx<int, dtype> type_coo;
+using type_csr = csr_mtx<int, dtype>;
+
+using type_coo = coo_mtx<int, dtype>;
 
 #endif // SPMV_ACC_SPARSE_FORMAT_H
