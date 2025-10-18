@@ -25,7 +25,7 @@ set(SOURCE_FILES
         utils/statistics_logger.cpp
         )
 
-set(SPMV_BENCHMARK_NAME spmv-gpu-benchmark)
+set(SPMV_BENCHMARK_NAME csrmv-gpu-benchmark)
 
 # set binary path and lib storage path for compiling process.
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
