@@ -6,7 +6,7 @@
 #include <hip/hip_runtime_api.h>
 
 #include "common/utils.h"
-#include "../hip-line-enhance/line_enhance_reduce.hpp"
+#include "../line-enhance/line_enhance_reduce.hpp"
 #include "building_config.h"
 
 template <int REDUCE_OPTION, int WF_SIZE, int VEC_SIZE, int MAX_ROWS_PER_BLOCK, int R, int THREADS, typename I,

@@ -64,9 +64,8 @@ option(FLAT_SEGMENT_SUM_REDUCE "flat reducting strategy is segement sum" OFF)
 
 if (USPARSE_ENABLE_HIP)
     set(SPMV_CLI_LIB sparse_cli)
-    set(SPMV_KERNEL_LIB_NAME spmv-acc-kernels)
     # add linked libs
-    set(ACC_LIBS ${ACC_LIBS} ${SPMV_KERNEL_LIB_NAME})
+    set(ACC_LIBS ${ACC_LIBS} ${USPARSE_LIB_NAME})
 else ()
 endif ()
 

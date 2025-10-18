@@ -19,14 +19,60 @@ if (USPARSE_ENABLE_HIP)
     set(USPARSE_HIPCC_OPTIONS) # set hipcc arguments
 endif ()
 
-# spmv-acc
-# set variable ACC_FILES for architecture source files.
-# set variable ACC_LIBS to link if some architecture is enabled.
-add_subdirectory(level2/spmv-acc-csrmv)
+# csrmv or spmv-acc
+set(USPARSER_CSRMV_HEADER_FILES
+        ${USPARSE_HEADER_PATH}/usparse_matrix.h
+        ${USPARSE_API_PATH}/spmv.h
+        level2/csrmv_kernels/adaptive/adaptive.h
+        level2/csrmv_kernels/csr-adaptive-plus/csr_adaptive_plus_spmv.h
+        level2/csrmv_kernels/csr-adaptive-plus/csr_adaptive_plus_spmv_imp.h
+        level2/csrmv_kernels/flat/spmv_hip_acc_imp.h
+        level2/csrmv_kernels/flat/flat_config.h
+        level2/csrmv_kernels/flat/flat_imp.inl
+        level2/csrmv_kernels/flat/flat_imp_one_pass.hpp
+        level2/csrmv_kernels/flat/flat_reduce.hpp
+        level2/csrmv_kernels/light/spmv_hip_acc_imp.h
+        level2/csrmv_kernels/light/spmv_hip_acc_imp.inl
+        level2/csrmv_kernels/line/line_imp_one_pass.inl
+        level2/csrmv_kernels/line/line_kernel_imp.inl
+        level2/csrmv_kernels/line/line_adaptive_one_pass.inl
+        level2/csrmv_kernels/line/line_strategy.h
+        level2/csrmv_kernels/line/line_config.h
+        level2/csrmv_kernels/line-enhance/line_enhance_spmv.h
+        level2/csrmv_kernels/line-enhance/line_enhance_spmv_imp.h
+        level2/csrmv_kernels/line-enhance/line_enhance_spmv_imp.inl
+        level2/csrmv_kernels/thread-row/thread_row.h
+        level2/csrmv_kernels/thread-row/thread_row.inl
+        level2/csrmv_kernels/thread-row/thread_row_config.h
+        level2/csrmv_kernels/vector-row/vector_config.h
+        level2/csrmv_kernels/vector-row/vector_row.h
+        level2/csrmv_kernels/vector-row/vector_row.inl
+        level2/csrmv_kernels/vector-row/vector_row_adaptive.hpp
+        level2/csrmv_kernels/vector-row/vector_row_native.hpp
+        level2/csrmv_kernels/vector-row/opt_double_buffer.hpp
+        )
+        
+set(USPARSER_CSRMV_SOURCE_FILES
+        ${USPARSE_API_PATH}/spmv_imp.cpp
+        level2/csrmv.cpp
+        level2/csrmv_kernels/strategy_picker.cpp
+        level2/csrmv_kernels/adaptive/adaptive.cpp
+        level2/csrmv_kernels/csr-adaptive-plus/csr_adaptive_plus_spmv.cpp
+        level2/csrmv_kernels/csr-adaptive-plus/csr_adaptive_plus_analyze.cpp
+        level2/csrmv_kernels/flat/flat.cpp
+        level2/csrmv_kernels/light/light_spmv.cpp
+        level2/csrmv_kernels/line/line_strategy.cpp
+        level2/csrmv_kernels/line-enhance/line_enhance_spmv.cpp
+        level2/csrmv_kernels/thread-row/thread_row.cpp
+        level2/csrmv_kernels/thread-row/native_thread_row.cpp
+        level2/csrmv_kernels/vector-row/vector_row.cpp
+        )
+
 # spgemm
 add_subdirectory(level3/)
 
 set(USPARSE_HEADER_FILES ${USPARSE_HEADER_FILES}
+        ${USPARSER_CSRMV_HEADER_FILES}
         ${USPARSE_HEADER_PATH}/usparse.h
         ${USPARSE_HEADER_PATH}/usparse_matrix.h
         ${USPARSE_HEADER_PATH}/usparse_types.h
@@ -37,9 +83,9 @@ set(USPARSE_HEADER_FILES ${USPARSE_HEADER_FILES}
         )
 
 set(USPARSE_SOURCE_FILES ${USPARSE_SOURCE_FILES}
+        ${USPARSER_CSRMV_SOURCE_FILES}
         conversion/coo2csr.cpp
         level1/usparse_blas_level1.cpp
-        level2/csrmv.cpp
         level2/coomv_kernels/coomv_flat_kernel.cc
         level2/coomv_kernels/coomv_spmv_acc_wrappers.cc
         level3/csrsm_kernels.cpp

@@ -13,13 +13,14 @@
 
 #include "api/handle.h"
 #include "flat/spmv_acc_flat.h"
-#include "hip-adaptive/adaptive.h"
-#include "hip-csr-adaptive-plus/csr_adaptive_plus_spmv.h"
-#include "hip-light/spmv_hip_acc_imp.h"
-#include "hip-line-enhance/line_enhance_spmv.h"
-#include "hip-line/line_strategy.h"
-#include "hip-thread-row/thread_row.h"
-#include "hip-vector-row/vector_row.h"
+
+#include "level2/csrmv_kernels/adaptive/adaptive.h"
+#include "level2/csrmv_kernels/csr-adaptive-plus/csr_adaptive_plus_spmv.h"
+#include "level2/csrmv_kernels/light/spmv_hip_acc_imp.h"
+#include "level2/csrmv_kernels/line-enhance/line_enhance_spmv.h"
+#include "level2/csrmv_kernels/line/line_strategy.h"
+#include "level2/csrmv_kernels/thread-row/thread_row.h"
+#include "level2/csrmv_kernels/vector-row/vector_row.h"
 
 #include "../../library/internal/usparse_internal.h"
 

@@ -6,7 +6,7 @@
 #define USPARSE_HIP_USPARSE_MTX_INFO_H
 
 #include "../hip/level2/coomv_kernels/coo_mtx_analysis_info.h"
-#include "../hip/level2/spmv-acc-csrmv/hip-flat/flat_mtx_info.h"
+#include "../hip/level2/csrmv_kernels/flat/flat_mtx_info.h"
 #include "usparse_types.h"
 
 namespace usparse {

@@ -6,11 +6,11 @@
 #include "coomv_spmv_acc_wrappers.h"
 #include "../../conversion/coo2csr.h"
 
-#include "../spmv-acc-csrmv/hip-adaptive/adaptive.h"
-#include "../spmv-acc-csrmv/hip-flat/spmv_hip_acc_imp.h"
-#include "../spmv-acc-csrmv/hip-light/spmv_hip_acc_imp.h"
-#include "../spmv-acc-csrmv/hip-line-enhance/line_enhance_spmv.h"
-#include "../spmv-acc-csrmv/hip-vector-row/vector_row.h"
+#include "../csrmv_kernels/adaptive/adaptive.h"
+#include "../csrmv_kernels/flat/spmv_hip_acc_imp.h"
+#include "../csrmv_kernels/light/spmv_hip_acc_imp.h"
+#include "../csrmv_kernels/line-enhance/line_enhance_spmv.h"
+#include "../csrmv_kernels/vector-row/vector_row.h"
 #include <cassert>
 
 template <typename INDEX_TYPE, typename DATA_TYPE>
