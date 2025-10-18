@@ -17,6 +17,7 @@ set(HEADER_FILES
         csrmm_statistics_logger.hpp
         benchmark_csrmm.h
         csr_spmm.hpp
+        ../utils/benchmark_main.hpp
         )
 
 set(SOURCE_FILES
@@ -40,6 +41,7 @@ target_include_directories(
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}$<SEMICOLON>${PROJECT_BINARY_DIR}/generated>
         $<INSTALL_INTERFACE:include>
 )
+set_property(TARGET ${CSRMM_BENCHMARK_NAME} PROPERTY CXX_STANDARD 17)
 
 if(BENCHMARK_FORCE_SYNC_KERNELS)
         target_compile_definitions(${CSRMM_BENCHMARK_NAME} PUBLIC MACRO_BENCHMARK_FORCE_KERNEL_SYNC=1)
