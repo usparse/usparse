@@ -5,7 +5,7 @@
 #ifndef USPARSE_HIP_USPARSE_LEVEL2_COOMV_KERNELS_COO_MTX_ANALYSIS_H
 #define USPARSE_HIP_USPARSE_LEVEL2_COOMV_KERNELS_COO_MTX_ANALYSIS_H
 
-#include "../spmv-acc-csrmv/hip-flat/flat_mtx_info.h"
+#include "../csrmv_kernels/flat/flat_mtx_info.h"
 
 namespace usparse {
 

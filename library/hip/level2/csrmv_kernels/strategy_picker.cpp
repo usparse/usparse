@@ -5,13 +5,13 @@
 #include "api/spmv.h"
 #include "building_config.h"
 
-#include "hip-adaptive/adaptive.h"
-#include "hip-flat/spmv_hip_acc_imp.h"
-#include "hip-light/spmv_hip_acc_imp.h"
-#include "hip-line-enhance/line_enhance_spmv.h"
-#include "hip-line/line_strategy.h"
-#include "hip-thread-row/thread_row.h"
-#include "hip-vector-row/vector_row.h"
+#include "adaptive/adaptive.h"
+#include "flat/spmv_hip_acc_imp.h"
+#include "light/spmv_hip_acc_imp.h"
+#include "line-enhance/line_enhance_spmv.h"
+#include "line/line_strategy.h"
+#include "thread-row/thread_row.h"
+#include "vector-row/vector_row.h"
 
 void sparse_csr_spmv(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
                      const csr_desc<int, double> d_csr_desc, const double *x, double *y) {

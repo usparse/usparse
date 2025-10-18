@@ -5,11 +5,11 @@
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
 
-#include "hip-flat/spmv_hip_acc_imp.h"
-#include "hip-line-enhance/line_enhance_spmv.h"
-#include "hip-line/line_strategy.h"
-#include "hip-thread-row/thread_row.h"
-#include "hip-vector-row/vector_row.h"
+#include "../flat/spmv_hip_acc_imp.h"
+#include "../line-enhance/line_enhance_spmv.h"
+#include "../line/line_strategy.h"
+#include "../thread-row/thread_row.h"
+#include "../vector-row/vector_row.h"
 
 #include "common/macros.h"
 
