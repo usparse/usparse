@@ -5,10 +5,10 @@
 #ifndef USPARSE_BENCHMARK_MAIN_HPP
 #define USPARSE_BENCHMARK_MAIN_HPP
 
-#include <clipp.h>
-
 #include <iostream>
 #include <string>
+
+#include <args.hxx>
 
 #include "matrix_format/csr_binary_reader.hpp"
 #include "matrix_format/matrix_market_reader.hpp"
@@ -31,30 +31,53 @@ namespace ubench {
    * @tparam BENCH_FORMAT the sparse matrix format used for benchmarking. e.g. BENCH_FORMAT for coomv is COO.
    */
   template <int BENCH_FORMAT> int benchmark_main(int argc, char **argv) {
-    std::string mtx_path = "", fmt = "mtx";
-    std::string fp = "fp64";
+    args::ArgumentParser parser("This is usparse benchmark.", "authors: genshen.");
+    args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
+    args::ValueFlag<std::string> mtx_path(parser, "matrix", "The matrix file", {'m', "mtx"});
+    args::ValueFlag<std::string> fmt(
+        parser, "format", "The input matrix format. can be  `mtx` (matrix market, default) or `bin2` (csr binary v2)",
+        {'f', "fmt"});
+    args::ValueFlag<std::string> fp(parser, "precision",
+                                    "The float percision used in benchmark. can be `fp32` or `fp64` (default)", {"fp"});
 
-    auto cli = (clipp::value("input file", mtx_path),
-                clipp::option("-f", "--format")
-                        .doc("input matrix format, can be  `mtx` (matrix market, default) or "
-                             "`bin2` (csr binary v2)") &
-                    clipp::value("format", fmt),
-                clipp::option("-p", "--precision").doc("the percision used in benchmark, can be `fp32` or `fp64`") &
-                    clipp::value("precision", fp));
-
-    if (!parse(argc, argv, cli)) {
-      std::cout << clipp::make_man_page(cli, argv[0]);
-      return 0;
+    try {
+      parser.ParseCLI(argc, (const char *const *)argv);
+    } catch (args::Help) {
+      std::cout << parser;
+      return false;
+    } catch (args::ParseError e) {
+      std::cerr << e.what() << std::endl;
+      std::cerr << parser;
+      return false;
+    } catch (args::ValidationError e) {
+      std::cerr << e.what() << std::endl;
+      std::cerr << parser;
+      return false;
     }
 
-    if (fp == "fp32") {
-      std::cout << "benchmarking FP32 on " << mtx_path << std::endl;
-      read_mtx_and_run<BENCH_FORMAT, float>(mtx_path, fmt);
-    } else if (fp == "fp64") {
-      std::cout << "benchmarking FP64 on " << mtx_path << std::endl;
-      read_mtx_and_run<BENCH_FORMAT, double>(mtx_path, fmt);
+    std::string mtx_path_str = "", fmt_str = "mtx", fp_str = "fp64";
+    if (mtx_path) {
+      mtx_path_str = args::get(mtx_path);
     } else {
-      std::cerr << "unsupported precision option." << std::endl;
+      std::cerr << "matrix path must be specified." << std::endl;
+      std::cerr << parser;
+      return 1;
+    }
+    if (fmt) {
+      fmt_str = args::get(fmt);
+    }
+    if (fp) {
+      fp_str = args::get(fp);
+    }
+
+    if (fp_str == "fp32") {
+      std::cout << "benchmarking FP32 on " << mtx_path_str << std::endl;
+      read_mtx_and_run<BENCH_FORMAT, float>(mtx_path_str, fmt_str);
+    } else if (fp_str == "fp64") {
+      std::cout << "benchmarking FP64 on " << mtx_path_str << std::endl;
+      read_mtx_and_run<BENCH_FORMAT, double>(mtx_path_str, fmt_str);
+    } else {
+      std::cerr << "unsupported precision option: " << fp_str << "." << std::endl;
       return -1;
     }
     return 0;
