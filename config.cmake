@@ -1,5 +1,7 @@
 option(USPARSE_ENABLE_HIP "Enable HIP" ON)
 option(USPARSE_BUILD_BENCHMARK "build usparse benchmark" OFF)
+# pkg adds more third-party code for comparig/benchmarking
+option(USPARSE_BUILD_DEP_BY_PKG "use pkg for package manager" OFF)
 option(UPSARSE_DEVICE_SIDE_VERIFY "Verify result of device side" OFF)
 option(UPSARSE_BUILD_FOR_ROCSPARSE "build lib for rocsparse" OFF)
 set(UPSARSE_WAVEFRONT_SIZE "64" CACHE STRING "threads number in a wavefront")

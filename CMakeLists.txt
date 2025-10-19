@@ -5,7 +5,12 @@ set(CMAKE_CXX_STANDARD 14)
 
 include(config.cmake)
 include(deps.cmake)
-include(pkg.dep.cmake)
+
+if(USPARSE_BUILD_DEP_BY_PKG)
+    include(pkg.dep.cmake)
+else()
+    include_directories(vendor/include)
+endif()
 
 add_subdirectory(library)
 add_subdirectory(cli)

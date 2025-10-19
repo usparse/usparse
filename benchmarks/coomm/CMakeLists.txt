@@ -22,6 +22,7 @@ set(HEADER_FILES
 
 set(SOURCE_FILES
         main.cc
+        benchmark_rocsparse_coomm.cc
         benchmark_usparse_coomm.cc
         ../utils/ubench_sparse_matrix_utils.cpp
         ../utils/ubench_vector_utils.cpp
