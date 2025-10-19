@@ -89,6 +89,7 @@ set(USPARSE_SOURCE_FILES ${USPARSE_SOURCE_FILES}
         level2/coomv_kernels/coomv_flat_kernel.cc
         level2/coomv_kernels/coomv_spmv_acc_wrappers.cc
         level3/csrsm_kernels.cpp
+        level3/coomm_kernels/coomm_conversion_based.cc
         level3/csrmm_kernels/csrmm_kernel_rowsplit.cpp
         ../internal/usparse_internal_spmv.cc
         ../internal/usparse_internal_spmm.cc

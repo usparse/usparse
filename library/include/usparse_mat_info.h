@@ -7,6 +7,7 @@
 
 #include "../hip/level2/coomv_kernels/coo_mtx_analysis_info.h"
 #include "../hip/level2/csrmv_kernels/flat/flat_mtx_info.h"
+#include "../hip/level3/coomm_kernels/coomm_mtx_analysis_info.h"
 #include "usparse_types.h"
 
 namespace usparse {
@@ -20,6 +21,7 @@ namespace usparse {
     // protected:
       csrmv_mat_info *csrmv_info = nullptr;
       usparse::spmv::internal::coomv_conversion_mtx_info<usparse::usparse_int> *coomv_info = nullptr;
+      usparse::spmm::internal::coomm_conversion_mtx_info<usparse::usparse_int> * coomm_info = nullptr;
     };
 
     inline usparse_status usparse_create_mat_info(usparse_mat_info *info) {
