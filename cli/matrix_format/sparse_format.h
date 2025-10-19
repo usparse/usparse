@@ -39,6 +39,20 @@ public:
     delete[] this->col_index;
     delete[] this->values;
   }
+
+  /**
+   * Note: this function assumes the memory space `h_coo` has been allocated.
+   */
+  inline void to_coo(coo_mtx<I, T> &h_coo) {
+    // convert CSR to COO
+    for (I r = 0; r < this->rows; r++) {
+      for (I j = this->row_ptr[r]; j < this->row_ptr[r + 1]; j++) {
+        h_coo.row_index[j] = r;
+      }
+    }
+    memcpy(h_coo.col_index, this->col_index, this->nnz * sizeof(I));
+    memcpy(h_coo.values, this->values, this->nnz * sizeof(T));
+  }
 };
 
 // an element in COO matrix
