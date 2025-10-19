@@ -19,6 +19,8 @@
 
 typedef double dtype;
 
+template <typename I, typename T> class coo_mtx;
+
 // CSR sparse matrix type
 template <typename I, typename T> class csr_mtx : public var_csr_desc<I, T> {
 public:
@@ -30,6 +32,12 @@ public:
     this->row_ptr = new I[_rows + 1];
     this->col_index = new I[_nnz];
     this->values = new T[_nnz];
+  }
+
+  inline void destroy() {
+    delete[] this->row_ptr;
+    delete[] this->col_index;
+    delete[] this->values;
   }
 };
 
@@ -71,6 +79,12 @@ public:
     this->row_index = new I[_nnz];
     this->col_index = new I[_nnz];
     this->values = new T[_nnz];
+  }
+
+  void destroy() {
+    delete[] this->row_index;
+    delete[] this->col_index;
+    delete[] this->values;
   }
 };
 
@@ -173,6 +187,8 @@ public:
     this->col_index = std::make_unique<I[]>(_nnz);
     this->values = std::make_unique<T[]>(_nnz);
   }
+
+  void destroy() { data.reset(); }
 };
 
 using type_sparse_default_index = int;

@@ -19,6 +19,7 @@ dependencies:
       optional: true
       build:
         - RUN {{.PKG_ROOT}} ln -sf {{.SRC_DIR}}/cub/ {{.INCLUDE}}/cub
+    github.com/Taywee/args@6.4.7@args: {build: ["CP args.hxx {{.INCLUDE}}/args.hxx"]}
     github.com/muellan/clipp@v1.2.3:
       build:
         - CP include/clipp.h {{.INCLUDE}}/clipp.h
