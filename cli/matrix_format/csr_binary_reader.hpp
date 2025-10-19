@@ -112,6 +112,17 @@ public:
     fin.close();
   }
 
+  // release memory.
+  void unload_mat() {
+    delete[] P::values;
+    delete[] P::col_index;
+    delete[] P::row_ptr;
+
+    P::values = nullptr;
+    P::col_index = nullptr;
+    P::row_ptr = nullptr;
+  }
+
   void close_stream() {
     // nothing to do, just keep the same api as csr text reader
   }

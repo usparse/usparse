@@ -83,18 +83,25 @@ namespace ubench {
         std::cerr << "unsupported matrix format .bin2." << std::endl;
         return;
       }
+      // csr_bin_reader.unload_mat(); // release memory
+      h_csr.destroy();
     } else if (fmt == "mtx") {
       matrix_market_reader<type_sparse_default_index, PRECISION> mm_reader;
+      // todo: use alloc to replace `new` array for mm.
       matrix_market<type_sparse_default_index, PRECISION> mm = mm_reader.load_mat(mtx_path);
 
       if constexpr (BENCH_FORMAT == BENCH_FORMAT_CSR) {
         csr_mtx<type_sparse_default_index, PRECISION> h_csr;
-        h_csr = mm.to_csr();
+        h_csr = mm.to_csr(); // TODO: avoid alloc inside to_csr
         run_csr_benchmark<PRECISION>(mtx_path, h_csr);
+        h_csr.destroy();
       } else if (BENCH_FORMAT == BENCH_FORMAT_COO) {
+        // TODO: avoid alloc inside to_coo
         coo_mtx<type_sparse_default_index, PRECISION> h_coo = mm.to_coo();
         run_coo_benchmark<PRECISION>(mtx_path, h_coo);
+        h_coo.destroy();
       }
+      mm.destroy();
     } else {
       std::cerr << "unsupported matrix format." << std::endl;
     }
