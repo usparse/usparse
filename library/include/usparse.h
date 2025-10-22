@@ -69,6 +69,7 @@ namespace usparse {
     // todo: analysis and clear api
 
     enum class usparse_csrmm_algorithms { Vector, Adaptive };
+    enum class usparse_coomm_algorithms { Vector, Adaptive };
 
     /**
      * C = alpha * A * B + beta * C. where A is CSR sparse matrix, B and C are dense matrix.

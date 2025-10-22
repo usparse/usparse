@@ -103,8 +103,12 @@ namespace ubench {
       if constexpr (BENCH_FORMAT == BENCH_FORMAT_CSR) {
         run_csr_benchmark<PRECISION>(mtx_path, h_csr);
       } else {
-        std::cerr << "unsupported matrix format .bin2." << std::endl;
-        return;
+        coo_mtx<type_sparse_default_index, PRECISION> h_coo;
+        // malloc new memory for coo matrix. we dont reuse it.
+        h_coo.alloc(h_csr.rows, h_csr.cols, h_csr.nnz);
+        h_csr.to_coo(h_coo);
+        run_coo_benchmark<PRECISION>(mtx_path, h_coo);
+        h_coo.destroy();
       }
       // csr_bin_reader.unload_mat(); // release memory
       h_csr.destroy();
