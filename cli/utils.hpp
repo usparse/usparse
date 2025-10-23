@@ -84,56 +84,60 @@ inline void create_host_data(type_coo _coo, host_vectors<dtype> &h_vecs, bool ov
   }
 }
 
-inline void create_host_data(type_csr _csr, host_vectors<dtype> &h_vecs, bool overwrite_hx = false) {
-  dtype *temp_csr_dense_vec;
+template <typename INDEX_TYPE, typename DATA_TYPE>
+inline void create_host_data(csr_mtx<INDEX_TYPE, DATA_TYPE> _csr, host_vectors<DATA_TYPE> &h_vecs,
+                             bool overwrite_hx = false) {
+  DATA_TYPE *temp_csr_dense_vec;
   if (!overwrite_hx) {
-    temp_csr_dense_vec = new dtype[_csr.cols];
-    memcpy(temp_csr_dense_vec, h_vecs.hX, _csr.cols * sizeof(double)); // backup hX
+    temp_csr_dense_vec = new DATA_TYPE[_csr.cols];
+    memcpy(temp_csr_dense_vec, h_vecs.hX, _csr.cols * sizeof(DATA_TYPE)); // backup hX
   }
 
   generate_vector(_csr.cols, h_vecs.hX);
   generate_vector(_csr.rows, h_vecs.temphY);
-  generate_vector(_csr.rows, h_vecs.hY); //实际数据依然来自随机生成
+  generate_vector(_csr.rows, h_vecs.hY); // 实际数据依然来自随机生成
   generate_vector(_csr.rows, h_vecs.hhY);
 
-  //统一主机端和设备端的向量值
-  memcpy(h_vecs.hY, h_vecs.temphY, _csr.rows * sizeof(double));
-  memcpy(h_vecs.hhY, h_vecs.temphY, _csr.rows * sizeof(double));
+  // 统一主机端和设备端的向量值
+  memcpy(h_vecs.hY, h_vecs.temphY, _csr.rows * sizeof(DATA_TYPE));
+  memcpy(h_vecs.hhY, h_vecs.temphY, _csr.rows * sizeof(DATA_TYPE));
 
   if (!overwrite_hx) {
-    memcpy(h_vecs.hX, temp_csr_dense_vec, _csr.cols * sizeof(double)); //外部读取数据恢复 hX
+    memcpy(h_vecs.hX, temp_csr_dense_vec, _csr.cols * sizeof(DATA_TYPE)); // 外部读取数据恢复 hX
     delete[] temp_csr_dense_vec;
   }
 }
 
-inline void destroy_host_data(host_vectors<dtype> &h_vecs) {
+template <typename DATA_TYPE> inline void destroy_host_data(host_vectors<DATA_TYPE> &h_vecs) {
   delete[] h_vecs.hhY;
   delete[] h_vecs.hY;
   delete[] h_vecs.temphY;
   delete[] h_vecs.hX;
 }
 
-inline type_csr create_device_data(type_csr h_csr, dtype *hX, dtype *hY, dtype *&dX, dtype *&dY) {
-  const int A_num_rows = h_csr.rows;
-  const int A_num_cols = h_csr.cols;
-  const int A_nnz = h_csr.nnz;
+template <typename INDEX_TYPE, typename DATA_TYPE>
+inline csr_mtx<INDEX_TYPE, DATA_TYPE> create_device_data(csr_mtx<INDEX_TYPE, DATA_TYPE> h_csr, DATA_TYPE *hX,
+                                                         DATA_TYPE *hY, DATA_TYPE *&dX, DATA_TYPE *&dY) {
+  const INDEX_TYPE A_num_rows = h_csr.rows;
+  const INDEX_TYPE A_num_cols = h_csr.cols;
+  const INDEX_TYPE A_nnz = h_csr.nnz;
 
-  type_csr dev_csr;
+  csr_mtx<INDEX_TYPE, DATA_TYPE> dev_csr;
   dev_csr.rows = A_num_rows;
   dev_csr.cols = A_num_cols;
   dev_csr.nnz = A_nnz;
 
-  HIP_CHECK(hipMalloc((void **)&dev_csr.row_ptr, (A_num_rows + 1) * sizeof(int)))
-  HIP_CHECK(hipMalloc((void **)&dev_csr.col_index, A_nnz * sizeof(int)))
-  HIP_CHECK(hipMalloc((void **)&dev_csr.values, A_nnz * sizeof(dtype)))
-  HIP_CHECK(hipMalloc((void **)&dX, A_num_cols * sizeof(dtype)))
-  HIP_CHECK(hipMalloc((void **)&dY, A_num_rows * sizeof(dtype)))
+  HIP_CHECK(hipMalloc((void **)&dev_csr.row_ptr, (A_num_rows + 1) * sizeof(INDEX_TYPE)))
+  HIP_CHECK(hipMalloc((void **)&dev_csr.col_index, A_nnz * sizeof(INDEX_TYPE)))
+  HIP_CHECK(hipMalloc((void **)&dev_csr.values, A_nnz * sizeof(DATA_TYPE)))
+  HIP_CHECK(hipMalloc((void **)&dX, A_num_cols * sizeof(DATA_TYPE)))
+  HIP_CHECK(hipMalloc((void **)&dY, A_num_rows * sizeof(DATA_TYPE)))
 
-  HIP_CHECK(hipMemcpy(dev_csr.row_ptr, h_csr.row_ptr, (A_num_rows + 1) * sizeof(int), hipMemcpyHostToDevice))
-  HIP_CHECK(hipMemcpy(dev_csr.col_index, h_csr.col_index, A_nnz * sizeof(int), hipMemcpyHostToDevice))
-  HIP_CHECK(hipMemcpy(dev_csr.values, h_csr.values, A_nnz * sizeof(dtype), hipMemcpyHostToDevice))
-  HIP_CHECK(hipMemcpy(dX, hX, A_num_cols * sizeof(dtype), hipMemcpyHostToDevice))
-  HIP_CHECK(hipMemcpy(dY, hY, A_num_rows * sizeof(dtype), hipMemcpyHostToDevice))
+  HIP_CHECK(hipMemcpy(dev_csr.row_ptr, h_csr.row_ptr, (A_num_rows + 1) * sizeof(INDEX_TYPE), hipMemcpyHostToDevice))
+  HIP_CHECK(hipMemcpy(dev_csr.col_index, h_csr.col_index, A_nnz * sizeof(INDEX_TYPE), hipMemcpyHostToDevice))
+  HIP_CHECK(hipMemcpy(dev_csr.values, h_csr.values, A_nnz * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
+  HIP_CHECK(hipMemcpy(dX, hX, A_num_cols * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
+  HIP_CHECK(hipMemcpy(dY, hY, A_num_rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
   return dev_csr;
 }
 
@@ -161,7 +165,8 @@ inline type_coo create_device_data(type_coo h_coo, dtype *hX, dtype *hY, dtype *
   return dev_coo;
 }
 
-inline void destroy_device_data(type_csr d_csr, dtype *&dX, dtype *&dY) {
+template <typename INDEX_TYPE, typename DATA_TYPE>
+inline void destroy_device_data(csr_mtx<INDEX_TYPE, DATA_TYPE> d_csr, DATA_TYPE *&dX, DATA_TYPE *&dY) {
   HIP_CHECK(hipFree((void *)dY))
   HIP_CHECK(hipFree((void *)dX))
   HIP_CHECK(hipFree((void *)d_csr.values))

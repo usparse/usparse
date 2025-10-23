@@ -21,7 +21,7 @@
 #include "utils/statistics_logger.h"
 #include "verification.h"
 
-struct CsrSpMV {
+template <typename INDEX_TYPE, typename DATA_TYPE> struct CsrSpMV {
   /**
    * function returning a flag for if to support alpha and beta.
    * true: calculate y = alpha*A*x + beta*y, false calculate: y = A*x
@@ -39,26 +39,29 @@ struct CsrSpMV {
    * @param y device vector y.
    * @param bmt spmv elapsed time
    */
-  virtual void csr_spmv_impl(int trans, const double alpha, const double beta,
-                             const csr_desc<int, double> h_csr_desc, const csr_desc<int, double> d_csr_desc,
-                             const double *x, double *y, BenchmarkTime *bmt) = 0;
+  virtual void csr_spmv_impl(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
+                             const csr_desc<INDEX_TYPE, DATA_TYPE> h_csr_desc,
+                             const csr_desc<INDEX_TYPE, DATA_TYPE> d_csr_desc, const DATA_TYPE *x, DATA_TYPE *y,
+                             BenchmarkTime *bmt) = 0;
 
-  void test(std::string mtx_path, const std::string &strategy_name, enum usparse::usparse_operation operation, dtype alpha,
-            dtype beta, type_csr h_csr, type_csr d_csr, host_vectors<dtype> h_vectors, dtype *&dev_x, dtype *&dev_y) {
+  void test(std::string mtx_path, const std::string &strategy_name, enum usparse::usparse_operation operation,
+            DATA_TYPE alpha, DATA_TYPE beta, csr_desc<INDEX_TYPE, DATA_TYPE> h_csr,
+            csr_desc<INDEX_TYPE, DATA_TYPE> d_csr, host_vectors<DATA_TYPE> h_vectors, DATA_TYPE *&dev_x,
+            DATA_TYPE *&dev_y) {
     BenchmarkTimeArray bmt_array;
     // warm up GPU
     for (int i = 0; i < 10; ++i) {
       // call sparse spmv
-      HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_csr.rows * sizeof(dtype), hipMemcpyHostToDevice))
+      HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_csr.rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
       try {
-        csr_spmv_impl(operation, alpha, beta, h_csr.as_const(), d_csr.as_const(), dev_x, dev_y, nullptr);
+        csr_spmv_impl(operation, alpha, beta, h_csr, d_csr, dev_x, dev_y, nullptr);
       } catch (const std::runtime_error &error) {
         std::cout << "matrix name: " << mtx_path << ", strategy name: " << strategy_name << std::endl;
         std::cout << "error occur, return" << std::endl;
         std::cerr << error.what() << std::endl;
         hipDeviceSynchronize();
-        memcpy(h_vectors.hhY, h_vectors.temphY, d_csr.rows * sizeof(dtype));
-        HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_csr.rows * sizeof(dtype), hipMemcpyHostToDevice))
+        memcpy(h_vectors.hhY, h_vectors.temphY, d_csr.rows * sizeof(DATA_TYPE));
+        HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_csr.rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
         return;
       }
     }
@@ -67,18 +70,18 @@ struct CsrSpMV {
     // execute device SpMV
     for (int i = 0; i < BENCHMARK_ARRAY_SIZE; i++) {
       BenchmarkTime bmt;
-      HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_csr.rows * sizeof(dtype), hipMemcpyHostToDevice))
+      HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_csr.rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
       hipDeviceSynchronize();
-      csr_spmv_impl(operation, alpha, beta, h_csr.as_const(), d_csr.as_const(), dev_x, dev_y, &bmt);
+      csr_spmv_impl(operation, alpha, beta, h_csr, d_csr, dev_x, dev_y, &bmt);
       hipDeviceSynchronize();
       bmt_array.append(bmt);
     }
 
     // device result check
-    HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, h_csr.rows * sizeof(dtype), hipMemcpyHostToDevice))
-    csr_spmv_impl(operation, alpha, beta, h_csr.as_const(), d_csr.as_const(), dev_x, dev_y, nullptr);
+    HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, h_csr.rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
+    csr_spmv_impl(operation, alpha, beta, h_csr, d_csr, dev_x, dev_y, nullptr);
     hipDeviceSynchronize();
-    HIP_CHECK(hipMemcpy(h_vectors.hY, dev_y, d_csr.rows * sizeof(dtype), hipMemcpyDeviceToHost));
+    HIP_CHECK(hipMemcpy(h_vectors.hY, dev_y, d_csr.rows * sizeof(DATA_TYPE), hipMemcpyDeviceToHost));
 
     // host side verification
     if (verify_beta_y()) {
@@ -91,12 +94,12 @@ struct CsrSpMV {
                     h_vectors.hhY);
     }
 
-    const VerifyResult<int, double> verify_result = verify_y(h_vectors.hY, h_vectors.hhY, h_csr.rows);
-    statistics::print_statistics<dtype>(mtx_path, strategy_name, h_csr.rows, h_csr.cols, h_csr.nnz,
-                                        bmt_array.get_mid_time(), verify_result);
+    const VerifyResult<INDEX_TYPE, DATA_TYPE> verify_result = verify_y(h_vectors.hY, h_vectors.hhY, h_csr.rows);
+    statistics::print_statistics<DATA_TYPE>(mtx_path, strategy_name, h_csr.rows, h_csr.cols, h_csr.nnz,
+                                            bmt_array.get_mid_time(), verify_result);
 
-    memcpy(h_vectors.hhY, h_vectors.temphY, d_csr.rows * sizeof(dtype));
-    HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_csr.rows * sizeof(dtype), hipMemcpyHostToDevice))
+    memcpy(h_vectors.hhY, h_vectors.temphY, d_csr.rows * sizeof(DATA_TYPE));
+    HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_csr.rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
   }
 };
 
@@ -117,8 +120,8 @@ struct CsrSpMV {
 #ifdef UBENCH_CONFIG_ENABLE_HOLA_ALGO
 #include "benchmark_hola_cuda.hpp"
 #endif // UBENCH_CONFIG_ENABLE_HOLA_ALGO
-#include "benchmark_merge_path.hpp"
 #include "benchmark_acsr.hpp"
+#include "benchmark_merge_path.hpp"
 #endif
 
 #endif

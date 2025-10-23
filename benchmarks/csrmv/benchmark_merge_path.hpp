@@ -7,31 +7,31 @@
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
 
-#include "csr_spmv.hpp"
-#include "merge-path/merge_path_spmv.h"
-#include "merge-path/merge_path_config.h"
-#include "utils.hpp"
 #include "../utils/benchmark_time.h"
+#include "csr_spmv.hpp"
+#include "merge-path/merge_path_config.h"
+#include "merge-path/merge_path_spmv.h"
+#include "utils.hpp"
 
-struct MergePathSpMV : CsrSpMV {
-  void csr_spmv_impl(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                     const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
+template <typename I, typename T> struct MergePathSpMV : CsrSpMV<I, T> {
+  void csr_spmv_impl(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,
+                     const csr_desc<I, T> d_csr_desc, const T *x, T *y, BenchmarkTime *bmt) {
     merge_path_spmv(trans, alpha, beta, h_csr_desc, d_csr_desc, x, y, bmt);
   }
   bool verify_beta_y() { return false; }
 };
 
-struct MergePathSingleBlockUpdateSpMV : CsrSpMV {
-  void csr_spmv_impl(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                     const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
+template <typename I, typename T> struct MergePathSingleBlockUpdateSpMV : CsrSpMV<I, T> {
+  void csr_spmv_impl(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,
+                     const csr_desc<I, T> d_csr_desc, const T *x, T *y, BenchmarkTime *bmt) {
     merge_path_spmv<Binary, SingleBlock>(trans, alpha, beta, h_csr_desc, d_csr_desc, x, y, bmt);
   }
   bool verify_beta_y() { return false; }
 };
 
-struct MergePathLookBackUpdateSpMV : CsrSpMV {
-  void csr_spmv_impl(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                     const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
+template <typename I, typename T> struct MergePathLookBackUpdateSpMV : CsrSpMV<I, T> {
+  void csr_spmv_impl(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,
+                     const csr_desc<I, T> d_csr_desc, const T *x, T *y, BenchmarkTime *bmt) {
     merge_path_spmv<Binary, LookBack>(trans, alpha, beta, h_csr_desc, d_csr_desc, x, y, bmt);
   }
   bool verify_beta_y() { return false; }

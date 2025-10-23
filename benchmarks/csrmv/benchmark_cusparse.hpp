@@ -13,7 +13,7 @@
 #include "../utils/benchmark_time.h"
 #include "../utils/timer_utils.h"
 
-struct CuSparseGeneral : CsrSpMV {
+template <typename I, typename T> struct CuSparseGeneral : CsrSpMV<I, T> {
 
   inline cusparseSpMVAlg_t get_spmv_algo() {
 // CUSPARSE_MV_ALG_DEFAULT is deprecated in 11.2.1 and removed in 11.2.2
@@ -24,12 +24,19 @@ struct CuSparseGeneral : CsrSpMV {
 #endif
   }
 
-  void csr_spmv_impl(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                     const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
+  void csr_spmv_impl(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,
+                     const csr_desc<I, T> d_csr_desc, const T *x, T *y, BenchmarkTime *bmt) {
 
-    const double cu_alpha = static_cast<double>(alpha);
-    const double cu_beta = static_cast<double>(beta);
+    const T cu_alpha = static_cast<T>(alpha);
+    const T cu_beta = static_cast<T>(beta);
     hip::timer::event_timer pre_timer, calc_timer, destroy_timer;
+
+    auto ttype = CUDA_R_64F;
+    auto iitype = CUSPARSE_INDEX_32I;
+    if (std::is_same<I, float>::value) {
+      ttype = CUDA_R_32F;
+    }
+
     pre_timer.start();
     // Create cuSPARSE handle
     cusparseHandle_t handle = NULL;
@@ -38,20 +45,20 @@ struct CuSparseGeneral : CsrSpMV {
     cusparseSpMatDescr_t cu_mat;
     cusparseDnVecDescr_t cu_x, cu_y;
     cusparseCreateCsr(&cu_mat, h_csr_desc.rows, h_csr_desc.cols, h_csr_desc.nnz, (void *)d_csr_desc.row_ptr,
-                      (void *)d_csr_desc.col_index, (void *)d_csr_desc.values, CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I,
-                      CUSPARSE_INDEX_BASE_ZERO, CUDA_R_64F);
-    cusparseCreateDnVec(&cu_x, h_csr_desc.cols, (void *)x, CUDA_R_64F);
-    cusparseCreateDnVec(&cu_y, h_csr_desc.rows, (void *)y, CUDA_R_64F);
+                      (void *)d_csr_desc.col_index, (void *)d_csr_desc.values, iitype, iitype, CUSPARSE_INDEX_BASE_ZERO,
+                      ttype);
+    cusparseCreateDnVec(&cu_x, h_csr_desc.cols, (void *)x, ttype);
+    cusparseCreateDnVec(&cu_y, h_csr_desc.rows, (void *)y, ttype);
     // Allocate an external buffer
     void *d_buffer = NULL;
     size_t buffer_size = 0;
-    cusparseSpMV_bufferSize(handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &cu_alpha, cu_mat, cu_x, &cu_beta, cu_y,
-                            CUDA_R_64F, get_spmv_algo(), &buffer_size);
+    cusparseSpMV_bufferSize(handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &cu_alpha, cu_mat, cu_x, &cu_beta, cu_y, ttype,
+                            get_spmv_algo(), &buffer_size);
     cudaMalloc(&d_buffer, buffer_size);
     pre_timer.stop();
     calc_timer.start();
     // Execute SpMV
-    cusparseSpMV(handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &cu_alpha, cu_mat, cu_x, &cu_beta, cu_y, CUDA_R_64F,
+    cusparseSpMV(handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &cu_alpha, cu_mat, cu_x, &cu_beta, cu_y, ttype,
                  get_spmv_algo(), d_buffer);
     calc_timer.stop(true);
     destroy_timer.start();

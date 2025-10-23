@@ -71,29 +71,44 @@ void host_coo_spmv(const dtype *value, const int *row_index, const int *colindex
   host_coo_spmv(1, 0, value, row_index, colindex, m, n, nnz, x, y);
 }
 
-void host_csr_spmv(dtype alpha, dtype beta, const dtype *value, const int *rowptr, const int *colindex, int m, int n,
-                   int a, const dtype *x, dtype *y) {
+template <typename INDEX_TYPE, typename DATA_TYPE>
+void host_csr_spmv(DATA_TYPE alpha, DATA_TYPE beta, const DATA_TYPE *value, const INDEX_TYPE *rowptr,
+                   const INDEX_TYPE *colindex, INDEX_TYPE m, INDEX_TYPE n, INDEX_TYPE a, const DATA_TYPE *x,
+                   DATA_TYPE *y) {
   // calculate the matrix-vector multiply where matrix is stored in the form of CSR
-  for (int i = 0; i < m; i++) {
-    dtype y0 = 0;
-    for (int j = rowptr[i]; j < rowptr[i + 1]; j++) {
+  for (INDEX_TYPE i = 0; i < m; i++) {
+    DATA_TYPE y0 = 0;
+    for (INDEX_TYPE j = rowptr[i]; j < rowptr[i + 1]; j++) {
       y0 += value[j] * x[colindex[j]];
     }
     y[i] = alpha * y0 + beta * y[i];
   }
 }
 
-void host_csr_spmv(const dtype *value, const int *rowptr, const int *colindex, int m, int n, int a, const dtype *x,
-                   dtype *y) {
+template <typename INDEX_TYPE, typename DATA_TYPE>
+void host_csr_spmv(const DATA_TYPE *value, const int *rowptr, const INDEX_TYPE *colindex, INDEX_TYPE m, INDEX_TYPE n,
+                   INDEX_TYPE a, const DATA_TYPE *x, DATA_TYPE *y) {
   // calculate the matrix-vector multiply where matrix is stored in the form of CSR
-  for (int i = 0; i < m; i++) {
-    dtype y0 = 0;
-    for (int j = rowptr[i]; j < rowptr[i + 1]; j++) {
+  for (INDEX_TYPE i = 0; i < m; i++) {
+    DATA_TYPE y0 = 0;
+    for (INDEX_TYPE j = rowptr[i]; j < rowptr[i + 1]; j++) {
       y0 += value[j] * x[colindex[j]];
     }
     y[i] = y0;
   }
 }
+
+template void host_csr_spmv<int, double>(const double *value, const int *rowptr, const int *colindex, int m, int n,
+                                         int a, const double *x, double *y);
+
+template void host_csr_spmv<int, float>(const float *value, const int *rowptr, const int *colindex, int m, int n, int a,
+                                        const float *x, float *y);
+
+template void host_csr_spmv<int, double>(double alpha, double beta, const double *value, const int *rowptr,
+                                         const int *colindex, int m, int n, int a, const double *x, double *y);
+
+template void host_csr_spmv<int, float>(float alpha, float beta, const float *value, const int *rowptr,
+                                        const int *colindex, int m, int n, int a, const float *x, float *y);
 
 #ifdef gpu
 void rocsparse(type_csr d_csr, dtype *dev_x, dtype *dev_y, dtype &alpha, dtype &beta) {

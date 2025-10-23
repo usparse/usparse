@@ -26,7 +26,8 @@
 #include "csr_spmv.hpp"
 #include "csrmv_building_config.h"
 
-void test_spmv(std::string mtx_path, type_csr h_csr, host_vectors<dtype> h_vectors);
+template <typename INDEX_TYPE, typename DATA_TYPE>
+void test_spmv(std::string mtx_path, csr_mtx<INDEX_TYPE, DATA_TYPE> h_csr, host_vectors<DATA_TYPE> h_vectors);
 
 int main(int argc, char **argv) {
   std::string mtx_path = "", fmt = "csr";
@@ -88,20 +89,22 @@ int main(int argc, char **argv) {
 
 #define SPMV_BENCHMARK(instance, name, flag)                                                                           \
   {                                                                                                                    \
-    instance ins;                                                                                                      \
+    instance<INDEX_TYPE, DATA_TYPE> ins;                                                                               \
     if (flag) {                                                                                                        \
       ins.test(mtx_path, name, operation, alpha, beta, h_csr, d_csr, h_vectors, dev_x, dev_y);                         \
     }                                                                                                                  \
   }
 
-void test_spmv(std::string mtx_path, type_csr h_csr, host_vectors<dtype> h_vectors) {
+template <typename INDEX_TYPE, typename DATA_TYPE>
+void test_spmv(std::string mtx_path, csr_mtx<INDEX_TYPE, DATA_TYPE> h_csr, host_vectors<DATA_TYPE> h_vectors) {
   HIP_CHECK(hipSetDevice(0));
-  dtype *dev_x, *dev_y;
-  type_csr d_csr = create_device_data(h_csr, h_vectors.hX, h_vectors.temphY, dev_x, dev_y);
+
+  DATA_TYPE *dev_x, *dev_y;
+  csr_mtx<INDEX_TYPE, DATA_TYPE> d_csr = create_device_data(h_csr, h_vectors.hX, h_vectors.temphY, dev_x, dev_y);
   // set parameters
   enum usparse::usparse_operation operation = usparse::usparse_operation::operation_none;
-  dtype alpha = 1.0;
-  dtype beta = 1.0;
+  DATA_TYPE alpha = 1.0;
+  DATA_TYPE beta = 1.0;
 
   statistics::print_statistics_header();
 
