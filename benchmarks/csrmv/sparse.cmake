@@ -6,12 +6,16 @@ include(flat/flat_source_list.cmake)
 if (BENCHMARK_CUDA_ENABLE_FLAG)
     # add hola and cub
     include(cub/cub_source_list.cmake)
-    include(hola/hola_source_list.cmake)
     include(merge-path/merge_path_source_list.cmake)
     include(acsr/acsr_source_list.cmake)
+    if(UBENCH_BUILD_THIRD_PARTY_ALGO)
+        include(hola/hola_source_list.cmake)
+    endif()
 else ()
     # add hola-hip
-    include(hola-hip/hola-hip_source_list.cmake)
+    if(UBENCH_BUILD_THIRD_PARTY_ALGO)
+        include(hola-hip/hola-hip_source_list.cmake)
+    endif()
 endif()
 
 set_source_files_properties(${SP_LIB_SOURCE} PROPERTIES HIP_SOURCE_PROPERTY_FORMAT 1)

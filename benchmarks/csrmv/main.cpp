@@ -24,6 +24,7 @@
 
 #include "benchmark_config.h"
 #include "csr_spmv.hpp"
+#include "csrmv_building_config.h"
 
 void test_spmv(std::string mtx_path, type_csr h_csr, host_vectors<dtype> h_vectors);
 
@@ -121,8 +122,10 @@ void test_spmv(std::string mtx_path, type_csr h_csr, host_vectors<dtype> h_vecto
   // rocsparse
   SPMV_BENCHMARK(RocSparseVecRow, "rocSparse-vector-row", ENABLE_ROC_VECTOR_ROW);
   SPMV_BENCHMARK(RocSparseAdaptive, "rocSparse-adaptive", ENABLE_ROC_ADAPTIVE);
+#ifdef UBENCH_CONFIG_ENABLE_HOLA_ALGO
   // hola
   SPMV_BENCHMARK(HolaHipSpMV, "hip-hola", ENABLE_HIP_HOLA);
+#endif
 #endif
 
 #ifndef __HIP_PLATFORM_HCC__
@@ -130,8 +133,10 @@ void test_spmv(std::string mtx_path, type_csr h_csr, host_vectors<dtype> h_vecto
   SPMV_BENCHMARK(CuSparseGeneral, "cuSparse", ENABLE_CU_SPARSE);
   // cub
   SPMV_BENCHMARK(CubDeviceSpMV, "cub", ENABLE_CUB);
+#ifdef UBENCH_CONFIG_ENABLE_HOLA_ALGO
   // hola
   SPMV_BENCHMARK(HolaSpMV, "hola", ENABLE_HOLA);
+#endif
   // merge path
   SPMV_BENCHMARK(MergePathSingleBlockUpdateSpMV, "merge-path-single-block-update", ENABLE_MERGE_PATH)
   SPMV_BENCHMARK(MergePathLookBackUpdateSpMV, "merge-path-look-back-update", ENABLE_MERGE_PATH)

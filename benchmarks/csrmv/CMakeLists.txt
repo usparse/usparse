@@ -1,6 +1,15 @@
 set(SPMV_BENCHMARK_SPARSE_LIB benchmark_sparse)
 set(BENCHMARK_DEP_LIBS ${SPMV_CLI_LIB} ${USPARSE_BENCHMARK_UTILS_LIB} ${SPMV_BENCHMARK_SPARSE_LIB})
 
+if(USPARSE_BUILD_DEP_BY_PKG)
+    set(UBENCH_BUILD_THIRD_PARTY_ALGO ON)
+    set(UBENCH_CONFIG_ENABLE_HOLA_ALGO ON) # used in .h.in file.
+endif()
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/csrmv_building_config.h.in"
+    "${PROJECT_BINARY_DIR}/generated/csrmv_building_config.h"
+)
+
 include(sparse.cmake)
 
 if (BENCHMARK_CUDA_ENABLE_FLAG)

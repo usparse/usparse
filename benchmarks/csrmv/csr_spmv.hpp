@@ -15,6 +15,7 @@
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
 
+#include "csrmv_building_config.h"
 #include "usparse_matrix.h"
 #include "utils.hpp"
 #include "utils/statistics_logger.h"
@@ -103,7 +104,9 @@ struct CsrSpMV {
 
 // rocm
 #ifdef __HIP_PLATFORM_HCC__
+#ifdef UBENCH_CONFIG_ENABLE_HOLA_ALGO
 #include "benchmark_hola_hip.hpp"
+#endif // UBENCH_CONFIG_ENABLE_HOLA_ALGO
 #include "benchmark_rocsparse.hpp"
 #endif
 
@@ -111,7 +114,9 @@ struct CsrSpMV {
 #ifndef __HIP_PLATFORM_HCC__
 #include "benchmark_cub.hpp"
 #include "benchmark_cusparse.hpp"
+#ifdef UBENCH_CONFIG_ENABLE_HOLA_ALGO
 #include "benchmark_hola_cuda.hpp"
+#endif // UBENCH_CONFIG_ENABLE_HOLA_ALGO
 #include "benchmark_merge_path.hpp"
 #include "benchmark_acsr.hpp"
 #endif
