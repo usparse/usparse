@@ -53,23 +53,37 @@ void verify(double *dy, double *hy, int n) {
   std::cout << "Congratulation, pass " << total_validation + 1 << " validation!\n" << std::endl;
 }
 
-void host_coo_spmv(dtype alpha, dtype beta, const dtype *value, const int *row_index, const int *colindex, int m, int n,
-                   int nnz, const dtype *x, dtype *y) {
-  for (int i = 0; i < m; i++) {
+template <typename INDEX_TYPE, typename DATA_TYPE>
+void host_coo_spmv(DATA_TYPE alpha, DATA_TYPE beta, const DATA_TYPE *value, const INDEX_TYPE *row_index,
+                   const INDEX_TYPE *colindex, INDEX_TYPE m, INDEX_TYPE n, INDEX_TYPE nnz, const DATA_TYPE *x,
+                   DATA_TYPE *y) {
+  for (INDEX_TYPE i = 0; i < m; i++) {
     y[i] = beta * y[i];
   }
 
-  for (int i = 0; i < nnz; i++) {
-    const int row = row_index[i];
+  for (INDEX_TYPE i = 0; i < nnz; i++) {
+    const INDEX_TYPE row = row_index[i];
     y[row] += alpha * value[i] * x[colindex[i]];
   }
 }
 
-void host_coo_spmv(const dtype *value, const int *row_index, const int *colindex, int m, int n, int nnz, const dtype *x,
-                   dtype *y) {
-
-  host_coo_spmv(1, 0, value, row_index, colindex, m, n, nnz, x, y);
+template <typename INDEX_TYPE, typename DATA_TYPE>
+void host_coo_spmv(const DATA_TYPE *value, const INDEX_TYPE *row_index, const INDEX_TYPE *colindex, INDEX_TYPE m,
+                   INDEX_TYPE n, INDEX_TYPE nnz, const DATA_TYPE *x, DATA_TYPE *y) {
+  host_coo_spmv<INDEX_TYPE, DATA_TYPE>(1.0, 0.0, value, row_index, colindex, m, n, nnz, x, y);
 }
+
+template void host_coo_spmv<int, double>(const double *value, const int *row_index, const int *colindex, int m, int n,
+                                         int nnz, const double *x, double *y);
+
+template void host_coo_spmv<int, float>(const float *value, const int *row_index, const int *colindex, int m, int n,
+                                        int nnz, const float *x, float *y);
+
+template void host_coo_spmv<int, double>(double alpha, double beta, const double *value, const int *row_index,
+                                         const int *colindex, int m, int n, int nnz, const double *x, double *y);
+
+template void host_coo_spmv<int, float>(float alpha, float beta, const float *value, const int *row_index,
+                                        const int *colindex, int m, int n, int nnz, const float *x, float *y);
 
 template <typename INDEX_TYPE, typename DATA_TYPE>
 void host_csr_spmv(DATA_TYPE alpha, DATA_TYPE beta, const DATA_TYPE *value, const INDEX_TYPE *rowptr,

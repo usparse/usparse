@@ -18,10 +18,14 @@ template <typename I, typename T> VerifyResult<I, T> verify_y(T *dy, T *hy, I N)
 
 void verify(double *dy, double *hy, int n);
 
-void host_coo_spmv(const dtype *value, const int *row_index, const int *colindex, int m, int n, int nnz, const dtype *x,
-                   dtype *y);
-void host_coo_spmv(dtype alpha, dtype beta, const dtype *value, const int *row_index, const int *colindex, int m, int n,
-                   int nnz, const dtype *x, dtype *y);
+template <typename INDEX_TYPE, typename DATA_TYPE>
+void host_coo_spmv(DATA_TYPE alpha, DATA_TYPE beta, const DATA_TYPE *value, const INDEX_TYPE *row_index,
+                   const INDEX_TYPE *colindex, INDEX_TYPE m, INDEX_TYPE n, INDEX_TYPE nnz, const DATA_TYPE *x,
+                   DATA_TYPE *y);
+
+template <typename INDEX_TYPE, typename DATA_TYPE>
+void host_coo_spmv(const DATA_TYPE *value, const INDEX_TYPE *row_index, const INDEX_TYPE *colindex, INDEX_TYPE m,
+                   INDEX_TYPE n, INDEX_TYPE nnz, const DATA_TYPE *x, DATA_TYPE *y);
 
 template <typename INDEX_TYPE, typename DATA_TYPE>
 void host_csr_spmv(DATA_TYPE alpha, DATA_TYPE beta, const DATA_TYPE *value, const INDEX_TYPE *rowptr,

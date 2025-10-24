@@ -9,9 +9,11 @@
 #include "../utils/timer_utils.h"
 #include "include/usparse.h"
 
-struct UsparseCoomvNaiveFlat : CooSpMV {
-  void coo_spmv_impl(int trans, const double alpha, const double beta, const usparse::coo_desc<int, double> h_coo_desc,
-                     const usparse::coo_desc<int, double> d_coo_desc, const double *x, double *y, BenchmarkTime *bmt) {
+template <typename INDEX_TYPE, typename DATA_TYPE> struct UsparseCoomvNaiveFlat : CooSpMV<INDEX_TYPE, DATA_TYPE> {
+  void coo_spmv_impl(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
+                     const usparse::coo_desc<INDEX_TYPE, DATA_TYPE> h_coo_desc,
+                     const usparse::coo_desc<INDEX_TYPE, DATA_TYPE> d_coo_desc, const DATA_TYPE *x, DATA_TYPE *y,
+                     BenchmarkTime *bmt) {
     hip::timer::event_timer calc_timer;
     calc_timer.start();
     usparse::spmv::internal::usparse_coomv_imp(usparse::usparse_operation::operation_none, alpha, beta, d_coo_desc, x,
@@ -25,9 +27,11 @@ struct UsparseCoomvNaiveFlat : CooSpMV {
   bool verify_beta_y() { return true; }
 };
 
-struct UsparseCoomvFlat : CooSpMV {
-  void coo_spmv_impl(int trans, const double alpha, const double beta, const usparse::coo_desc<int, double> h_coo_desc,
-                     const usparse::coo_desc<int, double> d_coo_desc, const double *x, double *y, BenchmarkTime *bmt) {
+template <typename INDEX_TYPE, typename DATA_TYPE> struct UsparseCoomvFlat : CooSpMV<INDEX_TYPE, DATA_TYPE> {
+  void coo_spmv_impl(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
+                     const usparse::coo_desc<int, DATA_TYPE> h_coo_desc,
+                     const usparse::coo_desc<INDEX_TYPE, DATA_TYPE> d_coo_desc, const DATA_TYPE *x, DATA_TYPE *y,
+                     BenchmarkTime *bmt) {
     hip::timer::event_timer pre_timer, calc_timer, destroy_timer;
 
     usparse::mat::usparse_mat_info info;
@@ -54,9 +58,11 @@ struct UsparseCoomvFlat : CooSpMV {
   bool verify_beta_y() { return true; }
 };
 
-struct UsparseCoomvLine_Enhance : CooSpMV {
-  void coo_spmv_impl(int trans, const double alpha, const double beta, const usparse::coo_desc<int, double> h_coo_desc,
-                     const usparse::coo_desc<int, double> d_coo_desc, const double *x, double *y, BenchmarkTime *bmt) {
+template <typename INDEX_TYPE, typename DATA_TYPE> struct UsparseCoomvLine_Enhance : CooSpMV<INDEX_TYPE, DATA_TYPE> {
+  void coo_spmv_impl(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
+                     const usparse::coo_desc<INDEX_TYPE, DATA_TYPE> h_coo_desc,
+                     const usparse::coo_desc<INDEX_TYPE, DATA_TYPE> d_coo_desc, const DATA_TYPE *x, DATA_TYPE *y,
+                     BenchmarkTime *bmt) {
     hip::timer::event_timer pre_timer, calc_timer, destroy_timer;
 
     usparse::mat::usparse_mat_info info;
@@ -83,9 +89,11 @@ struct UsparseCoomvLine_Enhance : CooSpMV {
   bool verify_beta_y() { return true; }
 };
 
-struct UsparseCoomvVector : CooSpMV {
-  void coo_spmv_impl(int trans, const double alpha, const double beta, const usparse::coo_desc<int, double> h_coo_desc,
-                     const usparse::coo_desc<int, double> d_coo_desc, const double *x, double *y, BenchmarkTime *bmt) {
+template <typename INDEX_TYPE, typename DATA_TYPE> struct UsparseCoomvVector : CooSpMV<INDEX_TYPE, DATA_TYPE> {
+  void coo_spmv_impl(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
+                     const usparse::coo_desc<INDEX_TYPE, DATA_TYPE> h_coo_desc,
+                     const usparse::coo_desc<INDEX_TYPE, DATA_TYPE> d_coo_desc, const DATA_TYPE *x, DATA_TYPE *y,
+                     BenchmarkTime *bmt) {
     hip::timer::event_timer pre_timer, calc_timer, destroy_timer;
 
     usparse::mat::usparse_mat_info info;
