@@ -10,7 +10,6 @@
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
 
-#include "clipp.h"
 #include "usparse.h"
 
 #include "coomv_statistics_logger.hpp"
@@ -19,39 +18,23 @@
 #include "matrix_format/matrix_market_reader.hpp"
 #include "matrix_format/sparse_format.h"
 
+#include "../utils/benchmark_main.hpp"
 #include "coo_spmv.hpp"
+#include "utils.hpp"
+
+UBENCH_MAIN(ubench::BENCH_FORMAT_COO);
 
 template <typename INDEX_TYPE, typename DATA_TYPE>
-void test_spmv(std::string mtx_path, type_coo h_coo, host_vectors<DATA_TYPE> h_vectors);
+void test_spmv(std::string mtx_path, coo_mtx<INDEX_TYPE, DATA_TYPE> h_coo, host_vectors<DATA_TYPE> h_vectors);
 
-int main(int argc, char **argv) {
-  std::string mtx_path = "", fmt = "mtx";
+template <typename PRECISION>
+int run_coo_benchmark(std::string mtx_path, coo_mtx<type_sparse_default_index, PRECISION> h_coo) {
+  host_vectors<PRECISION> h_vectors{};
 
-  auto cli = (clipp::value("input file", mtx_path),
-              clipp::option("-f", "--format")
-                      .doc("input matrix format, can be  `mtx` (matrix market, default) or "
-                           "`bin2` (csr binary v2; TODO:)") &
-                  clipp::value("format", fmt));
-
-  if (!parse(argc, argv, cli)) {
-    std::cout << clipp::make_man_page(cli, argv[0]);
-    return 0;
-  }
-
-  type_coo h_coo;
-  host_vectors<dtype> h_vectors{};
-
-  if (fmt == "mtx") {
-    matrix_market_reader<int, dtype> mm_reader;
-    matrix_market<int, dtype> mm = mm_reader.load_mat(mtx_path);
-    h_coo = mm.to_coo();
-
-    create_host_data(h_coo, h_vectors, true);
-    test_spmv<int, double>(mtx_path, h_coo, h_vectors);
-    destroy_host_data(h_vectors);
-  } else {
-    std::cerr << "unsupported matrix format." << std::endl;
-  }
+  create_host_data(h_coo, h_vectors, true);
+  test_spmv<type_sparse_default_index, PRECISION>(mtx_path, h_coo, h_vectors);
+  destroy_host_data(h_vectors);
+  return 0;
 }
 
 #define COOMV_BENCHMARK(instance, name, flag)                                                                          \
@@ -63,14 +46,15 @@ int main(int argc, char **argv) {
   }
 
 template <typename INDEX_TYPE, typename DATA_TYPE>
-void test_spmv(std::string mtx_path, type_coo h_coo, host_vectors<DATA_TYPE> h_vectors) {
+void test_spmv(std::string mtx_path, coo_mtx<INDEX_TYPE, DATA_TYPE> h_coo, host_vectors<DATA_TYPE> h_vectors) {
   HIP_CHECK(hipSetDevice(0));
   DATA_TYPE *dev_x, *dev_y;
-  type_coo d_coo = create_device_data(h_coo, h_vectors.hX, h_vectors.temphY, dev_x, dev_y);
-  usparse::coo_desc<INDEX_TYPE, DATA_TYPE> h_coo_desc =
-      usparse::coo_desc<INDEX_TYPE, DATA_TYPE>(h_coo.rows, h_coo.cols, h_coo.nnz, h_coo.row_index, h_coo.col_index, h_coo.values);
-  usparse::coo_desc<INDEX_TYPE, DATA_TYPE> d_coo_desc =
-      usparse::coo_desc<INDEX_TYPE, DATA_TYPE>(d_coo.rows, d_coo.cols, d_coo.nnz, d_coo.row_index, d_coo.col_index, d_coo.values);
+  coo_mtx<INDEX_TYPE, DATA_TYPE> d_coo =
+      create_device_data<INDEX_TYPE, DATA_TYPE>(h_coo, h_vectors.hX, h_vectors.temphY, dev_x, dev_y);
+  usparse::coo_desc<INDEX_TYPE, DATA_TYPE> h_coo_desc = usparse::coo_desc<INDEX_TYPE, DATA_TYPE>(
+      h_coo.rows, h_coo.cols, h_coo.nnz, h_coo.row_index, h_coo.col_index, h_coo.values);
+  usparse::coo_desc<INDEX_TYPE, DATA_TYPE> d_coo_desc = usparse::coo_desc<INDEX_TYPE, DATA_TYPE>(
+      d_coo.rows, d_coo.cols, d_coo.nnz, d_coo.row_index, d_coo.col_index, d_coo.values);
 
   // set parameters
   enum usparse::usparse_operation operation = usparse::usparse_operation::operation_none;
@@ -86,5 +70,5 @@ void test_spmv(std::string mtx_path, type_coo h_coo, host_vectors<DATA_TYPE> h_v
 #ifdef __HIP_PLATFORM_HCC__
   // rocsparse
   COOMV_BENCHMARK(RocSparseCooMV, "rocSparse-coomv", true);
-#endif//todo: destroy device data.
+#endif // todo: destroy device data.
 }
