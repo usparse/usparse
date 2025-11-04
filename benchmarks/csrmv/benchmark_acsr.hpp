@@ -13,9 +13,9 @@
 #include "utils.hpp"
 #include "utils/benchmark_time.h"
 
-struct ACSRSpMV : CsrSpMV {
-  void csr_spmv_impl(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                     const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
+template <typename I, typename T> struct ACSRSpMV : CsrSpMV<I, T> {
+  void csr_spmv_impl(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,
+                     const csr_desc<I, T> d_csr_desc, const T *x, T *y, BenchmarkTime *bmt) {
     acsr(trans, alpha, h_csr_desc, d_csr_desc, x, y, bmt);
   }
   bool verify_beta_y() { return false; }

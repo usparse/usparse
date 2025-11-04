@@ -11,16 +11,17 @@
 #include <hipsparse.h> // cusparseSpMV
 #include <rocsparse.h>
 
+#include <type_traits>
 #include <usparse_matrix.h>
 
-#include "timer/timer.h"
 #include "../utils/benchmark_time.h"
+#include "timer/timer.h"
 
-struct RocSparseVecRow : CsrSpMV {
-  void csr_spmv_impl(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                     const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
-    const double hip_alpha = static_cast<double>(alpha);
-    const double hip_beta = static_cast<double>(beta);
+template <typename I, typename T> struct RocSparseVecRow : CsrSpMV<I, T> {
+  void csr_spmv_impl(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,
+                     const csr_desc<I, T> d_csr_desc, const T *x, T *y, BenchmarkTime *bmt) {
+    const T hip_alpha = static_cast<T>(alpha);
+    const T hip_beta = static_cast<T>(beta);
     hip::timer::event_timer pre_timer, calc_timer, destroy_timer;
     pre_timer.start();
     // rocSPARSE handle
@@ -31,8 +32,13 @@ struct RocSparseVecRow : CsrSpMV {
     rocsparse_create_mat_descr(&descrA);
     pre_timer.stop();
     calc_timer.start();
-    rocsparse_dcsrmv(handle, rocsparse_operation_none, d_csr_desc.rows, d_csr_desc.cols, d_csr_desc.nnz, &hip_alpha,
-                     descrA, d_csr_desc.values, d_csr_desc.row_ptr, d_csr_desc.col_index, nullptr, x, &hip_beta, y);
+    if constexpr (std::is_same<T, float>::value) { // float
+      rocsparse_scsrmv(handle, rocsparse_operation_none, d_csr_desc.rows, d_csr_desc.cols, d_csr_desc.nnz, &hip_alpha,
+                       descrA, d_csr_desc.values, d_csr_desc.row_ptr, d_csr_desc.col_index, nullptr, x, &hip_beta, y);
+    } else { // double
+      rocsparse_dcsrmv(handle, rocsparse_operation_none, d_csr_desc.rows, d_csr_desc.cols, d_csr_desc.nnz, &hip_alpha,
+                       descrA, d_csr_desc.values, d_csr_desc.row_ptr, d_csr_desc.col_index, nullptr, x, &hip_beta, y);
+    }
     calc_timer.stop(true);
     destroy_timer.start();
     // Clear up on device
@@ -46,11 +52,11 @@ struct RocSparseVecRow : CsrSpMV {
   bool verify_beta_y() { return true; }
 };
 
-struct RocSparseAdaptive : CsrSpMV {
-  void csr_spmv_impl(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                     const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
-    const double hip_alpha = static_cast<double>(alpha);
-    const double hip_beta = static_cast<double>(beta);
+template <typename I, typename T> struct RocSparseAdaptive : CsrSpMV<I, T> {
+  void csr_spmv_impl(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,
+                     const csr_desc<I, T> d_csr_desc, const T *x, T *y, BenchmarkTime *bmt) {
+    const T hip_alpha = static_cast<T>(alpha);
+    const T hip_beta = static_cast<T>(beta);
     hip::timer::event_timer pre_timer, calc_timer, destroy_timer;
     pre_timer.start();
     // rocSPARSE handle
@@ -63,12 +69,22 @@ struct RocSparseAdaptive : CsrSpMV {
     rocsparse_mat_info info;
     rocsparse_create_mat_info(&info);
     // Analyse CSR matrix
-    rocsparse_dcsrmv_analysis(handle, rocsparse_operation_none, d_csr_desc.rows, d_csr_desc.cols, d_csr_desc.nnz,
-                              descrA, d_csr_desc.values, d_csr_desc.row_ptr, d_csr_desc.col_index, info);
+    if constexpr (std::is_same<T, float>::value) { // float
+      rocsparse_scsrmv_analysis(handle, rocsparse_operation_none, d_csr_desc.rows, d_csr_desc.cols, d_csr_desc.nnz,
+                                descrA, d_csr_desc.values, d_csr_desc.row_ptr, d_csr_desc.col_index, info);
+    } else { // double
+      rocsparse_dcsrmv_analysis(handle, rocsparse_operation_none, d_csr_desc.rows, d_csr_desc.cols, d_csr_desc.nnz,
+                                descrA, d_csr_desc.values, d_csr_desc.row_ptr, d_csr_desc.col_index, info);
+    }
     pre_timer.stop();
     calc_timer.start();
-    rocsparse_dcsrmv(handle, rocsparse_operation_none, d_csr_desc.rows, d_csr_desc.cols, d_csr_desc.nnz, &hip_alpha,
-                     descrA, d_csr_desc.values, d_csr_desc.row_ptr, d_csr_desc.col_index, info, x, &hip_beta, y);
+    if constexpr (std::is_same<T, float>::value) { // float
+      rocsparse_scsrmv(handle, rocsparse_operation_none, d_csr_desc.rows, d_csr_desc.cols, d_csr_desc.nnz, &hip_alpha,
+                       descrA, d_csr_desc.values, d_csr_desc.row_ptr, d_csr_desc.col_index, info, x, &hip_beta, y);
+    } else { // double
+      rocsparse_dcsrmv(handle, rocsparse_operation_none, d_csr_desc.rows, d_csr_desc.cols, d_csr_desc.nnz, &hip_alpha,
+                       descrA, d_csr_desc.values, d_csr_desc.row_ptr, d_csr_desc.col_index, info, x, &hip_beta, y);
+    }
     calc_timer.stop(true);
     destroy_timer.start();
     // Clear up on device

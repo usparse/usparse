@@ -12,9 +12,9 @@
 
 #include "usparse_matrix.h"
 #include "usparse_types.h"
-#include "benchmark_merge_path.hpp"
-#include "clipp.h"
 
+#include "../utils/benchmark_main.hpp"
+#include "benchmark_merge_path.hpp"
 #include "matrix_format/csr_binary_reader.hpp"
 #include "matrix_format/csr_mtx_reader.hpp"
 #include "matrix_format/matrix_market_reader.hpp"
@@ -26,82 +26,38 @@
 #include "csr_spmv.hpp"
 #include "csrmv_building_config.h"
 
-void test_spmv(std::string mtx_path, type_csr h_csr, host_vectors<dtype> h_vectors);
+UBENCH_MAIN(ubench::BENCH_FORMAT_CSR);
 
-int main(int argc, char **argv) {
-  std::string mtx_path = "", fmt = "csr";
+template <typename INDEX_TYPE, typename DATA_TYPE>
+void test_spmv(std::string mtx_path, csr_mtx<INDEX_TYPE, DATA_TYPE> h_csr, host_vectors<DATA_TYPE> h_vectors);
 
-  auto cli = (clipp::value("input file", mtx_path),
-              clipp::option("-f", "--format")
-                      .doc("input matrix format, can be `csr` (default), `mtx` (matrix market) or "
-                           "`bin2` (csr binary v2)") &
-                  clipp::value("format", fmt));
-
-  if (!parse(argc, argv, cli)) {
-    std::cout << clipp::make_man_page(cli, argv[0]);
-    return 0;
-  }
-
-  type_csr h_csr;
-  host_vectors<dtype> h_vectors{};
-  if (fmt == "csr") {
-    csr_mtx_reader<int, dtype> csr_reader(mtx_path);
-    csr_reader.fill_mtx();
-    csr_reader.close_stream();
-
-    h_csr.rows = csr_reader.rows();
-    h_csr.cols = csr_reader.cols();
-    h_csr.nnz = csr_reader.nnz();
-
-    // don't allocate new memory, just reuse memory in file parsing.
-    // array data in `h_csr` is keep in instance `csr_reader`.
-    csr_reader.as_raw_ptr(h_csr.values, h_csr.col_index, h_csr.row_ptr, h_vectors.hX);
-    create_host_data(h_csr, h_vectors);
-    test_spmv(mtx_path, h_csr, h_vectors);
-    destroy_host_data(h_vectors);
-  } else if (fmt == "bin2") {
-    csr_binary_reader<int32_t, dtype> csr_bin_reader;
-    csr_bin_reader.load_mat(mtx_path);
-    csr_bin_reader.close_stream();
-
-    h_csr.rows = csr_bin_reader.rows();
-    h_csr.cols = csr_bin_reader.cols();
-    h_csr.nnz = csr_bin_reader.nnz();
-    // just reuse memory in file reading step.
-    csr_bin_reader.as_raw_ptr(h_csr.values, h_csr.col_index, h_csr.row_ptr);
-
-    create_host_data(h_csr, h_vectors, true);
-    test_spmv(mtx_path, h_csr, h_vectors);
-    destroy_host_data(h_vectors);
-  } else if (fmt == "mtx") {
-    matrix_market_reader<int, dtype> mm_reader;
-    matrix_market<int, dtype> mm = mm_reader.load_mat(mtx_path);
-    h_csr = mm.to_csr();
-
-    create_host_data(h_csr, h_vectors, true);
-    test_spmv(mtx_path, h_csr, h_vectors);
-    destroy_host_data(h_vectors);
-  } else {
-    std::cerr << "unsupported matrix format." << std::endl;
-  }
+template <typename PRECISION>
+int run_csr_benchmark(std::string mtx_path, csr_mtx<type_sparse_default_index, PRECISION> h_csr) {
+  host_vectors<PRECISION> h_vectors{};
+  create_host_data(h_csr, h_vectors, true);
+  test_spmv<type_sparse_default_index, PRECISION>(mtx_path, h_csr, h_vectors);
+  destroy_host_data(h_vectors);
+  return 0;
 }
 
 #define SPMV_BENCHMARK(instance, name, flag)                                                                           \
   {                                                                                                                    \
-    instance ins;                                                                                                      \
+    instance<INDEX_TYPE, DATA_TYPE> ins;                                                                               \
     if (flag) {                                                                                                        \
       ins.test(mtx_path, name, operation, alpha, beta, h_csr, d_csr, h_vectors, dev_x, dev_y);                         \
     }                                                                                                                  \
   }
 
-void test_spmv(std::string mtx_path, type_csr h_csr, host_vectors<dtype> h_vectors) {
+template <typename INDEX_TYPE, typename DATA_TYPE>
+void test_spmv(std::string mtx_path, csr_mtx<INDEX_TYPE, DATA_TYPE> h_csr, host_vectors<DATA_TYPE> h_vectors) {
   HIP_CHECK(hipSetDevice(0));
-  dtype *dev_x, *dev_y;
-  type_csr d_csr = create_device_data(h_csr, h_vectors.hX, h_vectors.temphY, dev_x, dev_y);
+
+  DATA_TYPE *dev_x, *dev_y;
+  csr_mtx<INDEX_TYPE, DATA_TYPE> d_csr = create_device_data(h_csr, h_vectors.hX, h_vectors.temphY, dev_x, dev_y);
   // set parameters
   enum usparse::usparse_operation operation = usparse::usparse_operation::operation_none;
-  dtype alpha = 1.0;
-  dtype beta = 1.0;
+  DATA_TYPE alpha = 1.0;
+  DATA_TYPE beta = 1.0;
 
   statistics::print_statistics_header();
 
@@ -111,8 +67,11 @@ void test_spmv(std::string mtx_path, type_csr h_csr, host_vectors<dtype> h_vecto
   SPMV_BENCHMARK(SpMVAccFlat, "spmv-acc-flat", ENABLE_SPMV_ACC_FLAT);
   SPMV_BENCHMARK(SpMVAccFlatV2, "spmv-acc-flat-v2", ENABLE_SPMV_ACC_FLAT);
   SPMV_BENCHMARK(SpMVAccLight, "spmv-acc-light", ENABLE_SPMV_ACC_LIGHT);
-  SPMV_BENCHMARK(SpMVAccLine, "spmv-acc-line", ENABLE_SPMV_ACC_LINE);
-  SPMV_BENCHMARK(SpMVAccThreadRow, "spmv-acc-thread-row", ENABLE_SPMV_ACC_THREAD_ROW);
+  if constexpr (std::is_same<DATA_TYPE, usparse::usparse_fp32>::value) {
+    // line and thread_row only support fp32 now
+    SPMV_BENCHMARK(SpMVAccLine, "spmv-acc-line", ENABLE_SPMV_ACC_LINE);
+    SPMV_BENCHMARK(SpMVAccThreadRow, "spmv-acc-thread-row", ENABLE_SPMV_ACC_THREAD_ROW);
+  }
   SPMV_BENCHMARK(SpMVAccVecRow, "spmv-acc-vector-row", ENABLE_SPMV_ACC_VECTOR_ROW);
   SPMV_BENCHMARK(SpMVAccLineEnhance, "spmv-acc-line-enhance", ENABLE_SPMV_ACC_LE_ROW);
   SPMV_BENCHMARK(SpMVAccAdaptivePlus, "spmv-acc-adaptive-plus", ENABLE_SPMV_ACC_ADAPTIVE_PLUS);

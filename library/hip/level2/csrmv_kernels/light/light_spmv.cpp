@@ -7,15 +7,18 @@
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
 
-#include "common/macros.h"
+#include "usparse_types.h"
+
 #include "building_config.h"
+#include "common/macros.h"
 
 #define LIGHT_KERNEL_CALLER(N)                                                                                         \
-  ((spmv_light_kernel<N, __WF_SIZE__, double>) <<<256,256>>> (m, alpha, beta, hip_row_counter, rowptr, colindex, value, x, y))
+  ((spmv_light_kernel<N, __WF_SIZE__, DATA_TYPE>)<<<256, 256>>> (m, alpha, beta, hip_row_counter, rowptr, colindex, value, x, y))
 
-void light_sparse_spmv(int trans, const double alpha, const double beta, const csr_desc<int, double> d_csr_desc,
-                       const double *x, double *y) {
-  VAR_FROM_CSR_DESC(double, d_csr_desc);
+template <typename INDEX_TYPE, typename DATA_TYPE>
+void light_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
+                       const csr_desc<INDEX_TYPE, DATA_TYPE> d_csr_desc, const DATA_TYPE *x, DATA_TYPE *y) {
+  VAR_FROM_CSR_DESC(DATA_TYPE, d_csr_desc);
 
   int *hip_row_counter;
   hipMalloc((void **)&hip_row_counter, sizeof(int));
@@ -40,3 +43,13 @@ void light_sparse_spmv(int trans, const double alpha, const double beta, const c
 
   hipFree(hip_row_counter);
 }
+
+template void light_sparse_spmv<usparse::usparse_int, usparse::usparse_fp32>(
+    int trans, const usparse::usparse_fp32 alpha, const usparse::usparse_fp32 beta,
+    const csr_desc<usparse::usparse_int, usparse::usparse_fp32> d_csr_desc, const usparse::usparse_fp32 *x,
+    usparse::usparse_fp32 *y);
+
+template void light_sparse_spmv<usparse::usparse_int, usparse::usparse_fp64>(
+    int trans, const usparse::usparse_fp64 alpha, const usparse::usparse_fp64 beta,
+    const csr_desc<usparse::usparse_int, usparse::usparse_fp64> d_csr_desc, const usparse::usparse_fp64 *x,
+    usparse::usparse_fp64 *y);

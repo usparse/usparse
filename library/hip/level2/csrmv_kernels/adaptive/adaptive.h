@@ -7,7 +7,9 @@
 
 #include "usparse_matrix.h"
 
-void adaptive_sparse_spmv(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                          const csr_desc<int, double> d_csr_desc, const double *x, double *y);
+template <typename INDEX_TYPE, typename DATA_TYPE>
+void adaptive_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
+                          const csr_desc<INDEX_TYPE, DATA_TYPE> h_csr_desc,
+                          const csr_desc<INDEX_TYPE, DATA_TYPE> d_csr_desc, const DATA_TYPE *x, DATA_TYPE *y);
 
 #endif // SPMV_ACC_ADAPTIVE_H

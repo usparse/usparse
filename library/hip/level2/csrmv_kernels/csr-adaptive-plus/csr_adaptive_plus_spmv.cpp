@@ -178,6 +178,15 @@ template void csr_adaptive_plus_sparse_spmv<false, int, double>(SpMVAccHanele *h
                                                                 const csr_desc<int, double> d_csr_desc, const double *x,
                                                                 double *y);
 
+template void csr_adaptive_plus_sparse_spmv<true, int, float>(SpMVAccHanele *handle, int trans, const float alpha,
+                                                              const float beta, const csr_desc<int, float> h_csr_desc,
+                                                              const csr_desc<int, float> d_csr_desc, const float *x,
+                                                              float *y);
+template void csr_adaptive_plus_sparse_spmv<false, int, float>(SpMVAccHanele *handle, int trans, const float alpha,
+                                                               const float beta, const csr_desc<int, float> h_csr_desc,
+                                                               const csr_desc<int, float> d_csr_desc, const float *x,
+                                                               float *y);
+
 template void csr_adaptive_plus_sparse_spmv_destroy<int>(csr_adaptive_plus_analyze_info<int> info);
 
 // int VEC_SIZE, int R, int THREADS_PER_BLOCK, int MIN_NNZ_PER_BLOCK

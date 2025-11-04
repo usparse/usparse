@@ -2,12 +2,14 @@
 // Created by chu genshen on 2021/10/2.
 //
 
+#include "usparse_types.h"
+
 #include "common/macros.h"
 #include "line_enhance_spmv_imp.h"
 
-template <typename FPType>
-void line_enhance_sparse_spmv(int trans, const FPType alpha, const FPType beta, const csr_desc<int, FPType> d_csr_desc,
-                              const FPType *x, FPType *y) {
+template <typename INDEX_TYPE, typename FPType>
+void line_enhance_sparse_spmv(int trans, const FPType alpha, const FPType beta,
+                              const csr_desc<INDEX_TYPE, FPType> d_csr_desc, const FPType *x, FPType *y) {
   constexpr int R = 2;
   constexpr int ROWS_PER_BLOCK = 32; // note: make sure ROWS_PER_BLOCK * VEC_SIZE <= THREADS_PER_BLOCK.
 
@@ -21,9 +23,9 @@ void line_enhance_sparse_spmv(int trans, const FPType alpha, const FPType beta, 
   LINE_ENHANCE_KERNEL_WRAPPER(FPType, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS, THREADS_PER_BLOCK);
 }
 
-template <typename FPType>
+template <typename INDEX_TYPE, typename FPType>
 void adaptive_enhance_sparse_spmv(int trans, const FPType alpha, const FPType beta,
-                                  const csr_desc<int, FPType> d_csr_desc, const FPType *x, FPType *y) {
+                                  const csr_desc<INDEX_TYPE, FPType> d_csr_desc, const FPType *x, FPType *y) {
   // common parameters:
   VAR_FROM_CSR_DESC(FPType, d_csr_desc)
   constexpr int THREADS_PER_BLOCK = 512;
@@ -71,8 +73,22 @@ void adaptive_enhance_sparse_spmv(int trans, const FPType alpha, const FPType be
   }
 }
 
-template void adaptive_enhance_sparse_spmv<double>(int trans, const double alpha, const double beta,
-                                                   const csr_desc<int, double> d_csr_desc, const double *x, double *y);
+template void line_enhance_sparse_spmv<usparse::usparse_int, usparse::usparse_fp32>(
+    int trans, const usparse::usparse_fp32 alpha, const usparse::usparse_fp32 beta,
+    const csr_desc<usparse::usparse_int, usparse::usparse_fp32> d_csr_desc, const usparse::usparse_fp32 *x,
+    usparse::usparse_fp32 *y);
 
-template void adaptive_enhance_sparse_spmv<float>(int trans, const float alpha, const float beta,
-                                                  const csr_desc<int, float> d_csr_desc, const float *x, float *y);
+template void line_enhance_sparse_spmv<usparse::usparse_int, usparse::usparse_fp64>(
+    int trans, const usparse::usparse_fp64 alpha, const usparse::usparse_fp64 beta,
+    const csr_desc<usparse::usparse_int, usparse::usparse_fp64> d_csr_desc, const usparse::usparse_fp64 *x,
+    usparse::usparse_fp64 *y);
+
+template void adaptive_enhance_sparse_spmv<usparse::usparse_int, usparse::usparse_fp64>(
+    int trans, const usparse::usparse_fp64 alpha, const usparse::usparse_fp64 beta,
+    const csr_desc<usparse::usparse_int, usparse::usparse_fp64> d_csr_desc, const usparse::usparse_fp64 *x,
+    usparse::usparse_fp64 *y);
+
+template void adaptive_enhance_sparse_spmv<usparse::usparse_int, usparse::usparse_fp32>(
+    int trans, const usparse::usparse_fp32 alpha, const usparse::usparse_fp32 beta,
+    const csr_desc<usparse::usparse_int, usparse::usparse_fp32> d_csr_desc, const usparse::usparse_fp32 *x,
+    usparse::usparse_fp32 *y);

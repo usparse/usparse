@@ -24,9 +24,9 @@
 
 #include "../../library/internal/usparse_internal.h"
 
-struct SpMVAccAdaptive : CsrSpMV {
-  void csr_spmv_impl(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                     const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
+template <typename I, typename T> struct SpMVAccAdaptive : CsrSpMV<I, T> {
+  void csr_spmv_impl(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,
+                     const csr_desc<I, T> d_csr_desc, const T *x, T *y, BenchmarkTime *bmt) {
     hip::timer::event_timer calc_timer;
     calc_timer.start();
     adaptive_sparse_spmv(trans, alpha, beta, h_csr_desc, d_csr_desc, x, y);
@@ -39,35 +39,33 @@ struct SpMVAccAdaptive : CsrSpMV {
   bool verify_beta_y() { return true; }
 };
 
-struct SpMVAccFlat : CsrSpMV {
-  void csr_spmv_impl(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                     const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
-    flat_sparse_spmv<int, double, FLAT_PRE_CALC_BP_KERNEL_VERSION_V1>(trans, alpha, beta, h_csr_desc, d_csr_desc, x, y,
-                                                                      bmt);
+template <typename I, typename T> struct SpMVAccFlat : CsrSpMV<I, T> {
+  void csr_spmv_impl(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,
+                     const csr_desc<I, T> d_csr_desc, const T *x, T *y, BenchmarkTime *bmt) {
+    flat_sparse_spmv<I, T, FLAT_PRE_CALC_BP_KERNEL_VERSION_V1>(trans, alpha, beta, h_csr_desc, d_csr_desc, x, y, bmt);
   }
   bool verify_beta_y() { return true; }
 };
 
-struct SpMVAccFlatV2 : CsrSpMV {
-  void csr_spmv_impl(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                     const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
-    flat_sparse_spmv<int, double, FLAT_PRE_CALC_BP_KERNEL_VERSION_V2>(trans, alpha, beta, h_csr_desc, d_csr_desc, x, y,
-                                                                      bmt);
+template <typename I, typename T> struct SpMVAccFlatV2 : CsrSpMV<I, T> {
+  void csr_spmv_impl(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,
+                     const csr_desc<I, T> d_csr_desc, const T *x, T *y, BenchmarkTime *bmt) {
+    flat_sparse_spmv<I, T, FLAT_PRE_CALC_BP_KERNEL_VERSION_V2>(trans, alpha, beta, h_csr_desc, d_csr_desc, x, y, bmt);
   }
   bool verify_beta_y() { return true; }
 };
 
-struct SpMVAccFlatSegSum : CsrSpMV {
-  void csr_spmv_impl(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                     const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
-    segment_sum_flat_sparse_spmv<int, double>(trans, alpha, beta, h_csr_desc, d_csr_desc, x, y, bmt);
+template <typename I, typename T> struct SpMVAccFlatSegSum : CsrSpMV<I, T> {
+  void csr_spmv_impl(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,
+                     const csr_desc<I, T> d_csr_desc, const T *x, T *y, BenchmarkTime *bmt) {
+    segment_sum_flat_sparse_spmv<I, T>(trans, alpha, beta, h_csr_desc, d_csr_desc, x, y, bmt);
   }
   bool verify_beta_y() { return true; }
 };
 
-struct SpMVAccLight : CsrSpMV {
-  void csr_spmv_impl(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                     const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
+template <typename I, typename T> struct SpMVAccLight : CsrSpMV<I, T> {
+  void csr_spmv_impl(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,
+                     const csr_desc<I, T> d_csr_desc, const T *x, T *y, BenchmarkTime *bmt) {
     hip::timer::event_timer calc_timer;
     calc_timer.start();
     light_sparse_spmv(trans, alpha, beta, d_csr_desc, x, y);
@@ -80,9 +78,9 @@ struct SpMVAccLight : CsrSpMV {
   bool verify_beta_y() { return true; }
 };
 
-struct SpMVAccLine : CsrSpMV {
-  void csr_spmv_impl(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                     const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
+template <typename I, typename T> struct SpMVAccLine : CsrSpMV<I, T> {
+  void csr_spmv_impl(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,
+                     const csr_desc<I, T> d_csr_desc, const T *x, T *y, BenchmarkTime *bmt) {
     hip::timer::event_timer calc_timer;
     calc_timer.start();
     adaptive_line_sparse_spmv(trans, alpha, beta, d_csr_desc, x, y);
@@ -95,9 +93,9 @@ struct SpMVAccLine : CsrSpMV {
   bool verify_beta_y() { return true; }
 };
 
-struct SpMVAccThreadRow : CsrSpMV {
-  void csr_spmv_impl(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                     const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
+template <typename I, typename T> struct SpMVAccThreadRow : CsrSpMV<I, T> {
+  void csr_spmv_impl(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,
+                     const csr_desc<I, T> d_csr_desc, const T *x, T *y, BenchmarkTime *bmt) {
     hip::timer::event_timer calc_timer;
     calc_timer.start();
     thread_row_sparse_spmv(trans, alpha, beta, d_csr_desc, x, y);
@@ -110,9 +108,9 @@ struct SpMVAccThreadRow : CsrSpMV {
   bool verify_beta_y() { return true; }
 };
 
-struct SpMVAccVecRow : CsrSpMV {
-  void csr_spmv_impl(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                     const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
+template <typename I, typename T> struct SpMVAccVecRow : CsrSpMV<I, T> {
+  void csr_spmv_impl(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,
+                     const csr_desc<I, T> d_csr_desc, const T *x, T *y, BenchmarkTime *bmt) {
     hip::timer::event_timer calc_timer;
     calc_timer.start();
     usparse::spmv::internal::usparse_csrmv_imp(usparse::usparse_operation::operation_none, alpha, beta, d_csr_desc, x,
@@ -126,9 +124,9 @@ struct SpMVAccVecRow : CsrSpMV {
   bool verify_beta_y() { return true; }
 };
 
-struct SpMVAccLineEnhance : CsrSpMV {
-  void csr_spmv_impl(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                     const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
+template <typename I, typename T> struct SpMVAccLineEnhance : CsrSpMV<I, T> {
+  void csr_spmv_impl(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,
+                     const csr_desc<I, T> d_csr_desc, const T *x, T *y, BenchmarkTime *bmt) {
     hip::timer::event_timer calc_timer;
     calc_timer.start();
     usparse::spmv::internal::usparse_csrmv_imp(usparse::usparse_operation::operation_none, alpha, beta, d_csr_desc, x,
@@ -142,11 +140,11 @@ struct SpMVAccLineEnhance : CsrSpMV {
   bool verify_beta_y() { return true; }
 };
 
-struct SpMVAccAdaptivePlus : CsrSpMV {
-  void csr_spmv_impl(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                     const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
+template <typename I, typename T> struct SpMVAccAdaptivePlus : CsrSpMV<I, T> {
+  void csr_spmv_impl(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,
+                     const csr_desc<I, T> d_csr_desc, const T *x, T *y, BenchmarkTime *bmt) {
     SpMVAccHanele handle;
-    csr_adaptive_plus_sparse_spmv<true, int, double>(&handle, trans, alpha, beta, h_csr_desc, d_csr_desc, x, y);
+    csr_adaptive_plus_sparse_spmv<true, I, T>(&handle, trans, alpha, beta, h_csr_desc, d_csr_desc, x, y);
 
     double pre_time_cost = handle.profile_analyze_time;
     double calc_time_cost = handle.profile_kernel_time;

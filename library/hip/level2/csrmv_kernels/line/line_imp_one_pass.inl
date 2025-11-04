@@ -86,8 +86,4 @@ line_one_pass_kernel(const I block_thread_num, const I block_thread_id, const I 
   y[reduce_row_id] = alpha * sum + y[reduce_row_id];
 }
 
-#define LINE_ONE_PASS_KERNEL_WRAPPER(N, BLOCK_LDS_SIZE, BLOCKS, THREADS)                                               \
-  (spmv_line_one_pass_kernel<N, BLOCK_LDS_SIZE, int, double>)<<<BLOCKS, THREADS>>>(m, alpha, beta, rowptr, colindex,   \
-                                                                                   value, x, y)
-
 #endif // LINE_IMP_ONE_PASS_INL

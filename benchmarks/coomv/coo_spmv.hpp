@@ -21,7 +21,13 @@
 #include "utils.hpp"
 #include "verification.h"
 
-struct CooSpMV {
+/**
+ * The base class for Coomv benchmark.
+ * each algorithm is based on this class and implement the coo_spmv_impl function.
+ * @tparam INDEX_TYPE type for index.
+ * @tparam DATA_TYPE type for data in the sparse matrix.
+ */
+template <typename INDEX_TYPE, typename DATA_TYPE> struct CooSpMV {
   /**
    * function returning a flag for if to support alpha and beta.
    * true: calculate y = alpha*A*x + beta*y, false calculate: y = A*x
@@ -39,19 +45,20 @@ struct CooSpMV {
    * @param y device vector y.
    * @param bmt spmv elapsed time
    */
-  virtual void coo_spmv_impl(int trans, const double alpha, const double beta,
-                             const usparse::coo_desc<int, double> h_coo_desc,
-                             const usparse::coo_desc<int, double> d_coo_desc, const double *x, double *y,
-                             BenchmarkTime *bmt) = 0;
+  virtual void coo_spmv_impl(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
+                             const usparse::coo_desc<INDEX_TYPE, DATA_TYPE> h_coo_desc,
+                             const usparse::coo_desc<INDEX_TYPE, DATA_TYPE> d_coo_desc, const DATA_TYPE *x,
+                             DATA_TYPE *y, BenchmarkTime *bmt) = 0;
 
   void test(std::string mtx_path, const std::string &strategy_name, enum usparse::usparse_operation operation,
-            dtype alpha, dtype beta, usparse::coo_desc<int, dtype> h_coo_desc, usparse::coo_desc<int, dtype> d_coo_desc,
-            host_vectors<dtype> h_vectors, dtype *&dev_x, dtype *&dev_y) {
+            DATA_TYPE alpha, DATA_TYPE beta, usparse::coo_desc<INDEX_TYPE, DATA_TYPE> h_coo_desc,
+            usparse::coo_desc<INDEX_TYPE, DATA_TYPE> d_coo_desc, host_vectors<DATA_TYPE> h_vectors, DATA_TYPE *&dev_x,
+            DATA_TYPE *&dev_y) {
     BenchmarkTimeArray bmt_array;
     // warm up GPU
     for (int i = 0; i < 10; ++i) {
       // call sparse spmv
-      HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_coo_desc.rows * sizeof(dtype), hipMemcpyHostToDevice))
+      HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_coo_desc.rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
       try {
         coo_spmv_impl(operation, alpha, beta, h_coo_desc, d_coo_desc, dev_x, dev_y, nullptr);
       } catch (const std::runtime_error &error) {
@@ -59,8 +66,8 @@ struct CooSpMV {
         std::cout << "error occur, return" << std::endl;
         std::cerr << error.what() << std::endl;
         hipDeviceSynchronize();
-        memcpy(h_vectors.hhY, h_vectors.temphY, d_coo_desc.rows * sizeof(dtype));
-        HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_coo_desc.rows * sizeof(dtype), hipMemcpyHostToDevice))
+        memcpy(h_vectors.hhY, h_vectors.temphY, d_coo_desc.rows * sizeof(DATA_TYPE));
+        HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_coo_desc.rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
         return;
       }
     }
@@ -69,7 +76,7 @@ struct CooSpMV {
     // execute device SpMV
     for (int i = 0; i < BENCHMARK_ARRAY_SIZE; i++) {
       BenchmarkTime bmt;
-      HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_coo_desc.rows * sizeof(dtype), hipMemcpyHostToDevice))
+      HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_coo_desc.rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
       hipDeviceSynchronize();
       coo_spmv_impl(operation, alpha, beta, h_coo_desc, d_coo_desc, dev_x, dev_y, &bmt);
       hipDeviceSynchronize();
@@ -77,10 +84,10 @@ struct CooSpMV {
     }
 
     // device result check
-    HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, h_coo_desc.rows * sizeof(dtype), hipMemcpyHostToDevice))
+    HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, h_coo_desc.rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
     coo_spmv_impl(operation, alpha, beta, h_coo_desc, d_coo_desc, dev_x, dev_y, nullptr);
     hipDeviceSynchronize();
-    HIP_CHECK(hipMemcpy(h_vectors.hY, dev_y, d_coo_desc.rows * sizeof(dtype), hipMemcpyDeviceToHost));
+    HIP_CHECK(hipMemcpy(h_vectors.hY, dev_y, d_coo_desc.rows * sizeof(DATA_TYPE), hipMemcpyDeviceToHost));
 
     // host side verification
     if (verify_beta_y()) {
@@ -93,12 +100,12 @@ struct CooSpMV {
                     h_coo_desc.nnz, h_vectors.hX, h_vectors.hhY);
     }
 
-    const VerifyResult<int, double> verify_result = verify_y(h_vectors.hY, h_vectors.hhY, h_coo_desc.rows);
-    statistics::print_coomv_statistics<dtype>(mtx_path, strategy_name, h_coo_desc.rows, h_coo_desc.cols, h_coo_desc.nnz,
-                                              bmt_array.get_mid_time(), verify_result);
+    const VerifyResult<INDEX_TYPE, DATA_TYPE> verify_result = verify_y(h_vectors.hY, h_vectors.hhY, h_coo_desc.rows);
+    statistics::print_coomv_statistics<DATA_TYPE>(mtx_path, strategy_name, h_coo_desc.rows, h_coo_desc.cols,
+                                                  h_coo_desc.nnz, bmt_array.get_mid_time(), verify_result);
 
-    memcpy(h_vectors.hhY, h_vectors.temphY, d_coo_desc.rows * sizeof(dtype));
-    HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_coo_desc.rows * sizeof(dtype), hipMemcpyHostToDevice))
+    memcpy(h_vectors.hhY, h_vectors.temphY, d_coo_desc.rows * sizeof(DATA_TYPE));
+    HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_coo_desc.rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
   }
 };
 
