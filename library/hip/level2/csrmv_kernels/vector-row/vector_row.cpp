@@ -49,6 +49,10 @@ template void adaptive_vec_row_sparse_spmv<double>(const int weight_block_0, con
                                                    const double alpha, const double beta,
                                                    const csr_desc<int, double> d_csr_desc, const double *x, double *y);
 
+template void adaptive_vec_row_sparse_spmv<float>(const int weight_block_0, const int weight_block_1, int trans,
+                                                   const float alpha, const float beta,
+                                                   const csr_desc<int, float> d_csr_desc, const float *x, float *y);
+
 template void vec_row_sparse_spmv<double>(int trans, const double alpha, const double beta,
                                           const csr_desc<int, double> d_csr_desc, const double *x, double *y);
 

@@ -10,18 +10,18 @@
 
 #include "../utils/benchmark_time.h"
 #include "../utils/timer_utils.h"
+#include "benchmark_config.h"
 #include "common/macros.h"
 #include "level2/csrmv_kernels/flat/flat_config.h"
 #include "level2/csrmv_kernels/flat/spmv_hip_acc_imp.h"
 #include "spmv_acc_flat.h"
 #include "timer/timer.h"
-#include "benchmark_config.h"
 
 template <typename INDEX_TYPE, typename DATA_TYPE, int R, int REDUCE_OPTION, int REDUCE_VEC_SIZE, int BLOCKS,
           int THREADS_PER_BLOCK>
-inline void flat_multi_pass_sparse_spmv(int trans, const double alpha, const double beta, int m, int n, int nnz,
-                                        const int *rowptr, const int *colindex, const double *value, const double *x,
-                                        double *y, BenchmarkTime *bmt) {
+inline void flat_multi_pass_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta, int m, int n, int nnz,
+                                        const int *rowptr, const int *colindex, const DATA_TYPE *value,
+                                        const DATA_TYPE *x, DATA_TYPE *y, BenchmarkTime *bmt) {
   hip::timer::event_timer pre_timer, calc_timer;
   pre_timer.start();
   int *break_points;
@@ -45,9 +45,9 @@ inline void flat_multi_pass_sparse_spmv(int trans, const double alpha, const dou
 
 template <typename INDEX_TYPE, typename DATA_TYPE, int R, int REDUCE_OPTION, int REDUCE_VEC_SIZE, int THREADS_PER_BLOCK,
           int FLAT_PRE_CALC_BP_KERNEL_VERSION>
-inline void flat_one_pass_sparse_spmv(int trans, const double alpha, const double beta, int m, int n, int nnz,
-                                      const int *rowptr, const int *colindex, const double *value, const double *x,
-                                      double *y, BenchmarkTime *bmt) {
+inline void flat_one_pass_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta, int m, int n, int nnz,
+                                      const int *rowptr, const int *colindex, const DATA_TYPE *value,
+                                      const DATA_TYPE *x, DATA_TYPE *y, BenchmarkTime *bmt) {
   hip::timer::event_timer pre_timer, calc_timer;
   pre_timer.start();
   // each block can process `R*THREADS_PER_BLOCK` non-zeros.
@@ -175,9 +175,24 @@ template void flat_sparse_spmv<int, double, FLAT_PRE_CALC_BP_KERNEL_VERSION_V2>(
                                                                                 const double *, double *,
                                                                                 BenchmarkTime *);
 
+template void flat_sparse_spmv<int, float, FLAT_PRE_CALC_BP_KERNEL_VERSION_V1>(int, const float, const float,
+                                                                               const csr_desc<int, float>,
+                                                                               const csr_desc<int, float>,
+                                                                               const float *, float *, BenchmarkTime *);
+
+template void flat_sparse_spmv<int, float, FLAT_PRE_CALC_BP_KERNEL_VERSION_V2>(int, const float, const float,
+                                                                               const csr_desc<int, float>,
+                                                                               const csr_desc<int, float>,
+                                                                               const float *, float *, BenchmarkTime *);
+
 template void segment_sum_flat_sparse_spmv<int, double>(int trans, const double alpha, const double beta,
                                                         const csr_desc<int, double> h_csr_desc,
                                                         const csr_desc<int, double> d_csr_desc, const double *x,
                                                         double *y, BenchmarkTime *bmt);
+
+template void segment_sum_flat_sparse_spmv<int, float>(int trans, const float alpha, const float beta,
+                                                       const csr_desc<int, float> h_csr_desc,
+                                                       const csr_desc<int, float> d_csr_desc, const float *x, float *y,
+                                                       BenchmarkTime *bmt);
 
 #endif // SPMV_ACC_BENCHMARK_SPMV_ACC_FLAT_HPP

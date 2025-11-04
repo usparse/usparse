@@ -5,6 +5,8 @@
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
 
+#include "usparse_types.h"
+
 #include "../flat/spmv_hip_acc_imp.h"
 #include "../line-enhance/line_enhance_spmv.h"
 #include "../line/line_strategy.h"
@@ -13,9 +15,11 @@
 
 #include "common/macros.h"
 
-void adaptive_sparse_spmv(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                          const csr_desc<int, double> d_csr_desc, const double *x, double *y) {
-  VAR_FROM_CSR_DESC(double, d_csr_desc);
+template <typename INDEX_TYPE, typename DATA_TYPE>
+void adaptive_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
+                          const csr_desc<INDEX_TYPE, DATA_TYPE> h_csr_desc,
+                          const csr_desc<INDEX_TYPE, DATA_TYPE> d_csr_desc, const DATA_TYPE *x, DATA_TYPE *y) {
+  VAR_FROM_CSR_DESC(DATA_TYPE, d_csr_desc);
   const int n = d_csr_desc.cols;
 
   // 0. sampling and data block dividing.
@@ -67,3 +71,15 @@ void adaptive_sparse_spmv(int trans, const double alpha, const double beta, cons
   // 5. use vector-row method for small data set.
   line_enhance_sparse_spmv(trans, alpha, beta, d_csr_desc, x, y);
 }
+
+template void adaptive_sparse_spmv<usparse::usparse_int, usparse::usparse_fp32>(
+    int trans, const usparse::usparse_fp32 alpha, const usparse::usparse_fp32 beta,
+    const csr_desc<usparse::usparse_int, usparse::usparse_fp32> h_csr_desc,
+    const csr_desc<usparse::usparse_int, usparse::usparse_fp32> d_csr_desc, const usparse::usparse_fp32 *x,
+    usparse::usparse_fp32 *y);
+
+template void adaptive_sparse_spmv<usparse::usparse_int, usparse::usparse_fp64>(
+    int trans, const usparse::usparse_fp64 alpha, const usparse::usparse_fp64 beta,
+    const csr_desc<usparse::usparse_int, usparse::usparse_fp64> h_csr_desc,
+    const csr_desc<usparse::usparse_int, usparse::usparse_fp64> d_csr_desc, const usparse::usparse_fp64 *x,
+    usparse::usparse_fp64 *y);

@@ -23,11 +23,13 @@ template <int ROW_SIZE, int MAX_ROW_NNZ, int THREADS, int WF_SIZE, int VECTOR_SI
 __global__ void spmv_adaptive_line_kernel(const I m, const T alpha, const T beta, const I *row_offset,
                                           const I *csr_col_ind, const T *csr_val, const T *x, T *y);
 
-void adaptive_line_sparse_spmv(int trans, const double alpha, const double beta, const csr_desc<int, double> d_csr_desc,
-                               const double *x, double *y);
+template <typename INDEX_TYPE, typename DATA_TYPE>
+void adaptive_line_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
+                               const csr_desc<INDEX_TYPE, DATA_TYPE> d_csr_desc, const DATA_TYPE *x, DATA_TYPE *y);
 
-void line_sparse_spmv(int trans, const double alpha, const double beta, const csr_desc<int, double> d_csr_desc,
-                      const double *x, double *y);
+template <typename INDEX_TYPE, typename DATA_TYPE>
+void line_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
+                      const csr_desc<INDEX_TYPE, DATA_TYPE> d_csr_desc, const DATA_TYPE *x, DATA_TYPE *y);
 
 #include "line_adaptive_one_pass.inl"
 #include "line_imp_one_pass.inl"

@@ -37,7 +37,7 @@ usparse::usparse_status usparse::spmv::internal::usparse_csrmv_imp(
     adaptive_flat_sparse_spmv<DATA_TYPE, BETA_Y_POLICY_AUTO>(trans, alpha, beta, dev_csr_mat, x, y,
                                                              info->csrmv_info->flat_info);
   } else if (algo == usparse::spmv::usparse_csrmv_algorithms::LineEnhance) {
-    adaptive_enhance_sparse_spmv<DATA_TYPE>(trans, alpha, beta, dev_csr_mat, x, y);
+    adaptive_enhance_sparse_spmv<INDEX_TYPE, DATA_TYPE>(trans, alpha, beta, dev_csr_mat, x, y);
   } else if (algo == usparse::spmv::usparse_csrmv_algorithms::CsrVector) {
     vec_row_sparse_spmv<DATA_TYPE>(trans, alpha, beta, dev_csr_mat, x, y);
   }
