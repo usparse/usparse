@@ -7,6 +7,26 @@
 
 namespace usparse {
 
+  template <typename INDEX_TYPE, typename DATA_TYPE>
+  void device_calculateNorm(const DATA_TYPE *d_vec, INDEX_TYPE N, DATA_TYPE *d_result, DATA_TYPE *d_temp_buffer,
+                            std::size_t *temp_buffer_size_byte);
+
+  template <typename INDEX_TYPE, typename DATA_TYPE>
+  void device_dotProduct(const DATA_TYPE *d_x, const DATA_TYPE *d_y, INDEX_TYPE N, DATA_TYPE *d_result,
+                         DATA_TYPE *d_temp_buffer, std::size_t *temp_buffer_size_byte);
+
+  /**
+   * perform: y = y + alpha * x, where x and y are both vectors of size N.
+   * @tparam INDEX_TYPE index data type.
+   * @tparam DATA_TYPE data type in the vector.
+   * @param alpha alpha
+   * @param x input vector of size N.
+   * @param y input and output vector of size N.
+   * @param N the vector size.
+   */
+  template <typename INDEX_TYPE, typename F_TYPE, typename DATA_TYPE>
+  void device_daxpy(DATA_TYPE alpha, const F_TYPE *x, DATA_TYPE *y, const INDEX_TYPE N);
+
   /**
    * perform: x = alpha * x, where x is a vector of size N.
    * @tparam INDEX_TYPE index data type.
@@ -17,6 +37,50 @@ namespace usparse {
    */
   template <typename INDEX_TYPE, typename DATA_TYPE>
   void device_dscal(const DATA_TYPE alpha, DATA_TYPE *x, const INDEX_TYPE N);
+
+  /**
+   * copy vector of size N from dst to src.
+   * @tparam INDEX_TYPE index data type.
+   * @tparam DATA_TYPE data type in the vector.
+   * @param src input source vector of size N.
+   * @param dst output destination vector of size N.
+   * @param N the vector size.
+   */
+  template <typename INDEX_TYPE, typename DATA_TYPE>
+  void device_dcopy(const DATA_TYPE *src, DATA_TYPE *dst, const INDEX_TYPE N);
+
+  /**
+   * copy vector of size N from dst to src. and multiple a scale.
+   * dst = alpha * src.
+   * @tparam INDEX_TYPE index data type.
+   * @tparam DATA_TYPE data type in the vector.
+   * @param src input source vector of size N.
+   * @param dst output destination vector of size N.
+   * @param N the vector size.
+   */
+  template <typename INDEX_TYPE, typename DATA_TYPE>
+  void device_copy_v2(const DATA_TYPE *src, DATA_TYPE *dst, const DATA_TYPE alpha, const INDEX_TYPE N);
+
+  /**
+   * Forced conversion precision from dst to src.
+   * @tparam INDEX_TYPE index data type.
+   * @tparam FOREM_TYPE data type of src.
+   * @tparam TO_TYPE data type of dst.
+   * @param src input source vector of size N.
+   * @param dst output destination vector of size N.
+   * @param N the vector size.
+   */
+  template <typename INDEX_TYPE, typename FORM_TYPE, typename TO_TYPE>
+  void device_cast(const FORM_TYPE *src, TO_TYPE *dst, const INDEX_TYPE N);
+
+  /**
+   * Set the value of src to 0.0
+   * @tparam INDEX_TYPE index data type.
+   * @tparam DATA_TYPE data type of src.
+   * @param src input source vector of size N.
+   * @param N the vector size.
+   */
+  template <typename INDEX_TYPE, typename DATA_TYPE> void device_memset(DATA_TYPE *src, const INDEX_TYPE N);
 
   /**
    * set all elements in a vector to the given scale value: alpha.

@@ -10,7 +10,7 @@
 #include "gmres_optimization_config.h"
 
 #include "kernels/gmres-big-fusion/gmres_big_fusion.hpp"
-#include "kernels/level1/usparse_level1.h"
+#include "kernels/level1/usparse_dotprod_axpy_fusion.h"
 #include "kernels/level2/usparse_csrmv.h"
 #include "kernels/level2/usparse_rotation.h"
 #include "kernels/level2/usparse_solver_tri.h"
