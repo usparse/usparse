@@ -11,7 +11,7 @@
 #include <rocsparse/rocsparse.h>
 
 #include "tests_utils.hpp"
-#include "usparse_gmres.h"
+#include "kernels/usparse_gmres.h"
 
 double dotProduct(const double *x, const double *y, uint N) {
   double sum = 0.0;

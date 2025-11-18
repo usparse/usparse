@@ -17,8 +17,6 @@ set(USPARSE_TUNER_SOURCE_FILES ${USPARSE_TUNER_SOURCE_FILES}
         usparse_tuner.cc
 )
 
-set(USPARSE_TUNER_LIB_NAME usparse_tuning)
-
 add_library(${USPARSE_TUNER_LIB_NAME} STATIC ${USPARSE_TUNER_SOURCE_FILES} ${USPARSE_TUNER_HEADER_FILES})
 target_include_directories(
         ${USPARSE_TUNER_LIB_NAME}

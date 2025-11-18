@@ -5,6 +5,8 @@
 #ifndef USPARSE_KERNELS__GMRES_BIG_FUSION_HPP
 #define USPARSE_KERNELS__GMRES_BIG_FUSION_HPP
 
+#include "primitives/reduce/device/usparse_reduce.hpp"
+
 namespace usparse {
   namespace gmres {
 

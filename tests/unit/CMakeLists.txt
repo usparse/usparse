@@ -23,7 +23,8 @@ target_link_libraries(
         usparse_test
         GTest::gtest_main
         roc::rocsparse
-        ${USPARSE_KERNEL_LIB_NAME}        
+        ${USPARSE_GMRES_KERNEL_LIB_NAME}
+        ${USPARSE_LIB_NAME}
 )
 
 include(GoogleTest)

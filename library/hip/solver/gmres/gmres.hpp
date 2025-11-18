@@ -1,14 +1,14 @@
 #ifndef GMRES_H
 #define GMRES_H
+
 #include <iostream>
 #include <stdio.h>
 #include <tuple>
 #include <vector>
 
-#include "init.hpp"
-#include "sparseMatrix.hpp"
-#include "verification.hpp"
 #include <hip/hip_runtime.h>
+
+#include "sparseMatrix.hpp"
 
 using RESULT = std::tuple<int, float, double>;
 

@@ -10,7 +10,7 @@
 
 #include <hip/hip_cooperative_groups.h>
 
-#include "kernels/usparse_config.hpp"
+#include "include/usparse_config.hpp"
 
 // source from: https://git.hpcer.dev/PRA/spmv/spmv-acc/-/blob/main/src/acc/common/utils.h
 // and https://git.hpcer.dev/PRA/spmv/spmv-acc/-/blob/main/src/acc/hip-csr-adaptive-plus/csr_adaptive_plus_spmv_imp.inl

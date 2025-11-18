@@ -1,7 +1,7 @@
 if(USPARSE_UNIT_TEST_ENABLE)
     add_subdirectory(unit)
 endif()
-if(USPARSE_BENCHMARK_ENABLE)
+if(USPARSE_BENCHMARK_TESTS_ENABLE)
     add_subdirectory(benchmark)
 endif()
 if(USPARSE_AUTO_TUNER_ENABLE)

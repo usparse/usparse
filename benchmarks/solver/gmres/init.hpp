@@ -12,7 +12,7 @@
 // #include "hip/hip_runtime_api.h"
 
 #include "sparseMatrix.hpp"
-#include "usparse_gmres.h"
+#include "kernels/usparse_gmres.h"
 
 using RESULT = std::tuple<int, float, double>;
 

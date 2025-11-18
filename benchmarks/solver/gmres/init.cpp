@@ -1,6 +1,6 @@
 #include "init.hpp"
-#include "gmres_optimization_config.h"
-#include "usparse_gmres.h"
+#include "kernels/gmres_optimization_config.h"
+#include "kernels/usparse_gmres.h"
 #include <sys/types.h>
 
 void init_device_data(SpM<double> *h_A, double *h_x, SpM<double> *dev_A, double **dev_x, double **dev_y,

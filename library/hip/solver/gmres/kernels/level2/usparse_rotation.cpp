@@ -5,7 +5,7 @@
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
 
-#include "usparse_utils.hpp"
+#include "common/usparse_utils.hpp"
 #include "usparse_rotation.h"
 
 namespace usparse {

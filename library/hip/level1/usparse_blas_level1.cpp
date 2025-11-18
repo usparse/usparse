@@ -5,8 +5,8 @@
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
 
-#include "kernels/primitives/usparse_reduce.hpp"
-#include "kernels/usparse_config.hpp"
+#include "primitives/reduce/device/usparse_reduce.hpp"
+#include "include/usparse_config.hpp"
 #include "usparse_blas_level1.h"
 
 namespace usparse {

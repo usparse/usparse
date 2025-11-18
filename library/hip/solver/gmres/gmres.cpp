@@ -1,5 +1,4 @@
-#include "gmres.hpp"
-#include "sparseMatrix.hpp"
+
 #include <assert.h>
 #include <cassert>
 #include <chrono>
@@ -11,10 +10,17 @@
 
 #include <hip/hip_runtime.h>
 
-#include "gmres_optimization_config.h"
-#include "gmres_utils.hpp"
-#include "init.hpp"
-#include "usparse_gmres.h"
+#include "usparse_matrix.h"
+
+#include "kernels/gmres_optimization_config.h"
+#include "gmres.hpp"
+#include "sparseMatrix.hpp"
+#include "kernels/usparse_gmres.h"
+#include "level1/usparse_blas_level1.h"
+
+#include "../../benchmarks/solver/gmres/init.hpp"
+#include "../../benchmarks/solver/gmres/gmres_utils.hpp"
+#include "../../benchmarks/solver/gmres/verification.hpp"
 
 using namespace std;
 
@@ -131,7 +137,7 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
     // copy x from host to device
 
     // compute y = AX
-    device_adaptive_spmv<int, double, BEAT_Y_POLICY_ZERO>(0, 1.0, 0.0, d_csr_desc, dev_x, dev_y,
+    device_adaptive_spmv<int, double, BETA_Y_POLICY_ZERO>(0, 1.0, 0.0, d_csr_desc, dev_x, dev_y,
                                                           usparse::usparse_csrmv_algo_flat, &csrmv_info);
 
     usparse::device_daxpy(-1.0, d_b, dev_y, N);
@@ -162,7 +168,7 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
       std::vector<double> V_i(N);
       usparse::device_dcopy(d_V + i * N, d_vi, N);
 
-      usparse::device_adaptive_spmv<int, double, BEAT_Y_POLICY_ZERO>(0, 1.0, 0.0, d_csr_desc, d_vi, dev_y,
+      usparse::device_adaptive_spmv<int, double, BETA_Y_POLICY_ZERO>(0, 1.0, 0.0, d_csr_desc, d_vi, dev_y,
                                                                      usparse::usparse_csrmv_algo_flat, &csrmv_info);
 
       for (k = 0; k <= i; k++) {
@@ -333,7 +339,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
     // if it is the first time, dev_x is 0. Ax is also 0.
     if (iteration != 0) {
       // compute y = Ax
-      usparse::device_adaptive_spmv<int, double, BEAT_Y_POLICY_ZERO>(0, 1.0, 0.0, d_csr_desc, dev_x, dev_y, csrmv_algo,
+      usparse::device_adaptive_spmv<int, double, BETA_Y_POLICY_ZERO>(0, 1.0, 0.0, d_csr_desc, dev_x, dev_y, csrmv_algo,
                                                                      &csrmv_info);
       if (!USE_FUSION) {
         usparse::device_cast<uint, double, float>(dev_y, d_r0_f, N); // dev_y => d_r0_f
@@ -411,7 +417,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
 
       const float *csrmv_x_f = d_V_f + i * R0_V_MEM_LEN; // the x vector in y = Ax.
 
-      usparse::device_adaptive_spmv<int, float, BEAT_Y_POLICY_ZERO>(0, 1.0, 0.0, d_csr_desc_float, csrmv_x_f, d_r0_f,
+      usparse::device_adaptive_spmv<int, float, BETA_Y_POLICY_ZERO>(0, 1.0, 0.0, d_csr_desc_float, csrmv_x_f, d_r0_f,
                                                                     csrmv_algo, &csrmv_info);
 
       int h_idx = (i + 3) * i / 2;

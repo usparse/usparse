@@ -1,11 +1,15 @@
-#include "gmres.hpp"
-#include "init.hpp"
-#include "sparseMatrix.hpp"
-#include "usparse_gmres.h"
+
 #include <fstream>
 #include <iostream>
 #include <iterator>
 #include <vector>
+
+#include "usparse_matrix.h"
+
+#include "gmres.hpp"
+#include "init.hpp"
+#include "sparseMatrix.hpp"
+#include "solver/gmres/kernels/usparse_gmres.h"
 
 using RESULT = std::tuple<int, float, double>;
 

@@ -9,10 +9,11 @@
 
 #include <hip/hip_cooperative_groups.h>
 
-#include "gmres_optimization_config.h"
-#include "kernels/primitives/usparse_reduce.hpp"
-#include "kernels/usparse_config.hpp"
-#include "usparse_level1.h"
+#include "kernels/gmres_optimization_config.h"
+#include "include/usparse_config.hpp"
+#include "primitives/reduce/device/usparse_reduce.hpp"
+#include "level1/usparse_blas_level1.h"
+#include "usparse_dotprod_axpy_fusion.h"
 
 namespace usparse {
   template <typename INDEX_TYPE, typename DATA_TYPE, int THREADS, int ELES_PER_THREAD, int STRIDES>

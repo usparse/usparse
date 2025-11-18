@@ -7,19 +7,13 @@
 
 // header in usparse library for GMRES calling
 
-#include "gmres_optimization_config.h"
+#include "kernels/gmres_optimization_config.h"
 
 #include "kernels/gmres-big-fusion/gmres_big_fusion.hpp"
 #include "kernels/level1/usparse_dotprod_axpy_fusion.h"
 #include "kernels/level2/usparse_csrmv.h"
 #include "kernels/level2/usparse_rotation.h"
 #include "kernels/level2/usparse_solver_tri.h"
-#include "kernels/primitives/usparse_reduce.hpp"
-#include "kernels/spmv/api/building_config.h"
-#include "kernels/spmv/api/spmv_flat.h"
-#include "kernels/spmv/api/spmv_line_enhance.h"
-#include "kernels/spmv/api/spmv_vec_row.h"
-#include "kernels/spmv/api/types.h"
-#include "usparse_utils.hpp"
+#include "common/usparse_utils.hpp"
 
 #endif // USPARSE_KERNELS_LEVEL2_USPARSE_GMRES_H
