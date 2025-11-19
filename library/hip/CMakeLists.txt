@@ -95,6 +95,8 @@ set(USPARSE_SOURCE_FILES ${USPARSE_SOURCE_FILES}
         ../internal/usparse_internal_spmm.cc
         )
 
+add_subdirectory(solver/gmres)
+
 # build static lib
 set_source_files_properties(${USPARSE_SOURCE_FILES} PROPERTIES HIP_SOURCE_PROPERTY_FORMAT 1)
 hip_add_library(${USPARSE_LIB_NAME} STATIC ${USPARSE_SOURCE_FILES} ${USPARSE_HEADER_FILES} HIPCC_OPTIONS ${USPARSE_HIPCC_OPTIONS})

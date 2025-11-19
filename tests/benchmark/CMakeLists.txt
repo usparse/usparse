@@ -24,7 +24,8 @@ target_link_libraries(
         PUBLIC
         benchmark::benchmark
         roc::rocsparse
-        ${USPARSE_KERNEL_LIB_NAME}        
+        ${USPARSE_GMRES_KERNEL_LIB_NAME}
+        ${USPARSE_LIB_NAME}
 )
 
 add_executable(
@@ -42,5 +43,6 @@ target_link_libraries(
         PUBLIC
         benchmark::benchmark
         roc::rocsparse
-        ${USPARSE_KERNEL_LIB_NAME}
+        ${USPARSE_GMRES_KERNEL_LIB_NAME}
+        ${USPARSE_LIB_NAME}
 )

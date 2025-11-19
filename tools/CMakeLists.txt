@@ -1,4 +1,6 @@
-add_subdirectory(usparse_tuner)
+if(USPARSE_AUTO_TUNER_ENABLE)
+        add_subdirectory(usparse_tuner)
+endif()
 add_subdirectory(mtx-analysis) # gmres-gpu:
 
 add_executable(csr-reader main.cpp)

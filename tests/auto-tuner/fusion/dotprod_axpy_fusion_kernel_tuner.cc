@@ -12,7 +12,7 @@
 #include <rocsparse/rocsparse.h>
 
 #include "../../unit/tests_utils.hpp"
-#include "usparse_gmres.h"
+#include "kernels/usparse_gmres.h"
 
 USPARSE_TUNER_BENCH(dotProdAxpyFusion_Tuner) {
   template <int THREADS = 0, int ELES_PER_THREAD = 0, int STRIDES = 0>

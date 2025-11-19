@@ -11,7 +11,8 @@
 #include <rocsparse/rocsparse.h>
 
 #include "../../unit/tests_utils.hpp"
-#include "usparse_gmres.h"
+#include "kernels/usparse_gmres.h"
+#include "level1/usparse_blas_level1.h"
 
 // benchmarking usparse::dotprod_axpy_fusion
 template <typename T> static void Usparse_dotprod_axpy_fusion(benchmark::State &state) {

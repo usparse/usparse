@@ -9,7 +9,8 @@
 #include <hip/hip_runtime_api.h>
 #include <rocsparse/rocsparse.h>
 
-#include "usparse_gmres.h"
+#include "kernels/usparse_gmres.h"
+#include "level1/usparse_blas_level1.h"
 #include "usparse_level1_fixture.hpp"
 
 // benchmarking usparse::device_calculateNorm

@@ -19,19 +19,8 @@ if(USPARSE_BUILD_BENCHMARK)
     add_subdirectory(benchmarks) # usparse benchmark
 endif()
 
-if(SPMV_BUILD_TOOLS)
+if(USPARSE_TOOLS_ENABLE)
     add_subdirectory(tools)
 endif()
-# gmres-gpu start
-include(config.cmake)
-include(dep.cmake)
-
-add_subdirectory(library)
-add_subdirectory(src)
-
-if (GMRES_TOOLS_ENABLE)
-    add_subdirectory(tools)
-endif ()
 
 add_subdirectory(tests)
-# gmres-gpu end

@@ -9,9 +9,10 @@
 #include <hip/hip_runtime_api.h>
 #include <rocsparse/rocsparse.h>
 
-#include "../../../inc/sparseMatrix.hpp"
+#include "../../../library/hip/solver/gmres/sparseMatrix.hpp"
 #include "../../unit/tests_utils.hpp"
-#include "usparse_gmres.h"
+#include "level2/csrmv_kernels/vector-row/vector_row.h"
+#include "kernels/usparse_gmres.h"
 
 std::string MATRIX_BASE_PATH = "/work/share/data/XDZS2025/GMRES/sparseMatrixSet/mtx";
 
@@ -19,17 +20,17 @@ void uspmv(int trans, const double alpha, const double beta, const csr_desc<int,
            const csr_desc<int, double> d_csr_desc, const double *dx, double *dy, const std::string &strategy) {
   if (strategy == "flat") {
     // fixme: not work as expeted. pass info into it.
-    spmv_flat(trans, alpha, beta, d_csr_desc, dx, dy, nullptr);
+    adaptive_flat_sparse_spmv(trans, alpha, beta, d_csr_desc, dx, dy, nullptr);
     hipDeviceSynchronize();
   } else if (strategy == "line") {
-    spmv_line_enhance(trans, alpha, beta, d_csr_desc, dx, dy);
+    adaptive_enhance_sparse_spmv<int, double>(trans, alpha, beta, d_csr_desc, dx, dy);
     hipDeviceSynchronize();
   } else if (strategy == "vec") {
-    spmv_vector_row(trans, alpha, beta, d_csr_desc, dx, dy);
+    vec_row_sparse_spmv(trans, alpha, beta, d_csr_desc, dx, dy);
     hipDeviceSynchronize();
   } else {
     std::cerr << "Unknown strategy: " << strategy << ". Defaulting to vector_row implementation." << std::endl;
-    spmv_vector_row(trans, alpha, beta, d_csr_desc, dx, dy);
+    vec_row_sparse_spmv(trans, alpha, beta, d_csr_desc, dx, dy);
     hipDeviceSynchronize();
   }
 }

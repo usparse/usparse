@@ -24,6 +24,6 @@ set_target_properties(usparse_kernel_auto_tuner PROPERTIES
 target_link_libraries(
         usparse_kernel_auto_tuner
         roc::rocsparse
-        ${USPARSE_KERNEL_LIB_NAME}
+        ${USPARSE_GMRES_KERNEL_LIB_NAME}
         ${USPARSE_TUNER_LIB_NAME}
 )

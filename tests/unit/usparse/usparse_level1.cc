@@ -11,7 +11,8 @@
 #include <rocsparse/rocsparse.h>
 
 #include "tests_utils.hpp"
-#include "usparse_gmres.h"
+#include "kernels/usparse_gmres.h"
+#include "level1/usparse_blas_level1.h"
 
 TEST(Level1Test, dotProduction) {
 
