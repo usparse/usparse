@@ -5,6 +5,8 @@
 #ifndef USPARSE_HIP_USPARSE_TYPES_H
 #define USPARSE_HIP_USPARSE_TYPES_H
 
+#include "hip/rocsparse/rocsparse-complex-types.h"
+
 namespace usparse {
   enum usparse_operation { operation_none = 0, operation_transpose = 1 };
 
@@ -19,6 +21,10 @@ namespace usparse {
   using usparse_uint = uint;
   using usparse_fp32 = float;
   using usparse_fp64 = double;
+
+  using usparse_fpc32 = rocsparse_float_complex;
+  using usparse_fpc64 = rocsparse_double_complex;
+
 } // namespace usparse
 
 #endif // USPARSE_HIP_USPARSE_TYPES_H
