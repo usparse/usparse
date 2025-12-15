@@ -8,6 +8,7 @@
 #include "primitives/reduce/device/usparse_reduce.hpp"
 #include "include/usparse_config.hpp"
 #include "usparse_blas_level1.h"
+#include "usparse_types.h"
 
 namespace usparse {
 
@@ -259,11 +260,19 @@ template void usparse::device_dscal<uint, double>(const double alpha, double *x,
 template void usparse::device_dscal<uint, float>(const float alpha, float *x, const uint N);
 template void usparse::device_dscal<int, double>(const double alpha, double *x, const int N);
 template void usparse::device_dscal<int, float>(const float alpha, float *x, const int N);
+template void usparse::device_dscal<int, usparse::usparse_fpc64>(const usparse::usparse_fpc64 alpha,
+                                                                 usparse::usparse_fpc64 *x, const int N);
+template void usparse::device_dscal<int, usparse::usparse_fpc32>(const usparse::usparse_fpc32 alpha,
+                                                                 usparse::usparse_fpc32 *x, const int N);
 
 template void usparse::device_scale_set<uint, double>(const double alpha, double *data, const uint N);
 template void usparse::device_scale_set<uint, float>(const float alpha, float *data, const uint N);
 template void usparse::device_scale_set<int, double>(const double alpha, double *data, const int N);
 template void usparse::device_scale_set<int, float>(const float alpha, float *data, const int N);
+template void usparse::device_scale_set<int, usparse::usparse_fpc64>(const usparse::usparse_fpc64 alpha,
+                                                                     usparse::usparse_fpc64 *data, const int N);
+template void usparse::device_scale_set<int, usparse::usparse_fpc32>(const usparse::usparse_fpc32 alpha,
+                                                                     usparse::usparse_fpc32 *data, const int N);
 
 template void usparse::device_dcopy<uint, double>(const double *src, double *dst, const uint N);
 template void usparse::device_dcopy<uint, float>(const float *src, float *dst, const uint N);

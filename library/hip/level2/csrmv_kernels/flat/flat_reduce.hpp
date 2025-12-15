@@ -6,6 +6,27 @@
 #define SPMV_ACC_FLAT_REDUCE_HPP
 
 #include "common/utils.h"
+#include "usparse_types.h"
+
+#include "primitives/reduce/wavefront/wavefront_shlf_utils.hpp"
+
+template <typename T> __device__ __forceinline__ void flat_atomic_add(T *address, T val) { atomicAdd(address, val); }
+
+// Complex number specialized version: Single precision
+__device__ __forceinline__ void flat_atomic_add(usparse::usparse_fpc32 *address, usparse::usparse_fpc32 val) {
+  float *float_addr = reinterpret_cast<float *>(address);
+  atomicAdd(float_addr, std::real(val));
+  atomicAdd(float_addr + 1, std::imag(val));
+  return;
+}
+
+// Complex number specialized version: double precision
+__device__ __forceinline__ void flat_atomic_add(usparse::usparse_fpc64 *address, usparse::usparse_fpc64 val) {
+  double *double_addr = reinterpret_cast<double *>(address);
+  atomicAdd(double_addr, std::real(val));
+  atomicAdd(double_addr + 1, std::imag(val));
+  return;
+}
 
 template <typename I, typename T, int NNZ_PER_BLOCK, int R, int THREADS>
 __device__ __forceinline__ void flat_reduce_segment_sum(const int tid_in_block, const int bp_index,
@@ -30,7 +51,7 @@ __device__ __forceinline__ void flat_reduce_segment_sum(const int tid_in_block, 
     if (cur_idx < last_element_index &&
         (tid_in_block == THREADS - 1 || _lds_shared_idx[tid_in_block] != _lds_shared_idx[tid_in_block + 1] ||
          cur_idx == last_element_index - 1)) {
-      atomicAdd(&y[_lds_shared_idx[tid_in_block]], alpha * _lds_shared_data_cur[tid_in_block]);
+      flat_atomic_add(&y[_lds_shared_idx[tid_in_block]], alpha * _lds_shared_data_cur[tid_in_block]);
     }
     __syncthreads();
   };
@@ -62,7 +83,7 @@ flat_reduce_in_vector(const int n_reduce_rows_num, const int tid_in_block, const
     }
     // store value
     if (tid_in_vec == 0) {
-      atomicAdd(y + reduce_row_id, alpha * sum);
+      flat_atomic_add(y + reduce_row_id, alpha * sum);
     }
   }
 
@@ -81,7 +102,7 @@ flat_reduce_in_vector(const int n_reduce_rows_num, const int tid_in_block, const
     }
     // store value
     if (tid_in_vec == 0) {
-      atomicAdd(y + reduce_row_id, alpha * sum);
+      flat_atomic_add(y + reduce_row_id, alpha * sum);
     }
   }
 }
@@ -100,7 +121,7 @@ __device__ __forceinline__ void flat_reduce_direct(const int tid_in_block, const
     for (int i = reduce_start_inx; i < reduce_end_inx; i++) {
       sum += _lds_shared_data[i];
     }
-    atomicAdd(y + reduce_row_id, alpha * sum);
+    flat_atomic_add(y + reduce_row_id, alpha * sum);
   }
   reduce_row_id += THREADS;
   for (; reduce_row_id < reduce_end_row_id; reduce_row_id += THREADS) {
@@ -110,7 +131,7 @@ __device__ __forceinline__ void flat_reduce_direct(const int tid_in_block, const
     for (int i = reduce_start_inx; i < reduce_end_inx; i++) {
       sum += _lds_shared_data[i];
     }
-    atomicAdd(y + reduce_row_id, alpha * sum);
+    flat_atomic_add(y + reduce_row_id, alpha * sum);
   }
 }
 
@@ -153,7 +174,7 @@ flat_reduce_in_vector_with_mem_coalescing(const int n_reduce_rows_num, const int
     // store sum value to y with memory coalescing
     if (tid_in_block < vec_num && thread_reduce_row_id < reduce_end_row_id) {
       const T local_sum = lds_y[tid_in_block];
-      atomicAdd(y + thread_reduce_row_id, alpha * local_sum);
+      flat_atomic_add(y + thread_reduce_row_id, alpha * local_sum);
     }
   }
 
@@ -185,7 +206,7 @@ flat_reduce_in_vector_with_mem_coalescing(const int n_reduce_rows_num, const int
       // store sum value to y with memory coalescing
       if (thread_reduce_row_id < reduce_end_row_id && tid_in_block < vec_num) {
         const T local_sum = lds_y[tid_in_block];
-        atomicAdd(y + thread_reduce_row_id, alpha * local_sum);
+        flat_atomic_add(y + thread_reduce_row_id, alpha * local_sum);
       }
     }
     reduce_row_id += vec_num;

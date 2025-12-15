@@ -201,5 +201,49 @@ template void adaptive_flat_sparse_spmv<float, BETA_Y_POLICY_OTHER>(int trans, c
                                                                     const float *x, float *y,
                                                                     const csrmv_flat_mtx_info *info);
 
+template void adaptive_flat_sparse_spmv<usparse::usparse_fpc32, BETA_Y_POLICY_AUTO>(
+    int trans, const usparse::usparse_fpc32 alpha, const usparse::usparse_fpc32 beta,
+    const csr_desc<int, usparse::usparse_fpc32> d_csr_desc, const usparse::usparse_fpc32 *x, usparse::usparse_fpc32 *y,
+    const csrmv_flat_mtx_info *info);
+
+template void adaptive_flat_sparse_spmv<usparse::usparse_fpc32, BETA_Y_POLICY_ZERO>(
+    int trans, const usparse::usparse_fpc32 alpha, const usparse::usparse_fpc32 beta,
+    const csr_desc<int, usparse::usparse_fpc32> d_csr_desc, const usparse::usparse_fpc32 *x, usparse::usparse_fpc32 *y,
+    const csrmv_flat_mtx_info *info);
+
+template void adaptive_flat_sparse_spmv<usparse::usparse_fpc32, BETA_Y_POLICY_ONE>(
+    int trans, const usparse::usparse_fpc32 alpha, const usparse::usparse_fpc32 beta,
+    const csr_desc<int, usparse::usparse_fpc32> d_csr_desc, const usparse::usparse_fpc32 *x, usparse::usparse_fpc32 *y,
+    const csrmv_flat_mtx_info *info);
+
+template void adaptive_flat_sparse_spmv<usparse::usparse_fpc32, BETA_Y_POLICY_OTHER>(
+    int trans, const usparse::usparse_fpc32 alpha, const usparse::usparse_fpc32 beta,
+    const csr_desc<int, usparse::usparse_fpc32> d_csr_desc, const usparse::usparse_fpc32 *x, usparse::usparse_fpc32 *y,
+    const csrmv_flat_mtx_info *info);
+
+template void adaptive_flat_sparse_spmv<usparse::usparse_fpc64, BETA_Y_POLICY_AUTO>(
+    int trans, const usparse::usparse_fpc64, const usparse::usparse_fpc64 beta,
+    const csr_desc<int, usparse::usparse_fpc64> d_csr_desc, const usparse::usparse_fpc64 *x, usparse::usparse_fpc64 *y,
+    const csrmv_flat_mtx_info *info);
+
+template void adaptive_flat_sparse_spmv<usparse::usparse_fpc64, BETA_Y_POLICY_ZERO>(
+    int trans, const usparse::usparse_fpc64, const usparse::usparse_fpc64 beta,
+    const csr_desc<int, usparse::usparse_fpc64> d_csr_desc, const usparse::usparse_fpc64 *x, usparse::usparse_fpc64 *y,
+    const csrmv_flat_mtx_info *info);
+
+template void adaptive_flat_sparse_spmv<usparse::usparse_fpc64, BETA_Y_POLICY_ONE>(
+    int trans, const usparse::usparse_fpc64, const usparse::usparse_fpc64 beta,
+    const csr_desc<int, usparse::usparse_fpc64> d_csr_desc, const usparse::usparse_fpc64 *x, usparse::usparse_fpc64 *y,
+    const csrmv_flat_mtx_info *info);
+
+template void adaptive_flat_sparse_spmv<usparse::usparse_fpc64, BETA_Y_POLICY_OTHER>(
+    int trans, const usparse::usparse_fpc64, const usparse::usparse_fpc64 beta,
+    const csr_desc<int, usparse::usparse_fpc64> d_csr_desc, const usparse::usparse_fpc64 *x, usparse::usparse_fpc64 *y,
+    const csrmv_flat_mtx_info *info);
+
 template void flat_analyse<double>(const csr_desc<int, double> d_csr_desc, csrmv_flat_mtx_info *info);
 template void flat_analyse<float>(const csr_desc<int, float> d_csr_desc, csrmv_flat_mtx_info *info);
+template void flat_analyse<usparse::usparse_fpc64>(const csr_desc<int, usparse::usparse_fpc64> d_csr_desc,
+                                                   csrmv_flat_mtx_info *info);
+template void flat_analyse<usparse::usparse_fpc32>(const csr_desc<int, usparse::usparse_fpc32> d_csr_desc,
+                                                   csrmv_flat_mtx_info *info);
