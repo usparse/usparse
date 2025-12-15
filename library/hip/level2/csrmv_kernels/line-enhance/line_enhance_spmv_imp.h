@@ -32,10 +32,11 @@
  * @param y vector y in: y = alpha * A * x + beta * y
  * @return
  */
-template <bool BETA_IS_ZERO, int WF_SIZE, int ROWS_PER_BLOCK, int R, int THREADS, typename I, typename T>
-__global__ void line_enhance_kernel(int m, const T alpha, const T beta, const I *__restrict__ row_offset,
-                                 const I *__restrict__ csr_col_ind, const T *__restrict__ csr_val,
-                                 const T *__restrict__ x, T *__restrict__ y);
+template <bool BETA_IS_ZERO, int REDUCE_OPTION, int WF_SIZE, int VEC_SIZE, int ROWS_PER_BLOCK, int R, int THREADS,
+          typename T, typename I, typename J, typename A, typename X, typename Y>
+__global__ void line_enhance_kernel(J m, const T alpha, const T beta, const I *__restrict__ row_offset,
+                                    const J *__restrict__ csr_col_ind, const A *__restrict__ csr_val,
+                                    const X *__restrict__ x, Y *__restrict__ y);
 
 #include "line_enhance_spmv_imp.inl"
 

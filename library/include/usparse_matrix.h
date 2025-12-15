@@ -8,51 +8,51 @@
 #define USPARSE_HIP_USPARSE_MATRIX_H
 
 namespace usparse {
-
-  template <typename I, typename T> class csr_desc;
+  
   template <typename I, typename T> class coo_desc;
+  template <typename I, typename A, typename J=I> class csr_desc;
 
   /**
    * different from class csr_desc, all member is not const.
-   * I is index type, T is value type in csr matrix.
+   * I,J are index types, A is value type in csr matrix.
    * CSR sparse matrix descriptor.
    */
-  template <typename I, typename T> class var_csr_desc {
+  template <typename I, typename A, typename J=I> class var_csr_desc {
   public:
-    I rows = 0;
-    I cols = 0;
+    J rows = 0;
+    J cols = 0;
     I nnz = 0;
 
     I *row_ptr = nullptr;
-    I *col_index = nullptr;
-    T *values = nullptr;
+    J *col_index = nullptr;
+    A *values = nullptr;
 
     var_csr_desc() {}
 
-    var_csr_desc(const I r, const I c, const T _nnz) : rows(r), cols(c), nnz(_nnz) {}
+    var_csr_desc(const J r, const J c, const I _nnz) : rows(r), cols(c), nnz(_nnz) {}
 
-    csr_desc<I, T> as_const() { return csr_desc<I, T>(*this); }
+    csr_desc<I, A, J> as_const() { return csr_desc<I, A, J>(*this); }
   };
 
   /**
    * CSR sparse matrix descriptor.
    * in class csr_desc, all members are const.
-   * I is index type, T is value type in csr matrix.
+   * I and J are index type, A is value type in csr matrix.
    */
-  template <typename I, typename T> class csr_desc {
+  template <typename I, typename A, typename J> class csr_desc {
   public:
-    const I rows = 0;
-    const I cols = 0;
+    const J rows = 0;
+    const J cols = 0;
     const I nnz = 0;
 
     const I *row_ptr = nullptr;
-    const I *col_index = nullptr;
-    const T *values = nullptr;
+    const J *col_index = nullptr;
+    const A *values = nullptr;
 
-    csr_desc(const I m, const I n, const I _nnz, const I *_row_ptr, const I *_col_index, const T *_values)
+    csr_desc(const J m, const J n, const I _nnz, const I *_row_ptr, const J *_col_index, const A *_values)
         : rows(m), cols(n), nnz(_nnz), row_ptr(_row_ptr), col_index(_col_index), values(_values) {}
 
-    csr_desc(const var_csr_desc<I, T> _var_csr_desc)
+    csr_desc(const var_csr_desc<I, A, J> _var_csr_desc)
         : rows(_var_csr_desc.rows), cols(_var_csr_desc.cols), nnz(_var_csr_desc.nnz), row_ptr(_var_csr_desc.row_ptr),
           col_index(_var_csr_desc.col_index), values(_var_csr_desc.values) {}
   };
@@ -101,12 +101,13 @@ namespace usparse {
         : rows(_var_coo_desc.rows), cols(_var_coo_desc.cols), nnz(_var_coo_desc.nnz),
           row_index(_var_coo_desc.row_index), col_index(_var_coo_desc.col_index), values(_var_coo_desc.values) {}
   };
+
 } // namespace usparse
 
 // for backward compatibility of csrmv.
 // todo: remove it.
 template <typename I, typename T> using var_csr_desc = usparse::var_csr_desc<I, T>;
 
-template <typename I, typename T> using csr_desc = usparse::csr_desc<I, T>;
+template <typename I, typename A, typename J=I> using csr_desc = usparse::csr_desc<I, A, J>;
 
 #endif // USPARSE_HIP_USPARSE_MATRIX_H

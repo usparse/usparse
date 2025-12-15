@@ -2,10 +2,9 @@
 // Created by chu genshen on 2021/10/2.
 //
 
-#include "usparse_types.h"
-
 #include "common/macros.h"
 #include "line_enhance_spmv_imp.h"
+#include "usparse_types.h"
 
 template <typename INDEX_TYPE, typename FPType>
 void line_enhance_sparse_spmv(int trans, const FPType alpha, const FPType beta,
@@ -20,19 +19,20 @@ void line_enhance_sparse_spmv(int trans, const FPType alpha, const FPType beta,
 
   int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
   constexpr int THREADS_PER_BLOCK = 512;
-  LINE_ENHANCE_KERNEL_WRAPPER(FPType, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS, THREADS_PER_BLOCK);
+  LINE_ENHANCE_KERNEL_WRAPPER(FPType, INDEX_TYPE, INDEX_TYPE, FPType, FPType, FPType, REDUCE_OPTION, ROWS_PER_BLOCK,
+                              VEC_SIZE, R, BLOCKS, THREADS_PER_BLOCK);
 }
 
-template <typename INDEX_TYPE, typename FPType>
-void adaptive_enhance_sparse_spmv(int trans, const FPType alpha, const FPType beta,
-                                  const csr_desc<INDEX_TYPE, FPType> d_csr_desc, const FPType *x, FPType *y) {
+template <typename T, typename I, typename J, typename A, typename X, typename Y>
+void adaptive_enhance_sparse_spmv(int trans, const T alpha, const T beta, const csr_desc<I, A, J> d_csr_desc,
+                                  const X *x, Y *y) {
   // common parameters:
-  VAR_FROM_CSR_DESC(FPType, d_csr_desc)
+  MIXED_VAR_FROM_CSR_DESC(I, J, A, d_csr_desc)
   constexpr int THREADS_PER_BLOCK = 512;
 
   // for small matrix.
-  const int mtx_nnz = d_csr_desc.nnz;
-  const int nnz_per_row = mtx_nnz / m;
+  const J mtx_nnz = d_csr_desc.nnz;
+  const J nnz_per_row = mtx_nnz / m;
   if (mtx_nnz <= (1 << 24)) { // 2^24=16,777,216
     if (nnz_per_row >= 32) {  // matrix has long rows
       constexpr int R = 4;
@@ -41,7 +41,8 @@ void adaptive_enhance_sparse_spmv(int trans, const FPType alpha, const FPType be
       constexpr int VEC_SIZE = 8;
 
       int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
-      LINE_ENHANCE_KERNEL_WRAPPER(FPType, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS, THREADS_PER_BLOCK);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, I, J, A, X, Y, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
     } else { // matrix has show rows, then, use less thread(e.g. direct reduction) for reduction
       constexpr int R = 2;
       constexpr int ROWS_PER_BLOCK = 64;
@@ -49,7 +50,8 @@ void adaptive_enhance_sparse_spmv(int trans, const FPType alpha, const FPType be
       constexpr int VEC_SIZE = 1;
 
       int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
-      LINE_ENHANCE_KERNEL_WRAPPER(FPType, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS, THREADS_PER_BLOCK);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, I, J, A, X, Y, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
     }
     return;
   } else { // for large matrix
@@ -60,45 +62,72 @@ void adaptive_enhance_sparse_spmv(int trans, const FPType alpha, const FPType be
       constexpr int VEC_SIZE = 4;
 
       int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
-      LINE_ENHANCE_KERNEL_WRAPPER(FPType, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS, THREADS_PER_BLOCK);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, I, J, A, X, Y, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
     } else {                              // short row matrix, use direct reduce
       constexpr int ROWS_PER_BLOCK = 128; // more rows it can process
       constexpr int REDUCE_OPTION = LE_REDUCE_OPTION_DIRECT;
       constexpr int VEC_SIZE = 1;
 
       int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
-      LINE_ENHANCE_KERNEL_WRAPPER(FPType, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS, THREADS_PER_BLOCK);
+      LINE_ENHANCE_KERNEL_WRAPPER(T, I, J, A, X, Y, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+                                  THREADS_PER_BLOCK);
     }
     return;
   }
 }
 
-template void line_enhance_sparse_spmv<usparse::usparse_int, usparse::usparse_fp32>(
-    int trans, const usparse::usparse_fp32 alpha, const usparse::usparse_fp32 beta,
-    const csr_desc<usparse::usparse_int, usparse::usparse_fp32> d_csr_desc, const usparse::usparse_fp32 *x,
-    usparse::usparse_fp32 *y);
+#define LINE_ENHANCE_INSTANTIATE(TTYPE, ITYPE, JTYPE)                                                                      \
+  template void adaptive_enhance_sparse_spmv<TTYPE, ITYPE, JTYPE, TTYPE, TTYPE, TTYPE>(                                \
+      int trans, const TTYPE alpha, const TTYPE beta, const csr_desc<ITYPE, TTYPE, JTYPE> d_csr_desc, const TTYPE *x,  \
+      TTYPE *y);
 
-template void line_enhance_sparse_spmv<usparse::usparse_int, usparse::usparse_fp64>(
-    int trans, const usparse::usparse_fp64 alpha, const usparse::usparse_fp64 beta,
-    const csr_desc<usparse::usparse_int, usparse::usparse_fp64> d_csr_desc, const usparse::usparse_fp64 *x,
-    usparse::usparse_fp64 *y);
+LINE_ENHANCE_INSTANTIATE(float, int32_t, int32_t);
+LINE_ENHANCE_INSTANTIATE(float, int64_t, int32_t);
+LINE_ENHANCE_INSTANTIATE(float, int64_t, int64_t);
+LINE_ENHANCE_INSTANTIATE(double, int32_t, int32_t);
+LINE_ENHANCE_INSTANTIATE(double, int64_t, int32_t);
+LINE_ENHANCE_INSTANTIATE(double, int64_t, int64_t);
 
-template void adaptive_enhance_sparse_spmv<usparse::usparse_int, usparse::usparse_fp64>(
-    int trans, const usparse::usparse_fp64 alpha, const usparse::usparse_fp64 beta,
-    const csr_desc<usparse::usparse_int, usparse::usparse_fp64> d_csr_desc, const usparse::usparse_fp64 *x,
-    usparse::usparse_fp64 *y);
+LINE_ENHANCE_INSTANTIATE(usparse::usparse_fpc32, int32_t, int32_t);
+LINE_ENHANCE_INSTANTIATE(usparse::usparse_fpc32, int64_t, int32_t);
+LINE_ENHANCE_INSTANTIATE(usparse::usparse_fpc32, int64_t, int64_t);
+LINE_ENHANCE_INSTANTIATE(usparse::usparse_fpc64, int32_t, int32_t);
+LINE_ENHANCE_INSTANTIATE(usparse::usparse_fpc64, int64_t, int32_t);
+LINE_ENHANCE_INSTANTIATE(usparse::usparse_fpc64, int64_t, int64_t);
 
-template void adaptive_enhance_sparse_spmv<usparse::usparse_int, usparse::usparse_fp32>(
-    int trans, const usparse::usparse_fp32 alpha, const usparse::usparse_fp32 beta,
-    const csr_desc<usparse::usparse_int, usparse::usparse_fp32> d_csr_desc, const usparse::usparse_fp32 *x,
-    usparse::usparse_fp32 *y);
+#define LINE_ENHANCE_INSTANTIATE_MIXED(TTYPE, ITYPE, JTYPE, ATYPE, XTYPE, YTYPE)                                                    \
+  template void adaptive_enhance_sparse_spmv<TTYPE, ITYPE, JTYPE, ATYPE, XTYPE, YTYPE>(                                \
+      int trans, const TTYPE alpha, const TTYPE beta, const csr_desc<ITYPE, ATYPE, JTYPE> d_csr_desc, const XTYPE *x,  \
+      YTYPE *y);
 
-template void adaptive_enhance_sparse_spmv<usparse::usparse_int, usparse::usparse_fpc32>(
-    int trans, const usparse::usparse_fpc32 alpha, const usparse::usparse_fpc32 beta,
-    const csr_desc<usparse::usparse_int, usparse::usparse_fpc32> d_csr_desc, const usparse::usparse_fpc32 *x,
-    usparse::usparse_fpc32 *y);
+LINE_ENHANCE_INSTANTIATE_MIXED(int32_t, int32_t, int32_t, int8_t, int8_t, int32_t)
+LINE_ENHANCE_INSTANTIATE_MIXED(int32_t, int64_t, int32_t, int8_t, int8_t, int32_t)
+LINE_ENHANCE_INSTANTIATE_MIXED(int32_t, int64_t, int64_t, int8_t, int8_t, int32_t)
+LINE_ENHANCE_INSTANTIATE_MIXED(float, int32_t, int32_t, int8_t, int8_t, float)
+LINE_ENHANCE_INSTANTIATE_MIXED(float, int64_t, int32_t, int8_t, int8_t, float)
+LINE_ENHANCE_INSTANTIATE_MIXED(float, int64_t, int64_t, int8_t, int8_t, float)
+LINE_ENHANCE_INSTANTIATE_MIXED(usparse::usparse_fpc32, int32_t, int32_t, float, usparse::usparse_fpc32, usparse::usparse_fpc32)
+LINE_ENHANCE_INSTANTIATE_MIXED(usparse::usparse_fpc32, int64_t, int32_t, float, usparse::usparse_fpc32, usparse::usparse_fpc32)
+LINE_ENHANCE_INSTANTIATE_MIXED(usparse::usparse_fpc32, int64_t, int64_t, float, usparse::usparse_fpc32, usparse::usparse_fpc32)
 
-template void adaptive_enhance_sparse_spmv<usparse::usparse_int, usparse::usparse_fpc64>(
-    int trans, const usparse::usparse_fpc64 alpha, const usparse::usparse_fpc64 beta,
-    const csr_desc<usparse::usparse_int, usparse::usparse_fpc64> d_csr_desc, const usparse::usparse_fpc64 *x,
-    usparse::usparse_fpc64 *y);
+LINE_ENHANCE_INSTANTIATE_MIXED(double, int32_t, int32_t, float, double, double)
+LINE_ENHANCE_INSTANTIATE_MIXED(double, int64_t, int32_t, float, double, double)
+LINE_ENHANCE_INSTANTIATE_MIXED(double, int64_t, int64_t, float, double, double)
+
+LINE_ENHANCE_INSTANTIATE_MIXED(usparse::usparse_fpc64, int32_t, int32_t, double, usparse::usparse_fpc64,
+                  usparse::usparse_fpc64)
+LINE_ENHANCE_INSTANTIATE_MIXED(usparse::usparse_fpc64, int64_t, int32_t, double, usparse::usparse_fpc64,
+                  usparse::usparse_fpc64)
+LINE_ENHANCE_INSTANTIATE_MIXED(usparse::usparse_fpc64, int64_t, int64_t, double, usparse::usparse_fpc64,
+                  usparse::usparse_fpc64)
+
+LINE_ENHANCE_INSTANTIATE_MIXED(usparse::usparse_fpc64, int32_t, int32_t, usparse::usparse_fpc32, usparse::usparse_fpc64,
+                  usparse::usparse_fpc64)
+LINE_ENHANCE_INSTANTIATE_MIXED(usparse::usparse_fpc64, int64_t, int32_t, usparse::usparse_fpc32, usparse::usparse_fpc64,
+                  usparse::usparse_fpc64)
+LINE_ENHANCE_INSTANTIATE_MIXED(usparse::usparse_fpc64, int64_t, int64_t, usparse::usparse_fpc32, usparse::usparse_fpc64,
+                  usparse::usparse_fpc64)
+
+#undef LINE_ENHANCE_INSTANTIATE_MIXED
+#undef LINE_ENHANCE_INSTANTIATE
