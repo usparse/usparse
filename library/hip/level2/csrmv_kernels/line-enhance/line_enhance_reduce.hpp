@@ -8,6 +8,9 @@
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
 
+#include "usparse_types.h"
+#include "primitives/reduce/wavefront/wavefront_shlf_utils.hpp"
+
 constexpr int LE_REDUCE_OPTION_DIRECT = 0;
 constexpr int LE_REDUCE_OPTION_VEC = 1;
 constexpr int LE_REDUCE_OPTION_VEC_MEM_COALESCING = 2;
