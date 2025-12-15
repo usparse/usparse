@@ -7,7 +7,7 @@
 #include "usparse_types.h"
 
 template <typename INDEX_TYPE, typename FPType>
-void line_enhance_sparse_spmv(int trans, const FPType alpha, const FPType beta,
+void line_enhance_sparse_spmv(hipStream_t stream, int trans, const FPType alpha, const FPType beta,
                               const csr_desc<INDEX_TYPE, FPType> d_csr_desc, const FPType *x, FPType *y) {
   constexpr int R = 2;
   constexpr int ROWS_PER_BLOCK = 32; // note: make sure ROWS_PER_BLOCK * VEC_SIZE <= THREADS_PER_BLOCK.
@@ -19,13 +19,20 @@ void line_enhance_sparse_spmv(int trans, const FPType alpha, const FPType beta,
 
   int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
   constexpr int THREADS_PER_BLOCK = 512;
-  LINE_ENHANCE_KERNEL_WRAPPER(FPType, INDEX_TYPE, INDEX_TYPE, FPType, FPType, FPType, REDUCE_OPTION, ROWS_PER_BLOCK,
+  LINE_ENHANCE_KERNEL_WRAPPER(stream, FPType, INDEX_TYPE, INDEX_TYPE, FPType, FPType, FPType, REDUCE_OPTION, ROWS_PER_BLOCK,
                               VEC_SIZE, R, BLOCKS, THREADS_PER_BLOCK);
 }
 
+template <typename INDEX_TYPE, typename DATA_TYPE>
+void line_enhance_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
+                              const csr_desc<INDEX_TYPE, DATA_TYPE> d_csr_desc, const DATA_TYPE *x, DATA_TYPE *y) {
+  hipStream_t stream = 0; // default stream
+  line_enhance_sparse_spmv<INDEX_TYPE, DATA_TYPE>(stream, trans, alpha, beta, d_csr_desc, x, y);
+}
+
 template <typename T, typename I, typename J, typename A, typename X, typename Y>
-void adaptive_enhance_sparse_spmv(int trans, const T alpha, const T beta, const csr_desc<I, A, J> d_csr_desc,
-                                  const X *x, Y *y) {
+void adaptive_enhance_sparse_spmv(hipStream_t stream, int trans, const T alpha, const T beta,
+                                  const csr_desc<I, A, J> d_csr_desc, const X *x, Y *y) {
   // common parameters:
   MIXED_VAR_FROM_CSR_DESC(I, J, A, d_csr_desc)
   constexpr int THREADS_PER_BLOCK = 512;
@@ -41,7 +48,7 @@ void adaptive_enhance_sparse_spmv(int trans, const T alpha, const T beta, const 
       constexpr int VEC_SIZE = 8;
 
       int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
-      LINE_ENHANCE_KERNEL_WRAPPER(T, I, J, A, X, Y, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+      LINE_ENHANCE_KERNEL_WRAPPER(stream, T, I, J, A, X, Y, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
                                   THREADS_PER_BLOCK);
     } else { // matrix has show rows, then, use less thread(e.g. direct reduction) for reduction
       constexpr int R = 2;
@@ -50,7 +57,7 @@ void adaptive_enhance_sparse_spmv(int trans, const T alpha, const T beta, const 
       constexpr int VEC_SIZE = 1;
 
       int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
-      LINE_ENHANCE_KERNEL_WRAPPER(T, I, J, A, X, Y, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+      LINE_ENHANCE_KERNEL_WRAPPER(stream, T, I, J, A, X, Y, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
                                   THREADS_PER_BLOCK);
     }
     return;
@@ -62,7 +69,7 @@ void adaptive_enhance_sparse_spmv(int trans, const T alpha, const T beta, const 
       constexpr int VEC_SIZE = 4;
 
       int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
-      LINE_ENHANCE_KERNEL_WRAPPER(T, I, J, A, X, Y, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+      LINE_ENHANCE_KERNEL_WRAPPER(stream, T, I, J, A, X, Y, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
                                   THREADS_PER_BLOCK);
     } else {                              // short row matrix, use direct reduce
       constexpr int ROWS_PER_BLOCK = 128; // more rows it can process
@@ -70,14 +77,24 @@ void adaptive_enhance_sparse_spmv(int trans, const T alpha, const T beta, const 
       constexpr int VEC_SIZE = 1;
 
       int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
-      LINE_ENHANCE_KERNEL_WRAPPER(T, I, J, A, X, Y, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
+      LINE_ENHANCE_KERNEL_WRAPPER(stream, T, I, J, A, X, Y, REDUCE_OPTION, ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS,
                                   THREADS_PER_BLOCK);
     }
     return;
   }
 }
 
-#define LINE_ENHANCE_INSTANTIATE(TTYPE, ITYPE, JTYPE)                                                                      \
+template <typename T, typename I, typename J, typename A, typename X, typename Y>
+void adaptive_enhance_sparse_spmv(int trans, const T alpha, const T beta, const csr_desc<I, A, J> d_csr_desc,
+                                  const X *x, Y *y) {
+  hipStream_t stream = 0; // default stream
+  adaptive_enhance_sparse_spmv<T, I, J, A, X, Y>(stream, trans, alpha, beta, d_csr_desc, x, y);
+}
+
+#define LINE_ENHANCE_INSTANTIATE(TTYPE, ITYPE, JTYPE)                                                                  \
+  template void adaptive_enhance_sparse_spmv<TTYPE, ITYPE, JTYPE, TTYPE, TTYPE, TTYPE>(                                \
+      hipStream_t stream, int trans, const TTYPE alpha, const TTYPE beta,                                              \
+      const csr_desc<ITYPE, TTYPE, JTYPE> d_csr_desc, const TTYPE *x, TTYPE *y);                                       \
   template void adaptive_enhance_sparse_spmv<TTYPE, ITYPE, JTYPE, TTYPE, TTYPE, TTYPE>(                                \
       int trans, const TTYPE alpha, const TTYPE beta, const csr_desc<ITYPE, TTYPE, JTYPE> d_csr_desc, const TTYPE *x,  \
       TTYPE *y);
@@ -96,7 +113,10 @@ LINE_ENHANCE_INSTANTIATE(usparse::usparse_fpc64, int32_t, int32_t);
 LINE_ENHANCE_INSTANTIATE(usparse::usparse_fpc64, int64_t, int32_t);
 LINE_ENHANCE_INSTANTIATE(usparse::usparse_fpc64, int64_t, int64_t);
 
-#define LINE_ENHANCE_INSTANTIATE_MIXED(TTYPE, ITYPE, JTYPE, ATYPE, XTYPE, YTYPE)                                                    \
+#define LINE_ENHANCE_INSTANTIATE_MIXED(TTYPE, ITYPE, JTYPE, ATYPE, XTYPE, YTYPE)                                       \
+  template void adaptive_enhance_sparse_spmv<TTYPE, ITYPE, JTYPE, ATYPE, XTYPE, YTYPE>(                                \
+      hipStream_t stream, int trans, const TTYPE alpha, const TTYPE beta,                                              \
+      const csr_desc<ITYPE, ATYPE, JTYPE> d_csr_desc, const XTYPE *x, YTYPE *y);                                       \
   template void adaptive_enhance_sparse_spmv<TTYPE, ITYPE, JTYPE, ATYPE, XTYPE, YTYPE>(                                \
       int trans, const TTYPE alpha, const TTYPE beta, const csr_desc<ITYPE, ATYPE, JTYPE> d_csr_desc, const XTYPE *x,  \
       YTYPE *y);
