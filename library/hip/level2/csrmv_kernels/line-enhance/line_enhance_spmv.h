@@ -16,8 +16,8 @@ void line_enhance_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE 
  * @tparam FPType the Type for float precision. Can be float or double.
  * set kernel template parameters adaptively by matrix characteristic.
  */
-template <typename INDEX_TYPE, typename FPType>
-void adaptive_enhance_sparse_spmv(int trans, const FPType alpha, const FPType beta,
-                                  const csr_desc<INDEX_TYPE, FPType> d_csr_desc, const FPType *x, FPType *y);
+template <typename T, typename I, typename J, typename A, typename X, typename Y>
+void adaptive_enhance_sparse_spmv(int trans, const T alpha, const T beta, const csr_desc<I, A, J> d_csr_desc,
+                                  const X *x, Y *y);
 
 #endif // SPMV_ACC_LINE_ENHANCE_SPMV_H

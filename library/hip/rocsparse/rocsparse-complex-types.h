@@ -286,6 +286,31 @@ template class rocsparse_complex_num_check<double>;
 using rocsparse_float_complex  = rocsparse_complex_num<float>;
 using rocsparse_double_complex = rocsparse_complex_num<double>;
 
+// float * rocsparse_float_complex
+__device__ __host__ inline rocsparse_float_complex operator*(float a, const rocsparse_float_complex &b) {
+  return rocsparse_float_complex(a * std::real(b), a * std::imag(b));
+}
+
+// rocsparse_float_complex * float
+__device__ __host__ inline rocsparse_float_complex operator*(const rocsparse_float_complex &a, float b) {
+  return rocsparse_float_complex(std::real(a) * b, std::imag(a) * b);
+}
+
+// double * rocsparse_double_complex
+__device__ __host__ inline rocsparse_double_complex operator*(double a, const rocsparse_double_complex &b) {
+  return rocsparse_double_complex(a * std::real(b), a * std::imag(b));
+}
+
+// rocsparse_double_complex * double
+__device__ __host__ inline rocsparse_double_complex operator*(const rocsparse_double_complex &a, double b) {
+  return rocsparse_double_complex(std::real(a) * b, std::imag(a) * b);
+}
+
+template <typename T>
+template <typename U>
+__device__ __host__ rocsparse_complex_num<T>::rocsparse_complex_num(const rocsparse_complex_num<U> &a)
+    : x(std::real(a)), y(std::imag(a)) {}
+
 template <typename T>
 template <typename U>
 __device__ __host__

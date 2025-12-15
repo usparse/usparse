@@ -31,8 +31,8 @@ constexpr int DEFAULT_LE_REDUCE_OPTION = LE_REDUCE_OPTION_DIRECT;
  * @param sum partial sum
  * @return
  */
-template <typename I, typename T>
-__device__ __forceinline__ void line_enhance_direct_reduce(const I reduce_row_id, const I block_row_end,
+template <typename I, typename T, typename J=I>
+__device__ __forceinline__ void line_enhance_direct_reduce(const J reduce_row_id, const J block_row_end,
                                                            const I reduce_row_idx_begin, const I reduce_row_idx_end,
                                                            const I block_round_inx_start, const I block_round_inx_end,
                                                            const T *shared_val, T &sum) {
@@ -56,8 +56,8 @@ __device__ __forceinline__ void line_enhance_direct_reduce(const I reduce_row_id
  * @oaram: tid_in_vec thread id in vector.
  * @note: other parameter keep the same as device function line_enhance_direct_reduce.
  */
-template <typename I, typename T, int VECTOR_SIZE>
-__device__ __forceinline__ T line_enhance_vec_reduce(const I reduce_row_id, const I block_row_end,
+template <typename I, typename T, int VECTOR_SIZE, typename J=I>
+__device__ __forceinline__ T line_enhance_vec_reduce(const J reduce_row_id, const J block_row_end,
                                                      const I reduce_row_idx_begin, const I reduce_row_idx_end,
                                                      const I block_round_inx_start, const I block_round_inx_end,
                                                      const T *shared_val, const int tid_in_vec) {
@@ -77,7 +77,7 @@ __device__ __forceinline__ T line_enhance_vec_reduce(const I reduce_row_id, cons
 }
 
 // local shift can reduce data inside a vector to the first thread in the vector.
-template <typename I, typename T, int VECTOR_SIZE>
+template <typename I, typename T, int VECTOR_SIZE, typename J=I>
 __device__ __forceinline__ void line_enhance_vec_local_shift(T &data) {
   // reduce from lanes in a vector
   if (VECTOR_SIZE > 1) { // in fact, this branch is unnecessary.
@@ -93,9 +93,9 @@ __device__ __forceinline__ void line_enhance_vec_local_shift(T &data) {
 // It can make y storing memory-coalescing in vector-based reduction step.
 // note: please make sure: 1. the shared_val array is large enough (large then vector number in block).
 // 2. vector number must less or equal than the rows processed by a block.
-template <typename I, typename T, int VECTORS_NUM>
-__device__ __forceinline__ T line_enhance_vec_global_shift(const I tid_in_block, const I vec_id_in_block,
-                                                           const I tid_in_vec, T *shared_val, const T data) {
+template <typename I, typename T, int VECTORS_NUM, typename J=I>
+__device__ __forceinline__ T line_enhance_vec_global_shift(const I tid_in_block, const J vec_id_in_block,
+                                                           const J tid_in_vec, T *shared_val, const T data) {
   __syncthreads(); // sync previous LDS reading in vector reduction step.
   if (tid_in_vec == 0) {
     shared_val[vec_id_in_block] = data;
