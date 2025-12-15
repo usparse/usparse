@@ -92,3 +92,13 @@ template void adaptive_enhance_sparse_spmv<usparse::usparse_int, usparse::uspars
     int trans, const usparse::usparse_fp32 alpha, const usparse::usparse_fp32 beta,
     const csr_desc<usparse::usparse_int, usparse::usparse_fp32> d_csr_desc, const usparse::usparse_fp32 *x,
     usparse::usparse_fp32 *y);
+
+template void adaptive_enhance_sparse_spmv<usparse::usparse_int, usparse::usparse_fpc32>(
+    int trans, const usparse::usparse_fpc32 alpha, const usparse::usparse_fpc32 beta,
+    const csr_desc<usparse::usparse_int, usparse::usparse_fpc32> d_csr_desc, const usparse::usparse_fpc32 *x,
+    usparse::usparse_fpc32 *y);
+
+template void adaptive_enhance_sparse_spmv<usparse::usparse_int, usparse::usparse_fpc64>(
+    int trans, const usparse::usparse_fpc64 alpha, const usparse::usparse_fpc64 beta,
+    const csr_desc<usparse::usparse_int, usparse::usparse_fpc64> d_csr_desc, const usparse::usparse_fpc64 *x,
+    usparse::usparse_fpc64 *y);
