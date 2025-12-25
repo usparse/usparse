@@ -8,7 +8,7 @@
 #include "adaptive/adaptive.h"
 #include "flat/spmv_hip_acc_imp.h"
 #include "light/spmv_hip_acc_imp.h"
-#include "line-enhance/line_enhance_spmv.h"
+#include "line-enhance/csrmv_line_enhance.h"
 #include "line/line_strategy.h"
 #include "thread-row/thread_row.h"
 #include "vector-row/vector_row.h"

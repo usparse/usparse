@@ -9,7 +9,7 @@
 #include "../csrmv_kernels/adaptive/adaptive.h"
 #include "../csrmv_kernels/flat/spmv_hip_acc_imp.h"
 #include "../csrmv_kernels/light/spmv_hip_acc_imp.h"
-#include "../csrmv_kernels/line-enhance/line_enhance_spmv.h"
+#include "../csrmv_kernels/line-enhance/csrmv_line_enhance.h"
 #include "../csrmv_kernels/vector-row/vector_row.h"
 #include <cassert>
 

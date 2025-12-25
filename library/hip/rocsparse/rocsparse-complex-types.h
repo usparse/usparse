@@ -308,11 +308,6 @@ __device__ __host__ inline rocsparse_double_complex operator*(const rocsparse_do
 
 template <typename T>
 template <typename U>
-__device__ __host__ rocsparse_complex_num<T>::rocsparse_complex_num(const rocsparse_complex_num<U> &a)
-    : x(std::real(a)), y(std::imag(a)) {}
-
-template <typename T>
-template <typename U>
 __device__ __host__
     rocsparse_complex_num<T>::rocsparse_complex_num(const rocsparse_complex_num<U>& a)
     : x(std::real(a))
