@@ -6,7 +6,7 @@
 #include <hip/hip_runtime_api.h>
 
 #include "building_config.h"
-#include "line_enhance_reduce.hpp"
+#include "line_enhance_kernels_imp_reduce.hpp"
 
 template <bool BETA_IS_ZERO, int REDUCE_OPTION, int WF_SIZE, int VEC_SIZE, int ROWS_PER_BLOCK, int R, int THREADS,
           typename T, typename I, typename J, typename A, typename X, typename Y>

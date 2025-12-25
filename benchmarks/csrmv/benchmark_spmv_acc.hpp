@@ -17,7 +17,7 @@
 #include "level2/csrmv_kernels/adaptive/adaptive.h"
 #include "level2/csrmv_kernels/csr-adaptive-plus/csr_adaptive_plus_spmv.h"
 #include "level2/csrmv_kernels/light/spmv_hip_acc_imp.h"
-#include "level2/csrmv_kernels/line-enhance/line_enhance_spmv.h"
+#include "level2/csrmv_kernels/line-enhance/csrmv_line_enhance.h"
 #include "level2/csrmv_kernels/line/line_strategy.h"
 #include "level2/csrmv_kernels/thread-row/thread_row.h"
 #include "level2/csrmv_kernels/vector-row/vector_row.h"

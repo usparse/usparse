@@ -2,8 +2,8 @@
 // Created by chu genshen on 2021/10/4.
 //
 
-#ifndef SPMV_ACC_LINE_ENHANCE_REDUCE_HPP
-#define SPMV_ACC_LINE_ENHANCE_REDUCE_HPP
+#ifndef USPARSE_LINE_ENHANCE_KERNELS_IMP_REDUCE_HPP
+#define USPARSE_LINE_ENHANCE_KERNELS_IMP_REDUCE_HPP
 
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
@@ -108,4 +108,4 @@ __device__ __forceinline__ T line_enhance_vec_global_shift(const I tid_in_block,
   return shift_data;
 }
 
-#endif // SPMV_ACC_LINE_ENHANCE_REDUCE_HPP
+#endif // USPARSE_LINE_ENHANCE_KERNELS_IMP_REDUCE_HPP

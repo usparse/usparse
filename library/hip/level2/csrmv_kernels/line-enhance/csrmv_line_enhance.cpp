@@ -3,7 +3,7 @@
 //
 
 #include "common/macros.h"
-#include "line_enhance_spmv_imp.h"
+#include "line_enhance_kernels_imp.h"
 #include "usparse_types.h"
 
 template <typename INDEX_TYPE, typename FPType>

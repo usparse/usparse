@@ -9,7 +9,7 @@
 #include <rocsparse/rocsparse.h>
 
 #include "level2/csrmv_kernels/flat/spmv_hip_acc_imp.h"
-#include "level2/csrmv_kernels/line-enhance/line_enhance_spmv.h"
+#include "level2/csrmv_kernels/line-enhance/csrmv_line_enhance.h"
 
 namespace usparse {
 

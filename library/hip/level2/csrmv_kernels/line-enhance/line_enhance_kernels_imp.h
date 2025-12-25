@@ -2,8 +2,8 @@
 // Created by chu genshen on 2021/10/2.
 //
 
-#ifndef SPMV_ACC_LINE_ENHANCE_SPMV_IMP_H
-#define SPMV_ACC_LINE_ENHANCE_SPMV_IMP_H
+#ifndef USPARSE_LINE_ENHANCE_KERNELS_IMP_H
+#define USPARSE_LINE_ENHANCE_KERNELS_IMP_H
 
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
@@ -38,6 +38,6 @@ __global__ void line_enhance_kernel(J m, const T alpha, const T beta, const I *_
                                     const J *__restrict__ csr_col_ind, const A *__restrict__ csr_val,
                                     const X *__restrict__ x, Y *__restrict__ y);
 
-#include "line_enhance_spmv_imp.inl"
+#include "line_enhance_kernels_imp.inl"
 
-#endif // SPMV_ACC_LINE_ENHANCE_SPMV_IMP_H
+#endif // USPARSE_LINE_ENHANCE_KERNELS_IMP_H

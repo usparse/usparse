@@ -38,9 +38,9 @@ set(USPARSER_CSRMV_HEADER_FILES
         level2/csrmv_kernels/line/line_adaptive_one_pass.inl
         level2/csrmv_kernels/line/line_strategy.h
         level2/csrmv_kernels/line/line_config.h
-        level2/csrmv_kernels/line-enhance/line_enhance_spmv.h
-        level2/csrmv_kernels/line-enhance/line_enhance_spmv_imp.h
-        level2/csrmv_kernels/line-enhance/line_enhance_spmv_imp.inl
+        level2/csrmv_kernels/line-enhance/csrmv_line_enhance.h
+        level2/csrmv_kernels/line-enhance/line_enhance_kernels_imp.h
+        level2/csrmv_kernels/line-enhance/line_enhance_kernels_imp.inl
         level2/csrmv_kernels/thread-row/thread_row.h
         level2/csrmv_kernels/thread-row/thread_row.inl
         level2/csrmv_kernels/thread-row/thread_row_config.h
@@ -62,7 +62,7 @@ set(USPARSER_CSRMV_SOURCE_FILES
         level2/csrmv_kernels/flat/flat.cpp
         level2/csrmv_kernels/light/light_spmv.cpp
         level2/csrmv_kernels/line/line_strategy.cpp
-        level2/csrmv_kernels/line-enhance/line_enhance_spmv.cpp
+        level2/csrmv_kernels/line-enhance/csrmv_line_enhance.cpp
         level2/csrmv_kernels/thread-row/thread_row.cpp
         level2/csrmv_kernels/thread-row/native_thread_row.cpp
         level2/csrmv_kernels/vector-row/vector_row.cpp
