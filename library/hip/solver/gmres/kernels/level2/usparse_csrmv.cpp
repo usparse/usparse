@@ -8,7 +8,7 @@
 #include <hipsparse/hipsparse.h>
 #include <rocsparse/rocsparse.h>
 
-#include "level2/csrmv_kernels/flat/spmv_hip_acc_imp.h"
+#include "level2/csrmv_kernels/flat/csrmv_flat.h"
 #include "level2/csrmv_kernels/line-enhance/csrmv_line_enhance.h"
 #include "level2/csrmv_kernels/vector-row/vector_row.h"
 #include "level2/spmv_api_config.hpp"

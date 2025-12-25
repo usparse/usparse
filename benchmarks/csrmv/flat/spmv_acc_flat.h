@@ -1,6 +1,6 @@
 //
 // Created by genshen on 2021/11/26.
-// this file is copied and modified from src/acc/flat/flat.cpp for adding timer code.
+// this file is copied and modified from level2/csrmv_kernels/flat/csrmv_flat.cpp for adding timer code.
 //
 
 #ifndef SPMV_ACC_BENCHMARK_SPMV_ACC_FLAT_H

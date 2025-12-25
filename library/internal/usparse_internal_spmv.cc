@@ -6,7 +6,7 @@
 
 #include "../hip/level2/coomv_kernels/coomv_flat_kernel.h"
 #include "../hip/level2/coomv_kernels/coomv_spmv_acc_wrappers.h"
-#include "../hip/level2/csrmv_kernels/flat/spmv_hip_acc_imp.h"
+#include "../hip/level2/csrmv_kernels/flat/csrmv_flat.h"
 #include "../hip/level2/csrmv_kernels/csr-adaptive-plus/csr_adaptive_plus_spmv.h"
 #include "../hip/level2/csrmv_kernels/line-enhance/csrmv_line_enhance.h"
 #include "../hip/level2/csrmv_kernels/vector-row/vector_row.h"

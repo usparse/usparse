@@ -1,6 +1,6 @@
 //
 // Created by reget on 2021/11/21.
-// this file is copied and modified from src/acc/flat/flat.cpp for adding timer code.
+// this file is copied and modified from level2/csrmv_kernels/flat/csrmv_flat.cpp for adding timer code.
 //
 
 #ifndef SPMV_ACC_BENCHMARK_SPMV_ACC_FLAT_HPP
@@ -13,7 +13,10 @@
 #include "benchmark_config.h"
 #include "common/macros.h"
 #include "level2/csrmv_kernels/flat/flat_config.h"
-#include "level2/csrmv_kernels/flat/spmv_hip_acc_imp.h"
+#include "level2/csrmv_kernels/flat/csrmv_flat.h"
+#include "level2/csrmv_kernels/flat/flat_kernels_imp_multi_pass.hpp"
+#include "level2/csrmv_kernels/flat/flat_kernels_imp_one_pass.hpp"
+#include "level2/csrmv_kernels/flat/flat_kernels_imp_pre_calc.hpp"
 #include "spmv_acc_flat.h"
 #include "timer/timer.h"
 

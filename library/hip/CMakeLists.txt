@@ -26,11 +26,11 @@ set(USPARSER_CSRMV_HEADER_FILES
         level2/csrmv_kernels/adaptive/adaptive.h
         level2/csrmv_kernels/csr-adaptive-plus/csr_adaptive_plus_spmv.h
         level2/csrmv_kernels/csr-adaptive-plus/csr_adaptive_plus_spmv_imp.h
-        level2/csrmv_kernels/flat/spmv_hip_acc_imp.h
+        level2/csrmv_kernels/flat/csrmv_flat.h
         level2/csrmv_kernels/flat/flat_config.h
-        level2/csrmv_kernels/flat/flat_imp.inl
-        level2/csrmv_kernels/flat/flat_imp_one_pass.hpp
-        level2/csrmv_kernels/flat/flat_reduce.hpp
+        level2/csrmv_kernels/flat/flat_kernels_imp_multi_pass.hpp
+        level2/csrmv_kernels/flat/flat_kernels_imp_one_pass.hpp
+        level2/csrmv_kernels/flat/flat_kernels_imp_reduce.hpp
         level2/csrmv_kernels/light/spmv_hip_acc_imp.h
         level2/csrmv_kernels/light/spmv_hip_acc_imp.inl
         level2/csrmv_kernels/line/line_imp_one_pass.inl
@@ -59,7 +59,7 @@ set(USPARSER_CSRMV_SOURCE_FILES
         level2/csrmv_kernels/adaptive/adaptive.cpp
         level2/csrmv_kernels/csr-adaptive-plus/csr_adaptive_plus_spmv.cpp
         level2/csrmv_kernels/csr-adaptive-plus/csr_adaptive_plus_analyze.cpp
-        level2/csrmv_kernels/flat/flat.cpp
+        level2/csrmv_kernels/flat/csrmv_flat.cpp
         level2/csrmv_kernels/light/light_spmv.cpp
         level2/csrmv_kernels/line/line_strategy.cpp
         level2/csrmv_kernels/line-enhance/csrmv_line_enhance.cpp

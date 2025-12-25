@@ -6,7 +6,7 @@
 #include "building_config.h"
 
 #include "adaptive/adaptive.h"
-#include "flat/spmv_hip_acc_imp.h"
+#include "flat/csrmv_flat.h"
 #include "light/spmv_hip_acc_imp.h"
 #include "line-enhance/csrmv_line_enhance.h"
 #include "line/line_strategy.h"

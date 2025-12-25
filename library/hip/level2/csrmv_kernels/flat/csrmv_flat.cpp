@@ -8,7 +8,10 @@
 #include "common/macros.h"
 #include "building_config.h"
 #include "flat_config.h"
-#include "spmv_hip_acc_imp.h"
+#include "flat_kernels_imp_multi_pass.hpp"
+#include "flat_kernels_imp_one_pass.hpp"
+#include "flat_kernels_imp_pre_calc.hpp"
+#include "csrmv_flat.h"
 
 template <typename INDEX_TYPE, typename DATA_TYPE, int R, int REDUCE_OPTION, int REDUCE_VEC_SIZE, int BLOCKS,
           int THREADS_PER_BLOCK>
