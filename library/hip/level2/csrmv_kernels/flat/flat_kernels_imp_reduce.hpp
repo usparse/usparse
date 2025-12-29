@@ -2,8 +2,8 @@
 // Created by chu genshen on 2021/9/8.
 //
 
-#ifndef SPMV_ACC_FLAT_REDUCE_HPP
-#define SPMV_ACC_FLAT_REDUCE_HPP
+#ifndef USPARSE_HIP_USPARSE_FLAT_KERNELS_IMP_REDUCE_HPP
+#define USPARSE_HIP_USPARSE_FLAT_KERNELS_IMP_REDUCE_HPP
 
 #include "common/utils.h"
 #include "usparse_types.h"
@@ -214,4 +214,4 @@ flat_reduce_in_vector_with_mem_coalescing(const int n_reduce_rows_num, const int
   }
 }
 
-#endif // SPMV_ACC_FLAT_REDUCE_HPP
+#endif // USPARSE_HIP_USPARSE_FLAT_KERNELS_IMP_REDUCE_HPP

@@ -2,11 +2,11 @@
 // Created by chu genshen on 2021/9/13.
 //
 
-#ifndef SPMV_ACC_FLAT_IMP_ONE_PASS_HPP
-#define SPMV_ACC_FLAT_IMP_ONE_PASS_HPP
+#ifndef USPARSE_HIP_USPARSE_FLAT_KERNELS_IMP_ONE_PASS_HPP
+#define USPARSE_HIP_USPARSE_FLAT_KERNELS_IMP_ONE_PASS_HPP
 
 #include "flat_config.h"
-#include "flat_reduce.hpp"
+#include "flat_kernels_imp_reduce.hpp"
 #include "building_config.h"
 
 #include "common/global_mem_ops.h"
@@ -81,4 +81,4 @@ __global__ void spmv_flat_one_pass_kernel(int m, const T alpha, const T beta, co
                              FP>)<<<(BLOCKS), (THREADS)>>>(m, alpha, beta, rowptr, break_points, colindex, value, x,   \
                                                            y)
 
-#endif // SPMV_ACC_FLAT_IMP_ONE_PASS_HPP
+#endif // USPARSE_HIP_USPARSE_FLAT_KERNELS_IMP_ONE_PASS_HPP

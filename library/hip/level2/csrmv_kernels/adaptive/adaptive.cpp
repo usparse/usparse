@@ -7,7 +7,7 @@
 
 #include "usparse_types.h"
 
-#include "../flat/spmv_hip_acc_imp.h"
+#include "../flat/csrmv_flat.h"
 #include "../line-enhance/csrmv_line_enhance.h"
 #include "../line/line_strategy.h"
 #include "../thread-row/thread_row.h"

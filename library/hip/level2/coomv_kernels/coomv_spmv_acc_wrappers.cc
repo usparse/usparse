@@ -7,7 +7,7 @@
 #include "../../conversion/coo2csr.h"
 
 #include "../csrmv_kernels/adaptive/adaptive.h"
-#include "../csrmv_kernels/flat/spmv_hip_acc_imp.h"
+#include "../csrmv_kernels/flat/csrmv_flat.h"
 #include "../csrmv_kernels/light/spmv_hip_acc_imp.h"
 #include "../csrmv_kernels/line-enhance/csrmv_line_enhance.h"
 #include "../csrmv_kernels/vector-row/vector_row.h"
