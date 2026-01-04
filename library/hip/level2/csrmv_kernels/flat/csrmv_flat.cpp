@@ -29,7 +29,26 @@ inline void flat_multi_pass_sparse_spmv(int trans, const DATA_TYPE alpha, const 
 
   (pre_calc_break_point<INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, R * THREADS_PER_BLOCK>)<<<1024, 512>>>(rowptr, m,
                                                                                                    break_points);
-  FLAT_KERNEL_WRAPPER(INDEX_TYPE, DATA_TYPE, R, REDUCE_OPTION, REDUCE_VEC_SIZE, BLOCKS, THREADS_PER_BLOCK);
+
+  using SCALE_DATA_TYPE = DATA_TYPE;
+  using A_TYPE = DATA_TYPE;
+  using X_TYPE = DATA_TYPE;
+  using Y_TYPE = DATA_TYPE;
+  using NNZ_TYPE = INDEX_TYPE;
+  using ROW_TYPE = INDEX_TYPE;
+  using COLUMN_TYPE = INDEX_TYPE;
+
+  using SHARE_MEM_INDEX_TYPE = INDEX_TYPE;
+  using BP_INDEX_TYPE = INDEX_TYPE;
+  using BP_DATA_TYPE = ROW_TYPE;
+  using COMPUTE_MULTI_TYPE = DATA_TYPE;
+  using COMPUTE_SUM_TYPE = DATA_TYPE;
+
+  (csrmv_flat_multi_pass_kernel<__WF_SIZE__, R, REDUCE_OPTION, REDUCE_VEC_SIZE, BLOCKS, THREADS_PER_BLOCK,
+                                SHARE_MEM_INDEX_TYPE, BP_INDEX_TYPE, BP_DATA_TYPE, SCALE_DATA_TYPE, A_TYPE,
+                                COMPUTE_MULTI_TYPE, COMPUTE_SUM_TYPE, X_TYPE, Y_TYPE, NNZ_TYPE, ROW_TYPE,
+                                COLUMN_TYPE>)<<<(BLOCKS), (THREADS_PER_BLOCK)>>>(m, alpha, beta, rowptr, break_points,
+                                                                                 colindex, value, x, y);
 }
 
 template <typename DATA_TYPE, typename NNZ_TYPE, typename ROW_TYPE, typename COLUMN_TYPE>
@@ -63,7 +82,27 @@ inline void flat_one_pass_sparse_spmv(int trans, const DATA_TYPE alpha, const DA
                                       const DATA_TYPE *x, DATA_TYPE *y, const int *break_points) {
   // each block can process `R*THREADS_PER_BLOCK` non-zeros.
   const int HIP_BLOCKS = nnz / (R * THREADS_PER_BLOCK) + ((nnz % (R * THREADS_PER_BLOCK) == 0) ? 0 : 1);
-  FLAT_KERNEL_ONE_PASS_WRAPPER(INDEX_TYPE, DATA_TYPE, R, REDUCE_OPTION, REDUCE_VEC_SIZE, HIP_BLOCKS, THREADS_PER_BLOCK);
+
+  using SCALE_DATA_TYPE = DATA_TYPE;
+  using A_TYPE = DATA_TYPE;
+  using X_TYPE = DATA_TYPE;
+  using Y_TYPE = DATA_TYPE;
+  using NNZ_TYPE = INDEX_TYPE;
+  using ROW_TYPE = INDEX_TYPE;
+  using COLUMN_TYPE = INDEX_TYPE;
+
+  using SHARE_MEM_INDEX_TYPE = INDEX_TYPE;
+  using BP_INDEX_TYPE = INDEX_TYPE;
+  using BP_DATA_TYPE = ROW_TYPE;
+  using COMPUTE_MULTI_TYPE = DATA_TYPE;
+  using COMPUTE_SUM_TYPE = DATA_TYPE;
+
+  (csrmv_flat_one_pass_kernel<__WF_SIZE__, R, REDUCE_OPTION, REDUCE_VEC_SIZE, THREADS_PER_BLOCK, SHARE_MEM_INDEX_TYPE,
+                              BP_INDEX_TYPE, BP_DATA_TYPE, SCALE_DATA_TYPE, A_TYPE, COMPUTE_MULTI_TYPE,
+                              COMPUTE_SUM_TYPE, X_TYPE, Y_TYPE, NNZ_TYPE, ROW_TYPE,
+                              COLUMN_TYPE>)<<<(HIP_BLOCKS), (THREADS_PER_BLOCK)>>>(m, alpha, beta, rowptr, break_points,
+                                                                                   colindex, value, x, y);
+  return;
 }
 
 template <typename INDEX_TYPE, typename DATA_TYPE>
