@@ -27,29 +27,34 @@ inline void flat_multi_pass_sparse_spmv(int trans, const DATA_TYPE alpha, const 
   hipMalloc((void **)&break_points, break_points_len * sizeof(int));
   hipMemset(break_points, 0, break_points_len * sizeof(int));
 
-  (pre_calc_break_point<R * THREADS_PER_BLOCK, BLOCKS, int>)<<<1024, 512>>>(rowptr, m, break_points, break_points_len);
+  (pre_calc_break_point<INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, R * THREADS_PER_BLOCK>)<<<1024, 512>>>(rowptr, m,
+                                                                                                   break_points);
   FLAT_KERNEL_WRAPPER(INDEX_TYPE, DATA_TYPE, R, REDUCE_OPTION, REDUCE_VEC_SIZE, BLOCKS, THREADS_PER_BLOCK);
 }
 
-template <typename DATA_TYPE> void flat_matrix_analyse(const csr_desc<int, DATA_TYPE> d_csr_desc, int **break_points) {
-  VAR_FROM_CSR_DESC(DATA_TYPE, d_csr_desc)
-  const int nnz = d_csr_desc.nnz;
-  const int n = d_csr_desc.cols;
+template <typename DATA_TYPE, typename NNZ_TYPE, typename ROW_TYPE, typename COLUMN_TYPE>
+void flat_matrix_analyse(const csr_mat_descr<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE> d_csr_desc,
+                         int **break_points) {
+  EXPAND_FROM_CSR_MAT_DESCR(DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE, d_csr_desc)
 
   constexpr int R = 2;
   constexpr int THREADS_PER_BLOCK = 512;
   const int HIP_BLOCKS = nnz / (R * THREADS_PER_BLOCK) + ((nnz % (R * THREADS_PER_BLOCK) == 0) ? 0 : 1);
   constexpr int TOTAL_ROUNDS = 1;
-  const int break_points_len = TOTAL_ROUNDS * HIP_BLOCKS + 1;
+  const NNZ_TYPE break_points_len = static_cast<NNZ_TYPE>(TOTAL_ROUNDS * HIP_BLOCKS + 1);
 
-  hipMalloc((void **)break_points, break_points_len * sizeof(int));
-  hipMemset(*break_points, 0, break_points_len * sizeof(int));
-  (pre_calc_break_point<R * THREADS_PER_BLOCK, 0, int>)<<<1024, 512>>>(rowptr, m, *break_points, break_points_len);
+  using BP_TYPE = ROW_TYPE;
+
+  hipMalloc((void **)break_points, break_points_len * sizeof(BP_TYPE));
+  hipMemset(*break_points, 0, break_points_len * sizeof(BP_TYPE));
+  (pre_calc_break_point<ROW_TYPE, NNZ_TYPE, BP_TYPE, R * THREADS_PER_BLOCK>)<<<1024, 512>>>(rowptr, m, *break_points);
 }
 
 // just for backward compatibility.
-template <typename DATA_TYPE> void flat_analyse(const csr_desc<int, DATA_TYPE> d_csr_desc, csrmv_flat_mtx_info *info) {
-  flat_matrix_analyse(d_csr_desc, &(info->break_points));
+template <typename DATA_TYPE, typename NNZ_TYPE, typename ROW_TYPE, typename COLUMN_TYPE>
+void flat_analyse(const csr_mat_descr<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE> d_csr_desc,
+                  csrmv_flat_mtx_info *info) {
+  flat_matrix_analyse<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE>(d_csr_desc, &(info->break_points));
 }
 
 template <typename INDEX_TYPE, typename DATA_TYPE, int R, int REDUCE_OPTION, int REDUCE_VEC_SIZE, int THREADS_PER_BLOCK>
@@ -244,9 +249,16 @@ template void adaptive_flat_sparse_spmv<usparse::usparse_fpc64, BETA_Y_POLICY_OT
     const csr_desc<int, usparse::usparse_fpc64> d_csr_desc, const usparse::usparse_fpc64 *x, usparse::usparse_fpc64 *y,
     const csrmv_flat_mtx_info *info);
 
-template void flat_analyse<double>(const csr_desc<int, double> d_csr_desc, csrmv_flat_mtx_info *info);
-template void flat_analyse<float>(const csr_desc<int, float> d_csr_desc, csrmv_flat_mtx_info *info);
-template void flat_analyse<usparse::usparse_fpc64>(const csr_desc<int, usparse::usparse_fpc64> d_csr_desc,
+template void
+flat_analyse<usparse::usparse_fp32, int, int, int>(const csr_mat_descr<usparse::usparse_fp32, int, int, int> d_csr_desc,
                                                    csrmv_flat_mtx_info *info);
-template void flat_analyse<usparse::usparse_fpc32>(const csr_desc<int, usparse::usparse_fpc32> d_csr_desc,
+
+template void
+flat_analyse<usparse::usparse_fp64, int, int, int>(const csr_mat_descr<usparse::usparse_fp64, int, int, int> d_csr_desc,
                                                    csrmv_flat_mtx_info *info);
+
+template void flat_analyse<usparse::usparse_fpc32, int, int, int>(
+    const csr_mat_descr<usparse::usparse_fpc32, int, int, int> d_csr_desc, csrmv_flat_mtx_info *info);
+
+template void flat_analyse<usparse::usparse_fpc64, int, int, int>(
+    const csr_mat_descr<usparse::usparse_fpc64, int, int, int> d_csr_desc, csrmv_flat_mtx_info *info);

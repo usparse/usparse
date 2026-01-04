@@ -28,7 +28,8 @@ void usparse::device_adaptive_analysis(int trans, const VALUE_TYPE alpha, const 
                                        const csr_desc<INDEX_TYPE, VALUE_TYPE> d_csr_desc,
                                        const usparse::usparse_csrmv_algo algo, usparse::csrmv_mat_info *info) {
   if (algo == usparse::usparse_csrmv_algo_flat) {
-    flat_analyse(d_csr_desc, &(info->flat_info));
+    auto d_csr_mat_descr = usparse::csr_mat_descr<VALUE_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE>(d_csr_desc);
+    flat_analyse(d_csr_mat_descr, &(info->flat_info));
   } else if (algo == usparse::usparse_csrmv_algo_line_enhance) {
     return;
   } else if (algo == usparse::usparse_csrmv_algo_vector) {

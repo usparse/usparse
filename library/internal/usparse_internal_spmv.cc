@@ -21,7 +21,8 @@ usparse::usparse_status usparse::spmv::internal::usparse_csrmv_analysis_imp(
     usparse::mat::usparse_mat_info *info, const usparse::spmv::usparse_csrmv_algorithms algo) {
   info->csrmv_info->flat_info = new csrmv_flat_mtx_info{};
   if (algo == usparse::spmv::usparse_csrmv_algorithms::Flat) {
-    flat_analyse<DATA_TYPE>(dev_csr_mat, info->csrmv_info->flat_info);
+    auto d_csr_mat_descr = usparse::csr_mat_descr<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE>(dev_csr_mat);
+    flat_analyse<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE>(d_csr_mat_descr, info->csrmv_info->flat_info);
   } else {
     // other algorithm does not need matrix anakysis.
   }

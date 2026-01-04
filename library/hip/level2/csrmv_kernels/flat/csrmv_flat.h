@@ -23,6 +23,9 @@ template <typename FPType, int BETA_Y_POLICY = BETA_Y_POLICY_AUTO>
 void adaptive_flat_sparse_spmv(int trans, const FPType alpha, const FPType beta, const csr_desc<int, FPType> d_csr_desc,
                                const FPType *x, FPType *y, const csrmv_flat_mtx_info *info);
 
-template <typename FPType> void flat_analyse(const csr_desc<int, FPType> d_csr_desc, csrmv_flat_mtx_info *info);
+// todo: remove the default template parameters
+template <typename DATA_TYPE, typename NNZ_TYPE = int, typename ROW_TYPE = int, typename COLUMN_TYPE = int>
+void flat_analyse(const csr_mat_descr<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE> d_csr_desc,
+                  csrmv_flat_mtx_info *info);
 
 #endif // USPARSE_HIP_USPARSE_CSRMV_FLAT_H

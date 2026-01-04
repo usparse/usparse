@@ -35,7 +35,7 @@ inline void flat_multi_pass_sparse_spmv(int trans, const DATA_TYPE alpha, const 
   const int break_points_len = total_rounds * BLOCKS + 1;
   hipMalloc((void **)&break_points, break_points_len * sizeof(int));
   hipMemset(break_points, 0, break_points_len * sizeof(int));
-  (pre_calc_break_point<R * THREADS_PER_BLOCK, BLOCKS, int>)<<<1024, 512>>>(rowptr, m, break_points, break_points_len);
+  (pre_calc_break_point<INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, R * THREADS_PER_BLOCK>)<<<1024, 512>>>(rowptr, m, break_points);
   pre_timer.stop();
 
   calc_timer.start();
@@ -67,9 +67,10 @@ inline void flat_one_pass_sparse_spmv(int trans, const DATA_TYPE alpha, const DA
                     FLAT_PRE_CALC_BP_KERNEL_VERSION == FLAT_PRE_CALC_BP_KERNEL_VERSION_V2,
                 "version of the flat pre calc bp kernel must be V1 or V2");
   if (FLAT_PRE_CALC_BP_KERNEL_VERSION == FLAT_PRE_CALC_BP_KERNEL_VERSION_V1) {
-    (pre_calc_break_point<R * THREADS_PER_BLOCK, 0, int>)<<<1024, 512>>>(rowptr, m, break_points, break_points_len);
+    (pre_calc_break_point<INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, R * THREADS_PER_BLOCK>)<<<1024, 512>>>(rowptr, m, break_points);
   } else if (FLAT_PRE_CALC_BP_KERNEL_VERSION == FLAT_PRE_CALC_BP_KERNEL_VERSION_V2) {
-    (pre_calc_break_point_v2<R * THREADS_PER_BLOCK, 0, int>)<<<1024, 512>>>(rowptr, m, break_points, break_points_len);
+    (pre_calc_break_point_v2<INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, R * THREADS_PER_BLOCK>)<<<1024, 512>>>(
+        rowptr, m, break_points);
   }
   pre_timer.stop();
   calc_timer.start();
