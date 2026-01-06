@@ -22,7 +22,8 @@ usparse::usparse_status usparse::spmv::internal::usparse_csrmv_analysis_imp(
   info->csrmv_info->flat_info = new csrmv_flat_mtx_info{};
   if (algo == usparse::spmv::usparse_csrmv_algorithms::Flat) {
     auto d_csr_mat_descr = usparse::csr_mat_descr<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE>(dev_csr_mat);
-    flat_analyse<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE>(d_csr_mat_descr, info->csrmv_info->flat_info);
+    flat_analyse<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE>(d_csr_mat_descr,
+                                                                            info->csrmv_info->flat_info);
   } else {
     // other algorithm does not need matrix anakysis.
   }
@@ -35,8 +36,8 @@ usparse::usparse_status usparse::spmv::internal::usparse_csrmv_imp(
     const usparse::csr_desc<INDEX_TYPE, DATA_TYPE> dev_csr_mat, const DATA_TYPE *x, DATA_TYPE *y,
     usparse::mat::usparse_mat_info *info, const usparse::spmv::usparse_csrmv_algorithms algo) {
   if (algo == usparse::spmv::usparse_csrmv_algorithms::Flat) {
-    adaptive_flat_sparse_spmv<DATA_TYPE, BETA_Y_POLICY_AUTO>(trans, alpha, beta, dev_csr_mat, x, y,
-                                                             info->csrmv_info->flat_info);
+    adaptive_flat_sparse_spmv<INDEX_TYPE, DATA_TYPE, BETA_Y_POLICY_AUTO>(trans, alpha, beta, dev_csr_mat, x, y,
+                                                                         info->csrmv_info->flat_info);
   } else if (algo == usparse::spmv::usparse_csrmv_algorithms::LineEnhance) {
     adaptive_enhance_sparse_spmv<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, DATA_TYPE, DATA_TYPE, DATA_TYPE>(trans, alpha, beta,
                                                                                                      dev_csr_mat, x, y);

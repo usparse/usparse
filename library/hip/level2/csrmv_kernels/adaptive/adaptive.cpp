@@ -64,8 +64,8 @@ void adaptive_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta
   if (bp_3 > (1 << 23)) { // 2^23 = 8,388,608
     csrmv_flat_mtx_info info;
     auto d_csr_mat_descr = usparse::csr_mat_descr<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE>(d_csr_desc);
-    flat_analyse<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE>(d_csr_mat_descr, &info);
-    adaptive_flat_sparse_spmv(trans, alpha, beta, d_csr_desc, x, y, &info);
+    flat_analyse<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE>(d_csr_mat_descr, &info);
+    adaptive_flat_sparse_spmv<INDEX_TYPE, DATA_TYPE>(trans, alpha, beta, d_csr_mat_descr, x, y, &info);
     return;
   }
 
