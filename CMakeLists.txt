@@ -15,6 +15,10 @@ endif()
 add_subdirectory(library)
 add_subdirectory(cli)
 
+if(USPARSE_AUTO_TUNER_ENABLE)
+    add_subdirectory(tuner/csrmv/line_enhance)
+endif()
+
 if(USPARSE_BUILD_BENCHMARK)
     add_subdirectory(benchmarks) # usparse benchmark
 endif()
