@@ -107,6 +107,16 @@ target_include_directories(
         $<INSTALL_INTERFACE:include>
 )
 
+if(USPARSE_AUTO_TUNER_ENABLE)
+        # use c++17 for template instantiat of csrmv line-enhance and flat
+        set_target_properties(${USPARSE_LIB_NAME} PROPERTIES
+                CXX_STANDARD 17
+                CXX_STANDARD_REQUIRED ON
+                CXX_EXTENSIONS OFF
+        )
+        target_compile_options(${USPARSE_LIB_NAME} PRIVATE -fbracket-depth=1024) # clang only
+endif()
+
 ##########################
 ##### install files
 ##########################

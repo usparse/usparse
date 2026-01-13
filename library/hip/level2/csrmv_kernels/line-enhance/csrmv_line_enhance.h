@@ -7,7 +7,7 @@
 
 #include "usparse_matrix.h"
 
-template <typename INDEX_TYPE, typename DATA_TYPE>
+template <typename INDEX_TYPE, typename DATA_TYPE, int R, int ROWS_PER_BLOCK, int VEC_SIZE, int THREADS_PER_BLOCK>
 void line_enhance_sparse_spmv(hipStream_t stream, int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
                               const csr_desc<INDEX_TYPE, DATA_TYPE> d_csr_desc, const DATA_TYPE *x, DATA_TYPE *y);
 
