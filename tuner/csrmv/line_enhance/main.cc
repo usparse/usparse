@@ -69,7 +69,7 @@ void test_spmv(std::string mtx_path, csr_mtx<INDEX_TYPE, DATA_TYPE> h_csr, host_
 
   // run usparse tuner
   usparse::tuner::internal::run_all_tuners();
-  usparse::tuner::internal::print_header();
-  usparse::tuner::internal::print_summary();
+  usparse::tuner::internal::print_header(usparse::tuner::internal::PERF_RECORD_OUTPUT_CSV);
+  usparse::tuner::internal::print_summary(usparse::tuner::internal::PERF_RECORD_OUTPUT_CSV);
   return;
 }
