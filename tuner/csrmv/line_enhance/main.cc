@@ -2,14 +2,14 @@
 // Created by chu genshen on 2026/1/13.
 //
 
+#include "csrmv_tuner_input.h"
 #include <cstdlib>
 #include <ctime>
-#include <string>
-
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
-
-#include "csrmv_tuner_input.h"
+#include <iostream>
+#include <string>
+#include <type_traits>
 
 #include "matrix_format/csr_binary_reader.hpp"
 #include "matrix_format/csr_mtx_reader.hpp"
@@ -22,7 +22,49 @@
 
 #include "usparse_tuner.h"
 
-UBENCH_MAIN(ubench::BENCH_FORMAT_CSR);
+namespace utuner {
+  namespace cli {
+    class CsrmvTunerCliPlugin;
+
+    // the cli arguments
+    utuner::cli::CsrmvTunerCliPlugin *cli_plugin_ptr = nullptr;
+
+    class CsrmvTunerCliPlugin : public ubench::CliPlugin {
+    private:
+      args::ArgumentParser &parser;
+      args::ValueFlag<std::string> cli_perf_summary_output;
+
+    public:
+      usparse::tuner::internal::PERF_RECORD_OUTPUT bench_summary_output_format =
+          usparse::tuner::internal::PERF_RECORD_OUTPUT_STDOUT;
+
+      // define cli argument
+      CsrmvTunerCliPlugin(args::ArgumentParser &_parser)
+          : ubench::CliPlugin(_parser), parser(_parser),
+            cli_perf_summary_output(parser, "output", "performance summary output format: `stdout` (default) or `csv`",
+                                    {'o', "output"}) {
+        cli_plugin_ptr = this;
+      }
+
+      void cli_args_define() override {}
+
+      // parse and get the cli argument
+      void cli_args_parse() override {
+        if (cli_perf_summary_output) {
+          const std::string output_mode_str = args::get(cli_perf_summary_output);
+          if (output_mode_str == "csv") {
+            bench_summary_output_format = usparse::tuner::internal::PERF_RECORD_OUTPUT_CSV;
+          } else if (output_mode_str == "stdout") {
+            bench_summary_output_format = usparse::tuner::internal::PERF_RECORD_OUTPUT_STDOUT;
+          } else {
+            std::cerr << "warning: unsupported summary output format: " << output_mode_str
+                      << ". Using default (stdout)." << std::endl;
+          }
+        }
+      };
+    };
+  } // namespace cli
+} // namespace utuner
 
 template <typename INDEX_TYPE, typename DATA_TYPE>
 void test_spmv(std::string mtx_path, csr_mtx<INDEX_TYPE, DATA_TYPE> h_csr, host_vectors<DATA_TYPE> h_vectors);
@@ -36,15 +78,14 @@ int run_csr_benchmark(std::string mtx_path, csr_mtx<type_sparse_default_index, P
   return 0;
 }
 
-// todo: more elegent args passing.
-utuner::csrmv_tuner_input<int, double> *global_csrmv_tuner_input_ptr;
+utuner::csrmv_tuner_input<int, double> *global_csrmv_tuner_input_ptr = nullptr;
 
 template <typename INDEX_TYPE, typename DATA_TYPE>
 void test_spmv(std::string mtx_path, csr_mtx<INDEX_TYPE, DATA_TYPE> h_csr, host_vectors<DATA_TYPE> h_vectors) {
   HIP_CHECK(hipSetDevice(0));
 
-  if constexpr (std::is_same<DATA_TYPE, usparse::usparse_fp32>::value) {
-    printf("only FP64 is supported.\n");
+  if constexpr (std::is_same<DATA_TYPE, float>::value) {
+    std::cerr << "the tuner currently only supports FP64 (double). Exit." << std::endl;
     return;
   }
 
@@ -67,9 +108,16 @@ void test_spmv(std::string mtx_path, csr_mtx<INDEX_TYPE, DATA_TYPE> h_csr, host_
     global_csrmv_tuner_input_ptr = &_csrmv_tuner_input;
   }
 
-  // run usparse tuner
+  auto out_format = usparse::tuner::internal::PERF_RECORD_OUTPUT_STDOUT;
+  if (utuner::cli::cli_plugin_ptr != nullptr) {
+    out_format = utuner::cli::cli_plugin_ptr->bench_summary_output_format;
+  }
+
   usparse::tuner::internal::run_all_tuners();
-  usparse::tuner::internal::print_header(usparse::tuner::internal::PERF_RECORD_OUTPUT_CSV);
-  usparse::tuner::internal::print_summary(usparse::tuner::internal::PERF_RECORD_OUTPUT_CSV);
-  return;
+  usparse::tuner::internal::print_header(out_format);
+  usparse::tuner::internal::print_summary(out_format);
+}
+
+int main(int argc, char **argv) {
+  return ubench::benchmark_main<ubench::BENCH_FORMAT_CSR, utuner::cli::CsrmvTunerCliPlugin>(argc, argv);
 }

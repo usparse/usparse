@@ -24,13 +24,20 @@ namespace ubench {
   constexpr int BENCH_FORMAT_CSR = 1;
   constexpr int BENCH_FORMAT_COO = 2;
 
+  struct CliPlugin {
+    CliPlugin(args::ArgumentParser &parser) {};
+    virtual void cli_args_define() {};
+    virtual void cli_args_parse() {};
+  };
+  using EmptyCliPlugin = CliPlugin;
+
   template <int BENCH_FORMAT, typename PRECISION> void read_mtx_and_run(std::string mtx_path, const std::string &fmt);
 
   // TODO: https://github.com/Taywee/args
   /**
    * @tparam BENCH_FORMAT the sparse matrix format used for benchmarking. e.g. BENCH_FORMAT for coomv is COO.
    */
-  template <int BENCH_FORMAT> int benchmark_main(int argc, char **argv) {
+  template <int BENCH_FORMAT, typename CLI_PLUGIN = EmptyCliPlugin> int benchmark_main(int argc, char **argv) {
     args::ArgumentParser parser("This is usparse benchmark.", "authors: genshen.");
     args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
     args::ValueFlag<std::string> mtx_path(parser, "matrix", "The matrix file", {'m', "mtx"});
@@ -39,6 +46,9 @@ namespace ubench {
         {'f', "fmt"});
     args::ValueFlag<std::string> fp(parser, "precision",
                                     "The float percision used in benchmark. can be `fp32` or `fp64` (default)", {"fp"});
+
+    CLI_PLUGIN cli_plugin(parser);
+    cli_plugin.cli_args_define(); // we can add more cli arguments here.
 
     try {
       parser.ParseCLI(argc, (const char *const *)argv);
@@ -69,6 +79,8 @@ namespace ubench {
     if (fp) {
       fp_str = args::get(fp);
     }
+
+    cli_plugin.cli_args_parse(); // we can abtain the value from user-defined cli arguments.
 
     if (fp_str == "fp32") {
       std::cout << "benchmarking FP32 on " << mtx_path_str << std::endl;
@@ -138,6 +150,6 @@ namespace ubench {
 
 // BENCH_FORMAT can be ubench::BENCH_FORMAT_COO or ubench::BENCH_FORMAT_CSR
 #define UBENCH_MAIN(BENCH_FORMAT)                                                                                      \
-  int main(int argc, char **argv) { return ubench::benchmark_main<BENCH_FORMAT>(argc, argv); }
+  int main(int argc, char **argv) { return ubench::benchmark_main<BENCH_FORMAT, ubench::EmptyCliPlugin>(argc, argv); }
 
 #endif // USPARSE_BENCHMARK_MAIN_HPP
