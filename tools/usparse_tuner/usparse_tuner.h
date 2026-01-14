@@ -37,6 +37,8 @@ namespace usparse {
 
 // n: tune name
 // ...: the paramter ranges for tuning.
+// In this macro, it:
+// call register_tuner() to add the function pointer to usparse::tuner::internal::tuner_entrypointers
 #define USPARSE_TUNER_DEFINE_TUNE_RANGE(n)                                                                             \
   void USPARSE_TUNER_DECLARE_Func(n)();                                                                                \
   const static usparse::tuner::internal::private_tuner *USPARSE_TUNER_PRIVITE_REGISTER_DECLARE(n) =                    \
@@ -47,7 +49,7 @@ namespace usparse {
   pConfig->setTuneName(#n);                                                                                            \
   usparse::tuner::internal::optimize<USPARSE_TUNER_DECLARE_Class(n), ConfigType, __VA_ARGS__>(pConfig)
 
-#define USPARSE_TUNER_MAIN(n)                                                                                          \
+#define USPARSE_TUNER_MAIN()                                                                                           \
   int main() {                                                                                                         \
     usparse::tuner::internal::run_all_tuners();                                                                        \
     usparse::tuner::internal::print_header();                                                                          \

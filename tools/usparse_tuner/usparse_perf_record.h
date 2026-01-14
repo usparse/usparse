@@ -43,8 +43,13 @@ namespace usparse {
 
       extern StatesPerfList tuner_state_perf_list;
 
-      void print_header();
-      void print_summary();
+      using PERF_RECORD_OUTPUT = int;
+      constexpr PERF_RECORD_OUTPUT PERF_RECORD_OUTPUT_STDOUT = 0;
+      constexpr PERF_RECORD_OUTPUT PERF_RECORD_OUTPUT_CSV = 1;
+
+      void print_header(const PERF_RECORD_OUTPUT output_target = PERF_RECORD_OUTPUT_STDOUT);
+
+      void print_summary(const PERF_RECORD_OUTPUT output_target = PERF_RECORD_OUTPUT_STDOUT);
 
     } // namespace internal
   } // namespace tuner
