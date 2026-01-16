@@ -46,7 +46,7 @@ void line_enhance_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE 
  * @tparam Y data type of vector y in spmv: y = alpha * Ax + beta y.
  */
 template <typename COMPUTE, typename NNZ, typename ROW, typename COL, typename SCALE, typename A, typename X,
-          typename Y>
+          typename Y, int WF_SIZE = __WF_SIE__>
 void adaptive_enhance_sparse_spmv(hipStream_t stream, int trans, const SCALE alpha, const SCALE beta,
                                   const usparse::csr_mat_descr<A, NNZ, ROW, COL> d_csr_desc, const X *x, Y *y);
 
@@ -55,7 +55,7 @@ void adaptive_enhance_sparse_spmv(hipStream_t stream, int trans, const SCALE alp
  * adaptive enhance spmv without HIP stream.
  */
 template <typename COMPUTE, typename NNZ, typename ROW, typename COL, typename SCALE, typename A, typename X,
-          typename Y>
+          typename Y, int WF_SIZE = __WF_SIE__>
 void adaptive_enhance_sparse_spmv(int trans, const SCALE alpha, const SCALE beta,
                                   const usparse::csr_mat_descr<A, NNZ, ROW, COL> d_csr_desc, const X *x, Y *y);
 
