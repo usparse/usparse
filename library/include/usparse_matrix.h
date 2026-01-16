@@ -10,51 +10,77 @@
 namespace usparse {
   
   template <typename I, typename T> class coo_desc;
-  template <typename I, typename A, typename J=I> class csr_desc;
+  template <typename I, typename A, typename J, typename K> class csr_desc;
+
+  template <typename A, typename NNZ_TYPE, typename ROW_TYPE, typename COLUMN_TYPE>
+  struct csr_mat_descr;
 
   /**
    * different from class csr_desc, all member is not const.
    * I,J are index types, A is value type in csr matrix.
    * CSR sparse matrix descriptor.
    */
-  template <typename I, typename A, typename J=I> class var_csr_desc {
+  template <typename NNZ_TYPE, typename A, typename ROW_TYPE = NNZ_TYPE, typename COLUMN_TYPE = ROW_TYPE>
+  class var_csr_desc {
   public:
-    J rows = 0;
-    J cols = 0;
-    I nnz = 0;
+    ROW_TYPE rows = 0;
+    COLUMN_TYPE cols = 0;
+    NNZ_TYPE nnz = 0;
 
-    I *row_ptr = nullptr;
-    J *col_index = nullptr;
+    NNZ_TYPE *row_ptr = nullptr;
+    COLUMN_TYPE *col_index = nullptr;
     A *values = nullptr;
 
     var_csr_desc() {}
 
-    var_csr_desc(const J r, const J c, const I _nnz) : rows(r), cols(c), nnz(_nnz) {}
+    var_csr_desc(const ROW_TYPE r, const COLUMN_TYPE c, const NNZ_TYPE _nnz) : rows(r), cols(c), nnz(_nnz) {}
 
-    csr_desc<I, A, J> as_const() { return csr_desc<I, A, J>(*this); }
+    csr_desc<NNZ_TYPE, A, ROW_TYPE, COLUMN_TYPE> as_const() {
+      return csr_desc<NNZ_TYPE, A, ROW_TYPE, COLUMN_TYPE>(*this);
+    }
+  };
+
+  /**
+   * @deprecated API. use csr_mat_descr instead.
+   *
+   * CSR sparse matrix descriptor.
+   * in class csr_desc, all members are const.
+   * @tparam NNZ_TYPE index type for number of non-zeros.
+   * @tparam ROW_TYPE and COLUMN_TYPE are index type of matrix row and column.
+   * @tparam A is value type in csr matrix.
+   */
+  template <typename NNZ_TYPE, typename A, typename ROW_TYPE = NNZ_TYPE, typename COLUMN_TYPE = ROW_TYPE> class csr_desc {
+  public:
+    const ROW_TYPE rows = 0;
+    const COLUMN_TYPE cols = 0;
+    const NNZ_TYPE nnz = 0;
+
+    const NNZ_TYPE *row_ptr = nullptr;
+    const COLUMN_TYPE *col_index = nullptr;
+    const A *values = nullptr;
+
+    csr_desc(const ROW_TYPE m, const COLUMN_TYPE n, const NNZ_TYPE _nnz, const NNZ_TYPE *_row_ptr,
+             const COLUMN_TYPE *_col_index, const A *_values)
+        : rows(m), cols(n), nnz(_nnz), row_ptr(_row_ptr), col_index(_col_index), values(_values) {}
+
+    csr_desc(const var_csr_desc<NNZ_TYPE, A, ROW_TYPE, COLUMN_TYPE> _var_csr_desc)
+        : rows(_var_csr_desc.rows), cols(_var_csr_desc.cols), nnz(_var_csr_desc.nnz), row_ptr(_var_csr_desc.row_ptr),
+          col_index(_var_csr_desc.col_index), values(_var_csr_desc.values) {}
   };
 
   /**
    * CSR sparse matrix descriptor.
-   * in class csr_desc, all members are const.
-   * I and J are index type, A is value type in csr matrix.
+   * @tparam A is value type in csr matrix.
+   * @tparam NNZ_TYPE index type for number of non-zeros.
+   * @tparam ROW_TYPE and COLUMN_TYPE are index type of matrix row and column.
    */
-  template <typename I, typename A, typename J> class csr_desc {
-  public:
-    const J rows = 0;
-    const J cols = 0;
-    const I nnz = 0;
-
-    const I *row_ptr = nullptr;
-    const J *col_index = nullptr;
-    const A *values = nullptr;
-
-    csr_desc(const J m, const J n, const I _nnz, const I *_row_ptr, const J *_col_index, const A *_values)
-        : rows(m), cols(n), nnz(_nnz), row_ptr(_row_ptr), col_index(_col_index), values(_values) {}
-
-    csr_desc(const var_csr_desc<I, A, J> _var_csr_desc)
-        : rows(_var_csr_desc.rows), cols(_var_csr_desc.cols), nnz(_var_csr_desc.nnz), row_ptr(_var_csr_desc.row_ptr),
-          col_index(_var_csr_desc.col_index), values(_var_csr_desc.values) {}
+  template <typename A, typename NNZ_TYPE, typename ROW_TYPE = NNZ_TYPE, typename COLUMN_TYPE = ROW_TYPE>
+  struct csr_mat_descr : public csr_desc<NNZ_TYPE, A, ROW_TYPE, COLUMN_TYPE> {
+    using csr_desc<NNZ_TYPE, A, ROW_TYPE, COLUMN_TYPE>::csr_desc;
+    // convert from csr_desc to csr_mat_descr:
+    csr_mat_descr(const csr_desc<NNZ_TYPE, A, ROW_TYPE, COLUMN_TYPE> &desc)
+        : csr_mat_descr<A, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE>(desc.rows, desc.cols, desc.nnz, desc.row_ptr,
+                                                            desc.col_index, desc.values) {}
   };
 
   /**
@@ -108,6 +134,9 @@ namespace usparse {
 // todo: remove it.
 template <typename I, typename T> using var_csr_desc = usparse::var_csr_desc<I, T>;
 
-template <typename I, typename A, typename J=I> using csr_desc = usparse::csr_desc<I, A, J>;
+template <typename I, typename A, typename J = I> using csr_desc = usparse::csr_desc<I, A, J>;
+
+template <typename A, typename NNZ_TYPE, typename ROW_TYPE = NNZ_TYPE, typename COLUMN_TYPE = ROW_TYPE>
+using csr_mat_descr = usparse::csr_mat_descr<A, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE>;
 
 #endif // USPARSE_HIP_USPARSE_MATRIX_H

@@ -258,6 +258,7 @@ template void usparse::device_daxpy<uint, double, double>(const double alpha, co
 
 template void usparse::device_dscal<uint, double>(const double alpha, double *x, const uint N);
 template void usparse::device_dscal<uint, float>(const float alpha, float *x, const uint N);
+template void usparse::device_dscal<int, int>(const int alpha, int *x, const int N);
 template void usparse::device_dscal<int, double>(const double alpha, double *x, const int N);
 template void usparse::device_dscal<int, float>(const float alpha, float *x, const int N);
 template void usparse::device_dscal<int, usparse::usparse_fpc64>(const usparse::usparse_fpc64 alpha,
@@ -267,6 +268,7 @@ template void usparse::device_dscal<int, usparse::usparse_fpc32>(const usparse::
 
 template void usparse::device_scale_set<uint, double>(const double alpha, double *data, const uint N);
 template void usparse::device_scale_set<uint, float>(const float alpha, float *data, const uint N);
+template void usparse::device_scale_set<int, int>(const int alpha, int *data, const int N);
 template void usparse::device_scale_set<int, double>(const double alpha, double *data, const int N);
 template void usparse::device_scale_set<int, float>(const float alpha, float *data, const int N);
 template void usparse::device_scale_set<int, usparse::usparse_fpc64>(const usparse::usparse_fpc64 alpha,

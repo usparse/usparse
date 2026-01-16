@@ -12,36 +12,37 @@
 #include "common/global_mem_ops.h"
 #include "common/utils.h"
 
-template <int WF_SIZE, int R, int REDUCE_OPTION, int REDUCE_VEC_SIZE, int THREADS, typename I, typename T>
-__global__ void spmv_flat_one_pass_kernel(int m, const T alpha, const T beta, const I *__restrict__ row_offset,
-                                          const I *__restrict__ break_points, const I *__restrict__ csr_col_ind,
-                                          const T *__restrict__ csr_val, const T *__restrict__ x, T *__restrict__ y) {
-  const int global_thread_id = threadIdx.x + THREADS * blockIdx.x;
-  const int global_threads_num = hipGridDim_x * THREADS;
-
-  const int wf_id_in_block = blockIdx.x / WF_SIZE; // wavefront id in block
-  const int block_id = blockIdx.x;                 // block id
-  const int tid_in_block = threadIdx.x % THREADS;  // thread id in one block
+template <int WF_SIZE, int R, int REDUCE_OPTION, int REDUCE_VEC_SIZE, int THREADS, typename SHARE_MEM_INDEX_TYPE,
+          typename BP_INDEX_TYPE, typename BP_DATA_TYPE, typename SCALE_DATA_TYPE, typename A_TYPE,
+          typename COMPUTE_MULTI_TYPE, typename COMPUTE_SUM_TYPE, typename X_TYPE, typename Y_TYPE, typename NNZ_TYPE,
+          typename ROW_TYPE, typename COLUMN_TYPE>
+__global__ __launch_bounds__(THREADS) void csrmv_flat_one_pass_kernel(
+    ROW_TYPE m, const SCALE_DATA_TYPE alpha, const SCALE_DATA_TYPE beta, const NNZ_TYPE *__restrict__ row_offset,
+    const BP_DATA_TYPE *__restrict__ break_points, const COLUMN_TYPE *__restrict__ csr_col_ind,
+    const A_TYPE *__restrict__ csr_val, const X_TYPE *__restrict__ x, Y_TYPE *__restrict__ y) {
+  const int block_id = blockIdx.x;                // block id
+  const int tid_in_block = threadIdx.x % THREADS; // thread id in one block
 
   constexpr int nnz_per_block = THREADS * R;
-  __shared__ T shared_val[nnz_per_block];
-  const I last_element_index = row_offset[m];
+  __shared__ COMPUTE_MULTI_TYPE shared_val[nnz_per_block];
+  const NNZ_TYPE last_element_index = row_offset[m];
 
-  I bp_index = block_id;
+  BP_INDEX_TYPE bp_index = static_cast<BP_INDEX_TYPE>(block_id);
   // each block process THREADS * R elements.
-  int k = nnz_per_block * block_id;
+  NNZ_TYPE k = static_cast<NNZ_TYPE>(nnz_per_block) * static_cast<NNZ_TYPE>(block_id);
 
 #pragma unroll
   for (int i = 0; i < R; i++) {
-    const I shared_inx = tid_in_block + i * THREADS;
-    const I index = min(k + shared_inx, last_element_index - 1);
-    shared_val[shared_inx] = csr_val[index] * x[csr_col_ind[index]];
+    const SHARE_MEM_INDEX_TYPE shared_inx = tid_in_block + i * THREADS;
+    const NNZ_TYPE index = min(k + static_cast<NNZ_TYPE>(shared_inx), last_element_index - 1);
+    shared_val[shared_inx] =
+        static_cast<COMPUTE_MULTI_TYPE>(csr_val[index]) * static_cast<COMPUTE_MULTI_TYPE>(x[csr_col_ind[index]]);
   }
   __syncthreads();
 
   // reduce via LDS.
-  const I reduce_start_row_id = min(break_points[bp_index], m);
-  I reduce_end_row_id = min(break_points[bp_index + 1], m);
+  const ROW_TYPE reduce_start_row_id = min(break_points[bp_index], m);
+  ROW_TYPE reduce_end_row_id = min(break_points[bp_index + 1], m);
   // if it is the last block
   if (reduce_end_row_id == 0) {
     reduce_end_row_id = m;
@@ -55,30 +56,30 @@ __global__ void spmv_flat_one_pass_kernel(int m, const T alpha, const T beta, co
 
   // reduce and store result to memory
   if (REDUCE_OPTION == FLAT_REDUCE_OPTION_VEC) {
-    const I n_reduce_rows_num = reduce_end_row_id - reduce_start_row_id;
-    flat_reduce_in_vector<I, T, nnz_per_block, THREADS, REDUCE_VEC_SIZE>(n_reduce_rows_num, tid_in_block, bp_index,
-                                                                         reduce_start_row_id, reduce_end_row_id, alpha,
-                                                                         row_offset, shared_val, y);
-  } else if (REDUCE_OPTION == FLAT_REDUCE_OPTION_VEC_MEM_COALESCING) {
-    const I n_reduce_rows_num = reduce_end_row_id - reduce_start_row_id;
-    flat_reduce_in_vector_with_mem_coalescing<I, T, nnz_per_block, THREADS, REDUCE_VEC_SIZE>(
+    const ROW_TYPE n_reduce_rows_num = reduce_end_row_id - reduce_start_row_id;
+    flat_reduce_in_vector<BP_INDEX_TYPE, COMPUTE_MULTI_TYPE, SHARE_MEM_INDEX_TYPE, NNZ_TYPE, ROW_TYPE, SCALE_DATA_TYPE,
+                          COMPUTE_SUM_TYPE, Y_TYPE, nnz_per_block, THREADS, REDUCE_VEC_SIZE>(
         n_reduce_rows_num, tid_in_block, bp_index, reduce_start_row_id, reduce_end_row_id, alpha, row_offset,
         shared_val, y);
+  } else if (REDUCE_OPTION == FLAT_REDUCE_OPTION_VEC_MEM_COALESCING) {
+    const ROW_TYPE n_reduce_rows_num = reduce_end_row_id - reduce_start_row_id;
+    flat_reduce_in_vector_with_mem_coalescing<BP_INDEX_TYPE, COMPUTE_MULTI_TYPE, SHARE_MEM_INDEX_TYPE, NNZ_TYPE,
+                                              ROW_TYPE, SCALE_DATA_TYPE, COMPUTE_SUM_TYPE, Y_TYPE, nnz_per_block,
+                                              THREADS, REDUCE_VEC_SIZE>(n_reduce_rows_num, tid_in_block, bp_index,
+                                                                        reduce_start_row_id, reduce_end_row_id, alpha,
+                                                                        row_offset, shared_val, y);
   } else if (REDUCE_OPTION == FLAT_REDUCE_OPTION_SEGMENT_SUM) {
-      __shared__ I shared_idx[THREADS];
-      flat_reduce_segment_sum<I, T, nnz_per_block, R, THREADS>(tid_in_block, bp_index, reduce_start_row_id,
-                                                               reduce_end_row_id, alpha, row_offset, last_element_index, shared_idx,
-                                                               shared_val, y);
+    __shared__ ROW_TYPE shared_idx[THREADS];
+    flat_reduce_segment_sum<BP_INDEX_TYPE, COMPUTE_MULTI_TYPE, SHARE_MEM_INDEX_TYPE, NNZ_TYPE, ROW_TYPE,
+                            SCALE_DATA_TYPE, COMPUTE_SUM_TYPE, Y_TYPE, nnz_per_block, R, THREADS>(
+        tid_in_block, bp_index, reduce_start_row_id, reduce_end_row_id, alpha, row_offset, last_element_index,
+        shared_idx, shared_val, y);
   } else {
     // direct reduction
-    flat_reduce_direct<I, T, nnz_per_block, THREADS>(tid_in_block, bp_index, reduce_start_row_id, reduce_end_row_id,
-                                                     alpha, row_offset, shared_val, y);
+    flat_reduce_direct<BP_INDEX_TYPE, COMPUTE_MULTI_TYPE, SHARE_MEM_INDEX_TYPE, NNZ_TYPE, ROW_TYPE, SCALE_DATA_TYPE,
+                       COMPUTE_SUM_TYPE, Y_TYPE, nnz_per_block, THREADS>(
+        tid_in_block, bp_index, reduce_start_row_id, reduce_end_row_id, alpha, row_offset, shared_val, y);
   }
 }
-
-#define FLAT_KERNEL_ONE_PASS_WRAPPER(INDEX_TYPE, FP, R, REDUCE_OPTION, REDUCE_VEC_SIZE, BLOCKS, THREADS)                           \
-  (spmv_flat_one_pass_kernel<__WF_SIZE__, R, REDUCE_OPTION, REDUCE_VEC_SIZE, THREADS, INDEX_TYPE,                             \
-                             FP>)<<<(BLOCKS), (THREADS)>>>(m, alpha, beta, rowptr, break_points, colindex, value, x,   \
-                                                           y)
 
 #endif // USPARSE_HIP_USPARSE_FLAT_KERNELS_IMP_ONE_PASS_HPP
