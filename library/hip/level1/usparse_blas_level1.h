@@ -5,6 +5,9 @@
 #ifndef USPARSE_KERNELS_USPARSE_BLAS_LEVEL1_H
 #define USPARSE_KERNELS_USPARSE_BLAS_LEVEL1_H
 
+#include <hip/hip_runtime.h>
+#include <hip/hip_runtime_api.h>
+
 namespace usparse {
 
   template <typename INDEX_TYPE, typename DATA_TYPE>
@@ -34,9 +37,10 @@ namespace usparse {
    * @param alpha alpha
    * @param x input and output vector of size N.
    * @param N the vector size.
+   * @param stream the stream for launching the hip kernel.
    */
   template <typename INDEX_TYPE, typename DATA_TYPE>
-  void device_dscal(const DATA_TYPE alpha, DATA_TYPE *x, const INDEX_TYPE N);
+  void device_dscal(const DATA_TYPE alpha, DATA_TYPE *x, const INDEX_TYPE N, hipStream_t stream = hipStreamDefault);
 
   /**
    * copy vector of size N from dst to src.
@@ -93,9 +97,11 @@ namespace usparse {
    * @param alpha the scale: alpha
    * @param data the vector data
    * @param N the size of the vector data
+   * @param stream the stream for launching the hip kernel.
    */
   template <typename INDEX_TYPE, typename DATA_TYPE>
-  void device_scale_set(const DATA_TYPE alpha, DATA_TYPE *data, const INDEX_TYPE N);
+  void device_scale_set(const DATA_TYPE alpha, DATA_TYPE *data, const INDEX_TYPE N,
+                        hipStream_t stream = hipStreamDefault);
 } // namespace usparse
 
 #endif // USPARSE_KERNELS_USPARSE_BLAS_LEVEL1_H
