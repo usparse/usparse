@@ -28,6 +28,7 @@ USPARSE_TUNER_BENCH(uTuneLineEnhanceFP64) {
   static void utuner(usparse::tuner::States & states, std::tuple<utuner::csrmv_tuner_input<int, double>> args) {
     // skip invalid parameter group
     if constexpr (VEC_SIZE * ROWS_PER_BLOCK > THREADS_PER_BLOCK) {
+      states.SkipThisTestCase();
       return;
     }
 
@@ -62,6 +63,7 @@ USPARSE_TUNER_DEFINE_TUNE_RANGE(uTuneLineEnhanceFP64) {
   using LINE_ENHANCE_VEC_SIZE =
       usparse::tuner::ParamRange<int, 1, 2, 4, 8, 16, 32, 64>; // todo: 64 is only for AMD GPUs and Hygon DCUs
   constexpr int ParamGroups = 4;
+  const std::array<std::string, ParamGroups> ParameterNames = {"THREADS", "R", "ROWS_PER_BLOCK", "VEC_SIZE"};
 
   using ConfigType = usparse::tuner::Config<utuner::csrmv_tuner_input<int, double>>;
   auto config = new ConfigType();
@@ -69,6 +71,6 @@ USPARSE_TUNER_DEFINE_TUNE_RANGE(uTuneLineEnhanceFP64) {
   config->setArgs({*global_csrmv_tuner_input_ptr});
 
   // call uTuneLineEnhanceFP64::utuner
-  USPARSE_TUNER_LAUNCH(uTuneLineEnhanceFP64, ConfigType, config, ParamGroups, HIP_THREADS_PER_BLOCK, LINE_ENHANCE_R,
-                       LINE_ENHANCE_ROWS_PER_BLOCK, LINE_ENHANCE_VEC_SIZE);
+  USPARSE_TUNER_LAUNCH(uTuneLineEnhanceFP64, ConfigType, config, ParamGroups, ParameterNames, HIP_THREADS_PER_BLOCK,
+                       LINE_ENHANCE_R, LINE_ENHANCE_ROWS_PER_BLOCK, LINE_ENHANCE_VEC_SIZE);
 }

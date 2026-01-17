@@ -87,12 +87,13 @@ USPARSE_TUNER_DEFINE_TUNE_RANGE(dotProdAxpyFusion_Tuner) {
   using ElesPerThreads = usparse::tuner::ParamRange<int, 2, 4>;
   using StridesParams = usparse::tuner::ParamRange<int, 2, 4>;
   constexpr int ParamGroups = 3;
+  const std::array<std::string, ParamGroups> ParameterNames = {"THREADS", "ELES_PER_THREAD", "STRIDES"};
 
   using ConfigType = usparse::tuner::Config<int, int>; // N and I.
   auto config = new ConfigType();
   config->setIterations(16);
   config->setArgs(std::tuple{18000, 3})->setArgs(std::tuple{36000, 2})->setArgs(std::tuple{72000, 2});
 
-  USPARSE_TUNER_LAUNCH(dotProdAxpyFusion_Tuner, ConfigType, config, ParamGroups, BlockThreads, ElesPerThreads,
-                       StridesParams);
+  USPARSE_TUNER_LAUNCH(dotProdAxpyFusion_Tuner, ConfigType, config, ParamGroups, ParameterNames, BlockThreads,
+                       ElesPerThreads, StridesParams);
 }

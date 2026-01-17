@@ -14,6 +14,7 @@ namespace usparse {
       // config for output as stdout
       namespace console_config {
         int tune_case_title_length = 10;
+        int tune_input_args_title_length = 10;
         int tune_param_title_length = 12;
         bool counter_empty = true;
         int header_row_char_num = 0;
@@ -37,12 +38,16 @@ namespace usparse {
         // find the max length of case name string (1st colmn in the summary table)
         // and tune param string (2nd colmn in the summary table).
         for (auto p : tuner_state_perf_list.state_time_lists) {
-          const int cur_case_str_length = p.first.size();
-          if (cur_case_str_length > console_config::tune_case_title_length) {
-            console_config::tune_case_title_length = cur_case_str_length;
-          }
           for (auto pp : p.second) {
-            const int cur_tune_param_title_str_length = pp.tune_param_list_name.size();
+            const int cur_tune_case_str_length = pp.tuner_case_name.size();
+            const int cur_tune_input_args_list_length = pp.tuner_input_args_list.size();
+            const int cur_tune_param_title_str_length = pp.tune_param_list_name.size(); //
+            if (cur_tune_case_str_length > console_config::tune_case_title_length) {
+              console_config::tune_case_title_length = cur_tune_case_str_length;
+            }
+            if (cur_tune_input_args_list_length > console_config::tune_input_args_title_length) {
+              console_config::tune_input_args_title_length = cur_tune_input_args_list_length;
+            }
             if (cur_tune_param_title_str_length > console_config::tune_param_title_length) {
               console_config::tune_param_title_length = cur_tune_param_title_str_length;
             }
@@ -52,8 +57,9 @@ namespace usparse {
           }
         }
 
-        console_config::header_row_char_num =
-            console_config::tune_case_title_length + console_config::tune_param_title_length + 15 + 12 + 3; // 3 space
+        console_config::header_row_char_num = console_config::tune_case_title_length +
+                                              console_config::tune_input_args_title_length +
+                                              console_config::tune_param_title_length + 15 + 12 + 4; // 4 space
         if (!(console_config::counter_empty)) {
           console_config::header_row_char_num += (18 + 1);
         }
@@ -66,8 +72,9 @@ namespace usparse {
         }
         printf("\n");
         // print header title.
-        printf("%-*s %-*s %15s %12s", static_cast<int>(console_config::tune_case_title_length), "TuneCase",
-               console_config::tune_param_title_length, "TuneParams", "Time(μs)", "Iterations");
+        printf("%-*s %-*s %-*s %15s %12s", console_config::tune_case_title_length, "TuneCase",
+               console_config::tune_input_args_title_length, "InputArgs", console_config::tune_param_title_length,
+               "TuneParams", "Time(μs)", "Iterations");
 
         // for user counters
         if (!(console_config::counter_empty)) {
@@ -86,7 +93,7 @@ namespace usparse {
         // print logo
         printf("\nuSparse Tuner summary:\n");
         // print header title.
-        printf("%s,%s,%s,%s", "TuneCase", "TuneParams", "Time(μs)", "Iterations");
+        printf("%s,%s,%s,%s,%s", "TuneCase", "InputArgs", "TuneParams", "Time(μs)", "Iterations");
 
         std::vector<std::string> user_counter_list = get_all_counters_name();
         for (auto &counter_name : user_counter_list) {
@@ -108,9 +115,9 @@ namespace usparse {
         int i = 0;
         for (auto p : tuner_state_perf_list.state_time_lists) {
           // loop all tuning parameters:
-          const std::string args_name = p.first;
           for (auto pp : p.second) {
-            printf("%-*s %-*s %15g %12d", static_cast<int>(console_config::tune_case_title_length), args_name.c_str(),
+            printf("%-*s %-*s %-*s %15g %12d", console_config::tune_case_title_length, pp.tuner_case_name.c_str(),
+                   console_config::tune_input_args_title_length, pp.tuner_input_args_list.c_str(),
                    console_config::tune_param_title_length, pp.tune_param_list_name.c_str(), pp.avarage_time_per_itl(),
                    pp.iterations);
             if (!(pp.counters.empty())) {
@@ -140,10 +147,9 @@ namespace usparse {
         // loo all arguments:
         for (auto p : tuner_state_perf_list.state_time_lists) {
           // loop all tuning parameters:
-          const std::string args_name = p.first;
           for (auto pp : p.second) {
-            printf("%s,%s,%g,%d", args_name.c_str(), pp.tune_param_list_name.c_str(), pp.avarage_time_per_itl(),
-                   pp.iterations);
+            printf("%s,%s,%s,%g,%d", pp.tuner_case_name.c_str(), pp.tuner_input_args_list.c_str(),
+                   pp.tune_param_list_name.c_str(), pp.avarage_time_per_itl(), pp.iterations);
             // loop all user counters. It keeps the same order as the csv header.
             for (const std::string &counter_name : user_counter_list) {
               std::map<std::string, usparse::tuner::Counter>::iterator iter = pp.counters.find(counter_name);
