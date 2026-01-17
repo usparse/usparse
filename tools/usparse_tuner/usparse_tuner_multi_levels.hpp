@@ -76,7 +76,8 @@ namespace usparse {
 
           if (!states.IsTestCaseSkipped()) {
             usparse::tuner::internal::CurrentParamArgStatePerf performance(
-                tune_list_name, _iterations, states.get_time_duration_us(), states.counters);
+                cur_config->getTuneName(), usparse::tuner::utils::tupleToString(args), tune_list_name, _iterations,
+                states.get_time_duration_us(), states.counters);
 
             usparse::tuner::internal::tuner_state_perf_list.emplace_back(arg_list_name, performance);
           }

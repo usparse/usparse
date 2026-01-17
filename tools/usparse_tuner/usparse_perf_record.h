@@ -16,14 +16,18 @@ namespace usparse {
 
       // state time info under a given arg and parameter.
       struct CurrentParamArgStatePerf {
-        const std::string tune_param_list_name;
+        const std::string tune_param_list_name;  // the compie-time parameters
+        const std::string tuner_case_name;       // the tuner case name
+        const std::string tuner_input_args_list; // the run-time input argument list
         const int iterations = 0;
         std::map<std::string, Counter> counters;
         const double time_duration_us = 0.0; // the total time in all iterations.
 
-        CurrentParamArgStatePerf(const std::string &_tune_param_list_name, const int _iterations,
+        CurrentParamArgStatePerf(const std::string &_tuner_case_name, const std::string &_tuner_input_args_list,
+                                 const std::string &_tune_param_list_name, const int _iterations,
                                  const double _time_duration_us, const std::map<std::string, Counter> _counters)
-            : tune_param_list_name(_tune_param_list_name), iterations(_iterations), time_duration_us(_time_duration_us),
+            : tuner_case_name(_tuner_case_name), tuner_input_args_list(_tuner_input_args_list),
+              tune_param_list_name(_tune_param_list_name), iterations(_iterations), time_duration_us(_time_duration_us),
               counters(_counters) {}
         inline double avarage_time_per_itl() { return time_duration_us / iterations; };
       };
