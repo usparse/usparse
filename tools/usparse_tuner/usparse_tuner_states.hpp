@@ -131,7 +131,7 @@ namespace usparse {
               }
               new_rate = new_rate / KIs::kIs1000; // rate too large
             }
-            return std::to_string(new_rate) + "/s";
+            return std::to_string(rate) + "/s";
           } else if (oneK == KIs::kIs1024) {
             constexpr int MAX_UNITS = 5;
             std::array<std::string, MAX_UNITS> units = {"/s", "Ki/s", "Mi/s", "Gi/s", "Ti/s"};
@@ -142,7 +142,7 @@ namespace usparse {
               }
               new_rate = new_rate / KIs::kIs1024;
             }
-            return std::to_string(new_rate) + "/s"; // rate too large
+            return std::to_string(rate) + "/s"; // rate too large
           } else {
             return "";
           }
