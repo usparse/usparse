@@ -21,8 +21,18 @@ namespace usparse {
     private:
       int _iterations = 0;
 
+      bool _discard_results = false;
+
     public:
       States(const std::string &args_key, const int iterations) : _iterations(iterations) {}
+
+      /**
+       * Skip this test case (the test case under the given template parameter combination and input arguments)
+       * If a test case if ignored, the performance result will not be counted and appear in the performance report.
+       */
+      inline void SkipThisTestCase() { _discard_results = true; }
+
+      inline bool IsTestCaseSkipped() { return _discard_results; }
 
       class iterator {
       private:
