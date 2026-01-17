@@ -77,7 +77,7 @@ namespace usparse {
 
       int iterations() const { return _iterations; };
 
-      double get_time_duration_us() { return time_duration_us / _iterations; }
+      double get_time_duration_us() { return time_duration_us; }
     };
 
     // tuner Counter's API keeps the same as google benchmark's Counter in https://github.com/google/benchmark
@@ -131,7 +131,7 @@ namespace usparse {
               }
               new_rate = new_rate / KIs::kIs1000; // rate too large
             }
-            return std::to_string(new_rate) + "/s";
+            return std::to_string(rate) + "/s";
           } else if (oneK == KIs::kIs1024) {
             constexpr int MAX_UNITS = 5;
             std::array<std::string, MAX_UNITS> units = {"/s", "Ki/s", "Mi/s", "Gi/s", "Ti/s"};
@@ -142,7 +142,7 @@ namespace usparse {
               }
               new_rate = new_rate / KIs::kIs1024;
             }
-            return std::to_string(new_rate) + "/s"; // rate too large
+            return std::to_string(rate) + "/s"; // rate too large
           } else {
             return "";
           }

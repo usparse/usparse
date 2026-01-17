@@ -19,7 +19,7 @@ namespace usparse {
         const std::string tune_param_list_name;
         const int iterations = 0;
         std::map<std::string, Counter> counters;
-        const double time_duration_us = 0.0;
+        const double time_duration_us = 0.0; // the total time in all iterations.
 
         CurrentParamArgStatePerf(const std::string &_tune_param_list_name, const int _iterations,
                                  const double _time_duration_us, const std::map<std::string, Counter> _counters)

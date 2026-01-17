@@ -44,9 +44,11 @@ USPARSE_TUNER_BENCH(uTuneLineEnhanceFP64) {
       // todo: reset vector y after each iteration.
     }
 
-    const int mem_size = csrmv_input.csr_mat.nnz * sizeof(double) + csrmv_input.csr_mat.nnz * sizeof(int) +
-                         (csrmv_input.csr_mat.rows + 1) * sizeof(int) + (csrmv_input.csr_mat.cols) * sizeof(double) +
-                         (csrmv_input.csr_mat.cols) * sizeof(double) * 2;
+    const size_t nnz = csrmv_input.csr_mat.nnz;
+    const size_t rows = csrmv_input.csr_mat.rows;
+    const size_t cols = csrmv_input.csr_mat.cols;
+    const size_t mem_size = nnz * sizeof(double) + nnz * sizeof(int) + (rows + 1) * sizeof(int) +
+                            (cols) * sizeof(double) + (cols) * sizeof(double) * 2;
 
     states.counters["Bandwidth"] = usparse::tuner::Counter(
         mem_size * states.iterations(), usparse::tuner::Counter::kIsRate, usparse::tuner::Counter::kIs1024);
