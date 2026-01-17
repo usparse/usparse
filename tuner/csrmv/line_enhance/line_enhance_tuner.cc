@@ -28,6 +28,7 @@ USPARSE_TUNER_BENCH(uTuneLineEnhanceFP64) {
   static void utuner(usparse::tuner::States & states, std::tuple<utuner::csrmv_tuner_input<int, double>> args) {
     // skip invalid parameter group
     if constexpr (VEC_SIZE * ROWS_PER_BLOCK > THREADS_PER_BLOCK) {
+      states.SkipThisTestCase();
       return;
     }
 
