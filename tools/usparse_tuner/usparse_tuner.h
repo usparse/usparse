@@ -45,9 +45,10 @@ namespace usparse {
       usparse::tuner::internal::register_tuner(#n, USPARSE_TUNER_DECLARE_Func(n));                                     \
   void USPARSE_TUNER_DECLARE_Func(n)()
 
-#define USPARSE_TUNER_LAUNCH(n, ConfigType, pConfig, ...)                                                              \
+#define USPARSE_TUNER_LAUNCH(n, ConfigType, pConfig, ParamGroups, ParameterNames, ...)                                 \
   pConfig->setTuneName(#n);                                                                                            \
-  usparse::tuner::internal::optimize<USPARSE_TUNER_DECLARE_Class(n), ConfigType, __VA_ARGS__>(pConfig)
+  usparse::tuner::internal::optimize<USPARSE_TUNER_DECLARE_Class(n), ConfigType, ParamGroups, __VA_ARGS__>(            \
+      ParameterNames, pConfig)
 
 #define USPARSE_TUNER_MAIN()                                                                                           \
   int main() {                                                                                                         \

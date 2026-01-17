@@ -28,6 +28,25 @@ namespace usparse {
         }
       }
 
+      template <std::size_t ParamGroups, typename... Args>
+      std::string paramFormat(const std::array<std::string, ParamGroups> param_name, Args&&... args) {
+        std::stringstream ss;
+        int i = 0;
+        auto format = [&](auto&& arg) {
+          std::string name = param_name[i];
+          if (name == "") {
+            name = "P" + std::to_string(i);
+          }
+          ss << name << "=" << arg;
+          if (i+1 != ParamGroups) {
+            ss << ":";
+          }
+          i++;
+        };
+
+        (format(std::forward<Args>(args)), ...);
+        return ss.str();
+      }
     } // namespace utils
   } // namespace tuner
 } // namespace usparse

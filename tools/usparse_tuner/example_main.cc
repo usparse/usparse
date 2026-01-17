@@ -36,13 +36,15 @@ USPARSE_TUNER_DEFINE_TUNE_RANGE(TuneSqrt) {
   using Qw = usparse::tuner::ParamRange<int, 4, 5>;
   using PP = usparse::tuner::ParamRange<int, 9, 10>;
   constexpr int ParamGroups = 5;
+  const std::array<std::string, ParamGroups> ParameterNames = {"BLOCK_SIZE", "TRANS", "UNROLL", "QW", "PP"};
 
   using ConfigType = usparse::tuner::Config<int, double>;
   auto config = new ConfigType();
   config->setIterations(10);
   config->setArgs(std::tuple{1, 3})->setArgs(std::tuple{2, 6});
 
-  USPARSE_TUNER_LAUNCH(TuneSqrt, ConfigType, config, ParamGroups, BlockSizes, TransposeOptions, UnrollFactors, Qw, PP);
+  USPARSE_TUNER_LAUNCH(TuneSqrt, ConfigType, config, ParamGroups, ParameterNames, BlockSizes, TransposeOptions,
+                       UnrollFactors, Qw, PP);
 }
 
 USPARSE_TUNER_MAIN();
