@@ -77,7 +77,7 @@ namespace usparse {
 
       int iterations() const { return _iterations; };
 
-      double get_time_duration_us() { return time_duration_us / _iterations; }
+      double get_time_duration_us() { return time_duration_us; }
     };
 
     // tuner Counter's API keeps the same as google benchmark's Counter in https://github.com/google/benchmark
