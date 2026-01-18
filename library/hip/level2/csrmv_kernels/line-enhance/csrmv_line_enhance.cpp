@@ -99,12 +99,22 @@ __not_called_line_enhance_template_instantiate<usparse::usparse_fpc32, usparse::
 
 #endif
 
+// adaptive_enhance_sparse_spmv_gfx936 implementation
+#include "line_enhance_parameter_tuning.inl"
+
 template <typename COMPUTE, typename NNZ, typename ROW, typename COL, typename SCALE, typename A, typename X,
           typename Y, int WF_SIZE>
 void adaptive_enhance_sparse_spmv(hipStream_t stream, int trans, const SCALE alpha, const SCALE beta,
                                   const usparse::csr_mat_descr<A, NNZ, ROW, COL> d_csr_desc, const X *x, Y *y) {
   // common parameters:
   EXPAND_FROM_CSR_MAT_DESCR(A, NNZ, ROW, COL, d_csr_desc)
+
+  constexpr bool USE_BEST_LAST_STRATEGY = true;
+  if (USE_BEST_LAST_STRATEGY) {
+    adaptive_enhance_sparse_spmv_gfx936<COMPUTE, NNZ, ROW, COL, SCALE, A, X, Y, WF_SIZE>(stream, trans, alpha, beta,
+                                                                                         d_csr_desc, x, y);
+    return;
+  }
 
   constexpr int THREADS_PER_BLOCK = 512;
 
