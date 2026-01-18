@@ -48,7 +48,8 @@ void usparse::spmv::internal::coomv_conv_calculate(const usparse::usparse_operat
         trans, alpha, beta, usparse::csr_mat_descr<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE>(d_csr_desc), d_x, d_y,
         info->flat_info);
   } else if (algo == usparse::spmv::usparse_coomv_algorithms::LineEnhance) {
-    adaptive_enhance_sparse_spmv(trans, alpha, beta, d_csr_desc, d_x, d_y);
+    adaptive_enhance_sparse_spmv<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, DATA_TYPE, DATA_TYPE, DATA_TYPE,
+                                 DATA_TYPE>(trans, alpha, beta, d_csr_desc, d_x, d_y);
   } else if (algo == usparse::spmv::usparse_coomv_algorithms::Vector) {
     vec_row_sparse_spmv(trans, alpha, beta, d_csr_desc, d_x, d_y);
   } else {

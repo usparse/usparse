@@ -72,8 +72,8 @@ void usparse::device_adaptive_spmv(int trans, const VALUE_TYPE alpha, const VALU
     adaptive_flat_sparse_spmv<INDEX_TYPE, VALUE_TYPE, BETA_Y_POLICY>(trans, alpha, beta, d_csr_desc, dx, dy, 
                                                                      &(info->flat_info));
   } else if (algo == usparse::usparse_csrmv_algo_line_enhance) {
-    adaptive_enhance_sparse_spmv<VALUE_TYPE, INDEX_TYPE, INDEX_TYPE, VALUE_TYPE, VALUE_TYPE, VALUE_TYPE>(
-        trans, alpha, beta, d_csr_desc, dx, dy);
+    adaptive_enhance_sparse_spmv<VALUE_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, VALUE_TYPE, VALUE_TYPE, VALUE_TYPE,
+                                 VALUE_TYPE>(trans, alpha, beta, d_csr_desc, dx, dy);
   } else if (algo == usparse::usparse_csrmv_algo_vector) {
     vec_row_sparse_spmv(trans, alpha, beta, d_csr_desc, dx, dy);
   } else if (algo == usparse::usparse_csrmv_algo_hipsparse_default) {

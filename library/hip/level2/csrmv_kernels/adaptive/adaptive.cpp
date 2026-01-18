@@ -54,7 +54,8 @@ void adaptive_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta
 
   // 3. If the matrix is short row (less than 30) or is small matrix
   if (bp_3 <= 0xC00000) { // 0xC00000 = 12,582,912
-    adaptive_enhance_sparse_spmv(trans, alpha, beta, d_csr_desc, x, y);
+    adaptive_enhance_sparse_spmv<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, DATA_TYPE, DATA_TYPE, DATA_TYPE,
+                                 DATA_TYPE>(trans, alpha, beta, d_csr_desc, x, y);
     return;
   }
 

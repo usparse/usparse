@@ -23,7 +23,8 @@ void uspmv(int trans, const double alpha, const double beta, const csr_desc<int,
     adaptive_flat_sparse_spmv<int, double>(trans, alpha, beta, d_csr_desc, dx, dy, nullptr);
     hipDeviceSynchronize();
   } else if (strategy == "line") {
-    adaptive_enhance_sparse_spmv<double, int, int, double, double, double>(trans, alpha, beta, d_csr_desc, dx, dy);
+    adaptive_enhance_sparse_spmv<double, int, int, int, double, double, double, double>(trans, alpha, beta, d_csr_desc,
+                                                                                        dx, dy);
     hipDeviceSynchronize();
   } else if (strategy == "vec") {
     vec_row_sparse_spmv(trans, alpha, beta, d_csr_desc, dx, dy);

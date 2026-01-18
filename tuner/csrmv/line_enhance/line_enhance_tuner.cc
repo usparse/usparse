@@ -16,8 +16,9 @@ inline void line_enhance_wrapper(utuner::csrmv_tuner_input<int, double> csrmv_in
   double alpha = 1.0;
   double beta = 1.0;
 
-  line_enhance_sparse_spmv<int, double, R, ROWS_PER_BLOCK, VEC_SIZE, THREADS_PER_BLOCK>(
-      0, operation, alpha, beta, csrmv_input.csr_mat, csrmv_input.x, csrmv_input.y);
+  line_enhance_sparse_spmv<double, int, int, int, double, double, double, double, R, ROWS_PER_BLOCK, VEC_SIZE,
+                           THREADS_PER_BLOCK>(0, operation, alpha, beta, csrmv_input.csr_mat, csrmv_input.x,
+                                              csrmv_input.y);
 
   hipDeviceSynchronize();
   return;
