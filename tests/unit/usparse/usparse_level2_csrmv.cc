@@ -152,7 +152,8 @@ TEST(ustbSparseTest, spmv_line_enhance) {
 
   csr_desc<int, double> csr_desc(N, N, nnz, d_row_ptr, d_col_index, d_values);
 
-  adaptive_enhance_sparse_spmv<double, int, int, double, double, double>(0, 1.0, 0.0, csr_desc, d_x, d_y);
+  auto d_csr_mat_descr = usparse::csr_mat_descr<double, int, int, int>(csr_desc);
+  adaptive_enhance_sparse_spmv<double, int, int, int, double, double, double, double>(0, 1.0, 0.0, d_csr_mat_descr, d_x, d_y);
   hipDeviceSynchronize();
 
   TEST_HIP_CHECK(hipMemcpy(h_y, d_y, N * sizeof(double), hipMemcpyDeviceToHost));
