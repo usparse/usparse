@@ -22,6 +22,8 @@ void adaptive_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta
   VAR_FROM_CSR_DESC(DATA_TYPE, d_csr_desc);
   const int n = d_csr_desc.cols;
 
+  auto d_csr_mat_descr = usparse::csr_mat_descr<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE>(d_csr_desc);
+
   // 0. sampling and data block dividing.
   // If it need data block dividing, just use vector method,
   // but with different vector size for different data block.
@@ -55,7 +57,7 @@ void adaptive_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta
   // 3. If the matrix is short row (less than 30) or is small matrix
   if (bp_3 <= 0xC00000) { // 0xC00000 = 12,582,912
     adaptive_enhance_sparse_spmv<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, DATA_TYPE, DATA_TYPE, DATA_TYPE,
-                                 DATA_TYPE>(trans, alpha, beta, d_csr_desc, x, y);
+                                 DATA_TYPE>(trans, alpha, beta, d_csr_mat_descr, x, y);
     return;
   }
 
@@ -64,14 +66,13 @@ void adaptive_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta
   // which can not be applied to small data set.
   if (bp_3 > (1 << 23)) { // 2^23 = 8,388,608
     csrmv_flat_mtx_info info;
-    auto d_csr_mat_descr = usparse::csr_mat_descr<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE>(d_csr_desc);
     flat_analyse<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE>(d_csr_mat_descr, &info);
     adaptive_flat_sparse_spmv<INDEX_TYPE, DATA_TYPE>(trans, alpha, beta, d_csr_mat_descr, x, y, &info);
     return;
   }
 
   // 5. use vector-row method for small data set.
-  line_enhance_sparse_spmv(trans, alpha, beta, d_csr_desc, x, y);
+  line_enhance_sparse_spmv(trans, alpha, beta, d_csr_mat_descr, x, y);
 }
 
 template void adaptive_sparse_spmv<usparse::usparse_int, usparse::usparse_fp32>(

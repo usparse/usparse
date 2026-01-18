@@ -9,7 +9,8 @@
 template <typename COMPUTE_TYPE, typename NNZ_TYPE, typename ROW_TYPE, typename COL_TYPE, typename SCALE, typename A,
           typename X, typename Y, int R, int ROWS_PER_BLOCK, int VEC_SIZE, int THREADS_PER_BLOCK>
 void line_enhance_sparse_spmv(hipStream_t stream, int trans, const SCALE alpha, const SCALE beta,
-                              const usparse::csr_desc<NNZ_TYPE, A, ROW_TYPE, COL_TYPE> d_csr_desc, const X *x, Y *y) {
+                              const usparse::csr_mat_descr<A, NNZ_TYPE, ROW_TYPE, COL_TYPE> d_csr_desc, const X *x,
+                              Y *y) {
   EXPAND_FROM_CSR_MAT_DESCR(A, NNZ_TYPE, ROW_TYPE, COL_TYPE, d_csr_desc)
 
   constexpr int REDUCE_OPTION = VEC_SIZE == 0 ? LE_REDUCE_OPTION_DIRECT : LE_REDUCE_OPTION_VEC;
@@ -21,7 +22,7 @@ void line_enhance_sparse_spmv(hipStream_t stream, int trans, const SCALE alpha, 
 
 template <typename INDEX_TYPE, typename DATA_TYPE>
 void line_enhance_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
-                              const usparse::csr_desc<INDEX_TYPE, DATA_TYPE, INDEX_TYPE, INDEX_TYPE> d_csr_desc,
+                              const usparse::csr_mat_descr<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE> d_csr_desc,
                               const DATA_TYPE *x, DATA_TYPE *y) {
   constexpr int R = 2;
   constexpr int ROWS_PER_BLOCK = 32; // note: make sure ROWS_PER_BLOCK * VEC_SIZE <= THREADS_PER_BLOCK.
@@ -45,7 +46,7 @@ void __not_called_line_enhance_template_instantiate() {
   constexpr std::array<int, 7> VEC_SIZE = {1, 2, 4, 8, 16, 32, 64};
   constexpr std::array<int, 2> THREADS_PER_BLOCK = {256, 512};
 
-  usparse::csr_desc<NNZ_TYPE, A, ROW_TYPE, COL_TYPE> d_csr_desc(0, 0, 0, nullptr, nullptr, nullptr);
+  usparse::csr_mat_descr<A, NNZ_TYPE, ROW_TYPE, COL_TYPE> d_csr_desc(0, 0, 0, nullptr, nullptr, nullptr);
 
   constexpr size_t S1 = R.size();
   constexpr size_t S2 = ROWS_PER_BLOCK.size();
@@ -98,7 +99,7 @@ __not_called_line_enhance_template_instantiate<usparse::usparse_fpc32, usparse::
 template <typename COMPUTE, typename NNZ, typename ROW, typename COL, typename SCALE, typename A, typename X,
           typename Y>
 void adaptive_enhance_sparse_spmv(hipStream_t stream, int trans, const SCALE alpha, const SCALE beta,
-                                  const usparse::csr_desc<NNZ, A, ROW, COL> d_csr_desc, const X *x, Y *y) {
+                                  const usparse::csr_mat_descr<A, NNZ, ROW, COL> d_csr_desc, const X *x, Y *y) {
   // common parameters:
   EXPAND_FROM_CSR_MAT_DESCR(A, NNZ, ROW, COL, d_csr_desc)
 
@@ -154,7 +155,7 @@ void adaptive_enhance_sparse_spmv(hipStream_t stream, int trans, const SCALE alp
 template <typename COMPUTE, typename NNZ, typename ROW, typename COL, typename SCALE, typename A, typename X,
           typename Y>
 void adaptive_enhance_sparse_spmv(int trans, const SCALE alpha, const SCALE beta,
-                                  const usparse::csr_desc<NNZ, A, ROW, COL> d_csr_desc, const X *x, Y *y) {
+                                  const usparse::csr_mat_descr<A, NNZ, ROW, COL> d_csr_desc, const X *x, Y *y) {
   hipStream_t stream = 0; // default stream
   adaptive_enhance_sparse_spmv<COMPUTE, NNZ, ROW, COL, SCALE, A, X, Y>(stream, trans, alpha, beta, d_csr_desc, x, y);
 }
@@ -163,12 +164,12 @@ void adaptive_enhance_sparse_spmv(int trans, const SCALE alpha, const SCALE beta
   template void adaptive_enhance_sparse_spmv<DATA_TYPE, NNZ_TYPE, ROW_COL_TYPE, ROW_COL_TYPE, DATA_TYPE, DATA_TYPE,    \
                                              DATA_TYPE, DATA_TYPE>(                                                    \
       hipStream_t stream, int trans, const DATA_TYPE alpha, const DATA_TYPE beta,                                      \
-      const usparse::csr_desc<NNZ_TYPE, DATA_TYPE, ROW_COL_TYPE, ROW_COL_TYPE> d_csr_desc, const DATA_TYPE *x,         \
+      const usparse::csr_mat_descr<DATA_TYPE, NNZ_TYPE, ROW_COL_TYPE, ROW_COL_TYPE> d_csr_desc, const DATA_TYPE *x,    \
       DATA_TYPE *y);                                                                                                   \
   template void adaptive_enhance_sparse_spmv<DATA_TYPE, NNZ_TYPE, ROW_COL_TYPE, ROW_COL_TYPE, DATA_TYPE, DATA_TYPE,    \
                                              DATA_TYPE, DATA_TYPE>(                                                    \
       int trans, const DATA_TYPE alpha, const DATA_TYPE beta,                                                          \
-      const usparse::csr_desc<NNZ_TYPE, DATA_TYPE, ROW_COL_TYPE, ROW_COL_TYPE> d_csr_desc, const DATA_TYPE *x,         \
+      const usparse::csr_mat_descr<DATA_TYPE, NNZ_TYPE, ROW_COL_TYPE, ROW_COL_TYPE> d_csr_desc, const DATA_TYPE *x,    \
       DATA_TYPE *y);
 
 LINE_ENHANCE_INSTANTIATE(usparse::usparse_fp32, int32_t, int32_t);
@@ -188,10 +189,10 @@ LINE_ENHANCE_INSTANTIATE(usparse::usparse_fpc64, int64_t, int64_t);
 #define LINE_ENHANCE_INSTANTIATE_MIXED(TTYPE, NNZ_TYPE, ROW_COL_TYPE, ATYPE, XTYPE, YTYPE)                             \
   template void adaptive_enhance_sparse_spmv<TTYPE, NNZ_TYPE, ROW_COL_TYPE, ROW_COL_TYPE, TTYPE, ATYPE, XTYPE, YTYPE>( \
       hipStream_t stream, int trans, const TTYPE alpha, const TTYPE beta,                                              \
-      const usparse::csr_desc<NNZ_TYPE, ATYPE, ROW_COL_TYPE, ROW_COL_TYPE> d_csr_desc, const XTYPE *x, YTYPE *y);      \
+      const usparse::csr_mat_descr<ATYPE, NNZ_TYPE, ROW_COL_TYPE, ROW_COL_TYPE> d_csr_desc, const XTYPE *x, YTYPE *y); \
   template void adaptive_enhance_sparse_spmv<TTYPE, NNZ_TYPE, ROW_COL_TYPE, ROW_COL_TYPE, TTYPE, ATYPE, XTYPE, YTYPE>( \
       int trans, const TTYPE alpha, const TTYPE beta,                                                                  \
-      const usparse::csr_desc<NNZ_TYPE, ATYPE, ROW_COL_TYPE, ROW_COL_TYPE> d_csr_desc, const XTYPE *x, YTYPE *y);
+      const usparse::csr_mat_descr<ATYPE, NNZ_TYPE, ROW_COL_TYPE, ROW_COL_TYPE> d_csr_desc, const XTYPE *x, YTYPE *y);
 
 LINE_ENHANCE_INSTANTIATE_MIXED(int32_t, int32_t, int32_t, int8_t, int8_t, int32_t)
 LINE_ENHANCE_INSTANTIATE_MIXED(int32_t, int64_t, int32_t, int8_t, int8_t, int32_t)

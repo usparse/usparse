@@ -21,19 +21,20 @@
 template <typename COMPUTE_TYPE, typename NNZ_TYPE, typename ROW_TYPE, typename COL_TYPE, typename SCALE, typename A,
           typename X, typename Y, int R, int ROWS_PER_BLOCK, int VEC_SIZE, int THREADS_PER_BLOCK>
 void line_enhance_sparse_spmv(hipStream_t stream, int trans, const SCALE alpha, const SCALE beta,
-                              const usparse::csr_desc<NNZ_TYPE, A, ROW_TYPE, COL_TYPE> d_csr_desc, const X *x, Y *y);
+                              const usparse::csr_mat_descr<A, NNZ_TYPE, ROW_TYPE, COL_TYPE> d_csr_desc, const X *x,
+                              Y *y);
 
 /**
  * @deprecated, use the version with HIP stream instead.
  */
 template <typename INDEX_TYPE, typename DATA_TYPE>
 void line_enhance_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
-                              const usparse::csr_desc<INDEX_TYPE, DATA_TYPE, INDEX_TYPE, INDEX_TYPE> d_csr_desc,
+                              const usparse::csr_mat_descr<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE> d_csr_desc,
                               const DATA_TYPE *x, DATA_TYPE *y);
 
 /**
  * perform csrmv using line enhance algorithm (http://doi.org/10.1145/3588195.3593002).
- * similar as api line_enhance_sparse_spmv, but it set kernel template parameters adaptively 
+ * similar as api line_enhance_sparse_spmv, but it set kernel template parameters adaptively
  *   by matrix characteristic, which usully has better performance.
  * @tparam COMPUTE type for csrmv computation.
  * @tparam NNZ index type for non-zeros.
@@ -47,7 +48,7 @@ void line_enhance_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE 
 template <typename COMPUTE, typename NNZ, typename ROW, typename COL, typename SCALE, typename A, typename X,
           typename Y>
 void adaptive_enhance_sparse_spmv(hipStream_t stream, int trans, const SCALE alpha, const SCALE beta,
-                                  const usparse::csr_desc<NNZ, A, ROW, COL> d_csr_desc, const X *x, Y *y);
+                                  const usparse::csr_mat_descr<A, NNZ, ROW, COL> d_csr_desc, const X *x, Y *y);
 
 /**
  * @deprecated, use the version with HIP stream instead.
@@ -56,6 +57,6 @@ void adaptive_enhance_sparse_spmv(hipStream_t stream, int trans, const SCALE alp
 template <typename COMPUTE, typename NNZ, typename ROW, typename COL, typename SCALE, typename A, typename X,
           typename Y>
 void adaptive_enhance_sparse_spmv(int trans, const SCALE alpha, const SCALE beta,
-                                  const usparse::csr_desc<NNZ, A, ROW, COL> d_csr_desc, const X *x, Y *y);
+                                  const usparse::csr_mat_descr<A, NNZ, ROW, COL> d_csr_desc, const X *x, Y *y);
 
 #endif // SPMV_ACC_LINE_ENHANCE_SPMV_H

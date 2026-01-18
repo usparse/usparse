@@ -50,6 +50,7 @@ void sparse_csr_spmv(int trans, const double alpha, const double beta, const csr
 #endif
 
 #ifdef KERNEL_STRATEGY_LINE_ENHANCE
-  line_enhance_sparse_spmv(trans, alpha, beta, d_csr_desc, x, y);
+  auto d_csr_mat_descr = usparse::csr_mat_descr<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE>(d_csr_desc);
+  line_enhance_sparse_spmv(trans, alpha, beta, d_csr_mat_descr, x, y);
 #endif
 }
