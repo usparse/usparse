@@ -23,7 +23,7 @@ template <typename T, typename BP_DATA_TYPE, typename A, typename X, typename Y,
           typename COL, typename SCALE_TYPE, int BETA_Y_POLICY = BETA_Y_POLICY_AUTO>
 void adaptive_flat_sparse_spmv(hipStream_t stream, int trans, const SCALE_TYPE alpha, const SCALE_TYPE beta,
                                const csr_mat_descr<A, NNZ, ROW, COL> d_csr_desc, const X *x, Y *y,
-                               const csrmv_flat_mtx_info *info);
+                               const csrmv_flat_mtx_info<BP_DATA_TYPE> *info);
 
 /**
  * @deprecated. use the mixed datatype and hip stream version.
@@ -32,7 +32,7 @@ void adaptive_flat_sparse_spmv(hipStream_t stream, int trans, const SCALE_TYPE a
  */
 template <typename I, typename T, int BETA_Y_POLICY = BETA_Y_POLICY_AUTO>
 void adaptive_flat_sparse_spmv(int trans, const T alpha, const T beta, const csr_mat_descr<T, I, I, I> d_csr_desc,
-                               const T *x, T *y, const csrmv_flat_mtx_info *info);
+                               const T *x, T *y, const csrmv_flat_mtx_info<I> *info);
 
 /**
  * perform matrix analyse and return analysing results in @param info.
@@ -40,7 +40,7 @@ void adaptive_flat_sparse_spmv(int trans, const T alpha, const T beta, const csr
  */
 template <typename DATA_TYPE, typename NNZ_TYPE, typename ROW_TYPE, typename COLUMN_TYPE, typename BP_DATA_TYPE>
 void flat_matrix_analyse(hipStream_t stream, const csr_mat_descr<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE> d_csr_desc,
-                         csrmv_flat_mtx_info *info);
+                         csrmv_flat_mtx_info<BP_DATA_TYPE> *info);
 
 /**
  * @deprecated. use hip stream version.
@@ -51,6 +51,6 @@ void flat_matrix_analyse(hipStream_t stream, const csr_mat_descr<DATA_TYPE, NNZ_
 template <typename DATA_TYPE, typename NNZ_TYPE = int, typename ROW_TYPE = int, typename COLUMN_TYPE = int,
           typename BP_DATA_TYPE = ROW_TYPE>
 void flat_analyse(const csr_mat_descr<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE> d_csr_desc,
-                  csrmv_flat_mtx_info *info);
+                  csrmv_flat_mtx_info<BP_DATA_TYPE> *info);
 
 #endif // USPARSE_HIP_USPARSE_CSRMV_FLAT_H

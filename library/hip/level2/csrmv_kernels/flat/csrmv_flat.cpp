@@ -62,7 +62,7 @@ void flat_matrix_analyse(hipStream_t stream, const csr_mat_descr<DATA_TYPE, NNZ_
 // just for backward compatibility.
 template <typename DATA_TYPE, typename NNZ_TYPE, typename ROW_TYPE, typename COLUMN_TYPE, typename BP_DATA_TYPE>
 void flat_analyse(const csr_mat_descr<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE> d_csr_desc,
-                  csrmv_flat_mtx_info *info) {
+                  csrmv_flat_mtx_info<BP_DATA_TYPE> *info) {
   hipStream_t stream = hipStreamDefault;
   flat_matrix_analyse<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE, BP_DATA_TYPE>(stream, d_csr_desc,
                                                                                 &(info->break_points));
@@ -92,7 +92,7 @@ template <typename INDEX_TYPE, typename DATA_TYPE>
 void flat_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
                       const csr_mat_descr<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE> h_csr_desc,
                       const csr_mat_descr<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE> d_csr_desc, const DATA_TYPE *x,
-                      DATA_TYPE *y, const csrmv_flat_mtx_info *info) {
+                      DATA_TYPE *y, const csrmv_flat_mtx_info<INDEX_TYPE> *info) {
   hipStream_t stream = hipStreamDefault;
   adaptive_flat_sparse_spmv<INDEX_TYPE, DATA_TYPE>(trans, alpha, beta, d_csr_desc, x, y, info, stream);
 }
@@ -146,7 +146,7 @@ template <typename T, typename BP_DATA_TYPE, typename A, typename X, typename Y,
           typename COL, typename SCALE_TYPE, int BETA_Y_POLICY>
 void adaptive_flat_sparse_spmv(hipStream_t stream, int trans, const SCALE_TYPE alpha, const SCALE_TYPE beta,
                                const csr_mat_descr<A, NNZ, ROW, COL> d_csr_desc, const X *x, Y *y,
-                               const csrmv_flat_mtx_info *info) {
+                               const csrmv_flat_mtx_info<BP_DATA_TYPE> *info) {
   EXPAND_FROM_CSR_MAT_DESCR(A, NNZ, ROW, COL, d_csr_desc)
 
   flat_set_beta_y<Y, SCALE_TYPE, ROW, BETA_Y_POLICY>(stream, y, m, beta);
@@ -215,7 +215,7 @@ void adaptive_flat_sparse_spmv(hipStream_t stream, int trans, const SCALE_TYPE a
 
 template <typename I, typename T, int BETA_Y_POLICY>
 void adaptive_flat_sparse_spmv(int trans, const T alpha, const T beta, const csr_mat_descr<T, I, I, I> d_csr_desc,
-                               const T *x, T *y, const csrmv_flat_mtx_info *info) {
+                               const T *x, T *y, const csrmv_flat_mtx_info<I> *info) {
   hipStream_t stream = hipStreamDefault;
   adaptive_flat_sparse_spmv<T, I, T, T, T, I, I, I, T, BETA_Y_POLICY>(stream, trans, alpha, beta, d_csr_desc, x, y,
                                                                       info);
@@ -224,16 +224,16 @@ void adaptive_flat_sparse_spmv(int trans, const T alpha, const T beta, const csr
 #define FLAT_SPMV_INSTANTIATE_MIXED(T, BP, A, X, Y, NNZ, ROW, COL, SCALE)                                              \
   template void adaptive_flat_sparse_spmv<T, BP, A, X, Y, NNZ, ROW, COL, SCALE, BETA_Y_POLICY_AUTO>(                   \
       hipStream_t stream, int trans, const SCALE alpha, const SCALE beta,                                              \
-      const csr_mat_descr<A, NNZ, ROW, COL> d_csr_desc, const X *x, Y *y, const csrmv_flat_mtx_info *info);            \
+      const csr_mat_descr<A, NNZ, ROW, COL> d_csr_desc, const X *x, Y *y, const csrmv_flat_mtx_info<BP> *info);        \
   template void adaptive_flat_sparse_spmv<T, BP, A, X, Y, NNZ, ROW, COL, SCALE, BETA_Y_POLICY_ZERO>(                   \
       hipStream_t stream, int trans, const SCALE alpha, const SCALE beta,                                              \
-      const csr_mat_descr<A, NNZ, ROW, COL> d_csr_desc, const X *x, Y *y, const csrmv_flat_mtx_info *info);            \
+      const csr_mat_descr<A, NNZ, ROW, COL> d_csr_desc, const X *x, Y *y, const csrmv_flat_mtx_info<BP> *info);        \
   template void adaptive_flat_sparse_spmv<T, BP, A, X, Y, NNZ, ROW, COL, SCALE, BETA_Y_POLICY_ONE>(                    \
       hipStream_t stream, int trans, const SCALE alpha, const SCALE beta,                                              \
-      const csr_mat_descr<A, NNZ, ROW, COL> d_csr_desc, const X *x, Y *y, const csrmv_flat_mtx_info *info);            \
+      const csr_mat_descr<A, NNZ, ROW, COL> d_csr_desc, const X *x, Y *y, const csrmv_flat_mtx_info<BP> *info);        \
   template void adaptive_flat_sparse_spmv<T, BP, A, X, Y, NNZ, ROW, COL, SCALE, BETA_Y_POLICY_OTHER>(                  \
       hipStream_t stream, int trans, const SCALE alpha, const SCALE beta,                                              \
-      const csr_mat_descr<A, NNZ, ROW, COL> d_csr_desc, const X *x, Y *y, const csrmv_flat_mtx_info *info);
+      const csr_mat_descr<A, NNZ, ROW, COL> d_csr_desc, const X *x, Y *y, const csrmv_flat_mtx_info<BP> *info);
 
 FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fp64, usparse::usparse_int, usparse::usparse_fp64, usparse::usparse_fp64,
                             usparse::usparse_fp64, usparse::usparse_int, usparse::usparse_int, usparse::usparse_int,
@@ -251,16 +251,16 @@ FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fpc64, usparse::usparse_int, uspars
 #define FLAT_SPMV_INSTANTIATE_DEPRECATED(I, T)                                                                         \
   template void adaptive_flat_sparse_spmv<I, T, BETA_Y_POLICY_AUTO>(                                                   \
       int trans, const T alpha, const T beta, const csr_mat_descr<T, I, I, I> d_csr_desc, const T *x, T *y,            \
-      const csrmv_flat_mtx_info *info);                                                                                \
+      const csrmv_flat_mtx_info<I> *info);                                                                             \
   template void adaptive_flat_sparse_spmv<I, T, BETA_Y_POLICY_ZERO>(                                                   \
       int trans, const T alpha, const T beta, const csr_mat_descr<T, I, I, I> d_csr_desc, const T *x, T *y,            \
-      const csrmv_flat_mtx_info *info);                                                                                \
-  template void adaptive_flat_sparse_spmv<I, T, BETA_Y_POLICY_ONE>(int trans, const T alpha, const T beta,             \
-                                                                   const csr_mat_descr<T, I, I, I> d_csr_desc,         \
-                                                                   const T *x, T *y, const csrmv_flat_mtx_info *info); \
+      const csrmv_flat_mtx_info<I> *info);                                                                             \
+  template void adaptive_flat_sparse_spmv<I, T, BETA_Y_POLICY_ONE>(                                                    \
+      int trans, const T alpha, const T beta, const csr_mat_descr<T, I, I, I> d_csr_desc, const T *x, T *y,            \
+      const csrmv_flat_mtx_info<I> *info);                                                                             \
   template void adaptive_flat_sparse_spmv<I, T, BETA_Y_POLICY_OTHER>(                                                  \
       int trans, const T alpha, const T beta, const csr_mat_descr<T, I, I, I> d_csr_desc, const T *x, T *y,            \
-      const csrmv_flat_mtx_info *info);
+      const csrmv_flat_mtx_info<I> *info);
 
 FLAT_SPMV_INSTANTIATE_DEPRECATED(usparse::usparse_int, usparse::usparse_fp64)
 FLAT_SPMV_INSTANTIATE_DEPRECATED(usparse::usparse_int, usparse::usparse_fp32)
@@ -272,8 +272,8 @@ void flat_matrix_analyse(hipStream_t stream, const csr_mat_descr<DATA_TYPE, NNZ_
                          BP_DATA_TYPE **break_points);
 
 #define FLAT_SPMV_ANALYSE_INSTANTIATE(A, NNZ, ROW, COL, BP)                                                            \
-  template void flat_analyse<A, NNZ, ROW, COL, BP>(                                                                    \
-      const csr_mat_descr<A, NNZ, ROW, COL> d_csr_desc, csrmv_flat_mtx_info *info);
+  template void flat_analyse<A, NNZ, ROW, COL, BP>(const csr_mat_descr<A, NNZ, ROW, COL> d_csr_desc,                   \
+                                                   csrmv_flat_mtx_info<BP> *info);
 
 FLAT_SPMV_ANALYSE_INSTANTIATE(usparse::usparse_fp64, usparse::usparse_int, usparse::usparse_int, usparse::usparse_int,
                               usparse::usparse_int);

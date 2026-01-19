@@ -19,7 +19,7 @@ template <typename INDEX_TYPE, typename DATA_TYPE>
 usparse::usparse_status usparse::spmv::internal::usparse_csrmv_analysis_imp(
     const usparse::usparse_operation trans, const usparse::csr_desc<INDEX_TYPE, DATA_TYPE> dev_csr_mat,
     usparse::mat::usparse_mat_info *info, const usparse::spmv::usparse_csrmv_algorithms algo) {
-  info->csrmv_info->flat_info = new csrmv_flat_mtx_info{};
+  info->csrmv_info->flat_info = new usparse_default_flat_mtx_info{};
   if (algo == usparse::spmv::usparse_csrmv_algorithms::Flat) {
     auto d_csr_mat_descr = usparse::csr_mat_descr<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE>(dev_csr_mat);
     flat_analyse<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE>(d_csr_mat_descr,

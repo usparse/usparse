@@ -27,7 +27,7 @@ void usparse::spmv::internal::coomv_conv_analysis(const usparse::usparse_operati
   if (algo == usparse::spmv::usparse_coomv_algorithms::Flat) {
     const usparse::csr_desc<INDEX_TYPE, DATA_TYPE> dev_csr_mat = usparse::csr_desc<INDEX_TYPE, DATA_TYPE>(
         d_coo_desc.rows, d_coo_desc.cols, d_coo_desc.nnz, info->csr_row_ptr, d_coo_desc.col_index, d_coo_desc.values);
-    info->flat_info = new csrmv_flat_mtx_info();
+    info->flat_info = new usparse_default_flat_mtx_info();
     auto d_csr_mat_descr = usparse::csr_mat_descr<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE>(dev_csr_mat);
     flat_analyse<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE>(d_csr_mat_descr, info->flat_info);
   }

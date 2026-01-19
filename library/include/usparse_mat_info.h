@@ -13,7 +13,7 @@
 namespace usparse {
   namespace mat {
     struct csrmv_mat_info {
-      csrmv_flat_mtx_info *flat_info;
+      usparse_default_flat_mtx_info *flat_info;
     };
 
     // mat info stores the information that is gathered during the analysis stage.

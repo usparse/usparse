@@ -25,7 +25,7 @@ namespace usparse {
   };
 
   struct csrmv_mat_info {
-    csrmv_flat_mtx_info flat_info;
+    usparse_default_flat_mtx_info flat_info; // with int as bp index
     hipsparse_spmv_info hipsparse_default_info;
     hipsparse_csr_adaptive_info hipsparse_csr_adaptive_info;
   };

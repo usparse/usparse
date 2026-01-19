@@ -14,9 +14,9 @@ namespace usparse {
       /**
        * the matrix info for all conversion-based coomv methods.
        */
-      template <typename I> struct coomv_conversion_mtx_info {
-        I *csr_row_ptr = nullptr;
-        csrmv_flat_mtx_info *flat_info = nullptr; // the flat analysis result.
+      template <typename J, typename I = J> struct coomv_conversion_mtx_info {
+        J *csr_row_ptr = nullptr;
+        csrmv_flat_mtx_info<I> *flat_info = nullptr; // the flat analysis result.
       };
     } // namespace internal
   } // namespace spmv

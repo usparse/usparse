@@ -83,7 +83,7 @@ void one_pass_flat_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE
   auto d_csr_mat_desc = usparse::csr_mat_descr<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE>(d_csr_desc);
 
   pre_timer.start();
-  csrmv_flat_mtx_info info;
+  csrmv_flat_mtx_info<INDEX_TYPE> info;
   flat_analyse<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE, BP_DATA_TYPE>(d_csr_mat_desc, &info);
   // todo: handle FLAT_PRE_CALC_BP_KERNEL_VERSION
   pre_timer.stop();
