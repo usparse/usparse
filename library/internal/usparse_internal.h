@@ -40,6 +40,7 @@ namespace usparse {
                         const usparse::coo_desc<INDEX_TYPE, DATA_TYPE> dev_coo_mat, const DATA_TYPE *x, DATA_TYPE *y,
                         usparse::mat::usparse_mat_info *info, const usparse::spmv::usparse_coomv_algorithms algo);
 
+      template <typename INDEX_TYPE, typename DATA_TYPE>
       usparse::usparse_status usparse_coomv_clear_imp(usparse::mat::usparse_mat_info *info);
     } // namespace internal
   } // namespace spmv

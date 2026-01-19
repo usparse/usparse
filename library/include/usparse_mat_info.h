@@ -13,15 +13,15 @@
 namespace usparse {
   namespace mat {
     struct csrmv_mat_info {
-      usparse_default_flat_mtx_info *flat_info;
+      void *flat_info; // csrmv_flat_mtx_info<I, T>
     };
 
     // mat info stores the information that is gathered during the analysis stage.
     struct usparse_mat_info {
     // protected:
       csrmv_mat_info *csrmv_info = nullptr;
-      usparse::spmv::internal::coomv_conversion_mtx_info<usparse::usparse_int> *coomv_info = nullptr;
-      usparse::spmm::internal::coomm_conversion_mtx_info<usparse::usparse_int> * coomm_info = nullptr;
+      void *coomv_info = nullptr; // usparse::spmv::internal::coomv_conversion_mtx_info<J, I,T>
+      usparse::spmm::internal::coomm_conversion_mtx_info<usparse::usparse_int> *coomm_info = nullptr;
     };
 
     inline usparse_status usparse_create_mat_info(usparse_mat_info *info) {

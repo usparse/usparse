@@ -22,8 +22,9 @@ usparse::usparse_status usparse::spmv::internal::usparse_csrmv_analysis_imp(
   info->csrmv_info->flat_info = new usparse_default_flat_mtx_info{};
   if (algo == usparse::spmv::usparse_csrmv_algorithms::Flat) {
     auto d_csr_mat_descr = usparse::csr_mat_descr<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE>(dev_csr_mat);
-    flat_analyse<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE>(d_csr_mat_descr,
-                                                                            info->csrmv_info->flat_info);
+    csrmv_flat_mtx_info<INDEX_TYPE, DATA_TYPE> *flat_info =
+        reinterpret_cast<csrmv_flat_mtx_info<INDEX_TYPE, DATA_TYPE> *>(info->csrmv_info->flat_info);
+    flat_analyse<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE>(d_csr_mat_descr, flat_info);
   } else {
     // other algorithm does not need matrix anakysis.
   }
@@ -36,8 +37,10 @@ usparse::usparse_status usparse::spmv::internal::usparse_csrmv_imp(
     const usparse::csr_desc<INDEX_TYPE, DATA_TYPE> dev_csr_mat, const DATA_TYPE *x, DATA_TYPE *y,
     usparse::mat::usparse_mat_info *info, const usparse::spmv::usparse_csrmv_algorithms algo) {
   if (algo == usparse::spmv::usparse_csrmv_algorithms::Flat) {
+    csrmv_flat_mtx_info<INDEX_TYPE, DATA_TYPE> *flat_info =
+        reinterpret_cast<csrmv_flat_mtx_info<INDEX_TYPE, DATA_TYPE> *>(info->csrmv_info->flat_info);
     adaptive_flat_sparse_spmv<INDEX_TYPE, DATA_TYPE, BETA_Y_POLICY_AUTO>(trans, alpha, beta, dev_csr_mat, x, y,
-                                                                         info->csrmv_info->flat_info);
+                                                                         flat_info);
   } else if (algo == usparse::spmv::usparse_csrmv_algorithms::LineEnhance) {
     auto d_csr_mat_descr = usparse::csr_mat_descr<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE>(dev_csr_mat);
     adaptive_enhance_sparse_spmv<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, DATA_TYPE, DATA_TYPE, DATA_TYPE,
@@ -121,8 +124,12 @@ usparse::usparse_status usparse::spmv::internal::usparse_coomv_analysis_imp(
     usparse::mat::usparse_mat_info *info, const usparse::spmv::usparse_coomv_algorithms algo) {
   if(algo != usparse::spmv::usparse_coomv_algorithms::NaiveFlat) {
     // create matrix analysis info for coomv calculation.
-    info->coomv_info = new usparse::spmv::internal::coomv_conversion_mtx_info<INDEX_TYPE>();
-    usparse::spmv::internal::coomv_conv_analysis(trans, dev_coo_mat, info->coomv_info, algo);
+    info->coomv_info = new usparse::spmv::internal::coomv_conversion_mtx_info<INDEX_TYPE, INDEX_TYPE, DATA_TYPE>();
+    usparse::spmv::internal::coomv_conv_analysis(
+        trans, dev_coo_mat,
+        reinterpret_cast<usparse::spmv::internal::coomv_conversion_mtx_info<INDEX_TYPE, INDEX_TYPE, DATA_TYPE> *>(
+            info->coomv_info),
+        algo);
   }
   return usparse::usparse_status::usparse_status_success;
 }
@@ -135,15 +142,24 @@ usparse::usparse_status usparse::spmv::internal::usparse_coomv_imp(
   if(algo == usparse::spmv::usparse_coomv_algorithms::NaiveFlat) {
     adaptive_flat_coo_sparse_spmv<INDEX_TYPE, DATA_TYPE, BETA_Y_POLICY_AUTO>(trans, alpha, beta, dev_coo_mat, x, y);
   } else {
-    usparse::spmv::internal::coomv_conv_calculate(trans, alpha, beta, dev_coo_mat, x, y, info->coomv_info, algo);
+    usparse::spmv::internal::coomv_conv_calculate(
+        trans, alpha, beta, dev_coo_mat, x, y,
+        reinterpret_cast<usparse::spmv::internal::coomv_conversion_mtx_info<INDEX_TYPE, INDEX_TYPE, DATA_TYPE> *>(
+            info->coomv_info),
+        algo);
   }
   return usparse::usparse_status::usparse_status_success;
 }
 
+template <typename INDEX_TYPE, typename DATA_TYPE>
 usparse::usparse_status usparse::spmv::internal::usparse_coomv_clear_imp(usparse::mat::usparse_mat_info *info) {
-  if(info != nullptr) { // for algorithms that are not NaiveFlat
-    usparse::spmv::internal::coomv_conv_clear<usparse::usparse_int>(info->coomv_info);
-    delete info->coomv_info;
+  if (info != nullptr) { // for algorithms that are not NaiveFlat
+    usparse::spmv::internal::coomv_conversion_mtx_info<INDEX_TYPE, INDEX_TYPE, DATA_TYPE> *coomv_info =
+        reinterpret_cast<usparse::spmv::internal::coomv_conversion_mtx_info<INDEX_TYPE, INDEX_TYPE, DATA_TYPE> *>(
+            info->coomv_info);
+    usparse::spmv::internal::coomv_conv_clear(coomv_info);
+    delete coomv_info;
+    info->coomv_info = nullptr;
   }
   return usparse::usparse_status::usparse_status_success;
 }
@@ -169,3 +185,11 @@ template usparse::usparse_status usparse::spmv::internal::usparse_coomv_imp(
     const usparse::usparse_operation trans, const usparse::usparse_fp32 alpha, const usparse::usparse_fp32 beta,
     const usparse::coo_desc<usparse::usparse_int, usparse::usparse_fp32> dev_coo_mat, const usparse::usparse_fp32 *x,
     usparse::usparse_fp32 *y, usparse::mat::usparse_mat_info *info, const usparse::spmv::usparse_coomv_algorithms algo);
+
+template usparse::usparse_status
+usparse::spmv::internal::usparse_coomv_clear_imp<usparse::usparse_int, usparse::usparse_fp32>(
+    usparse::mat::usparse_mat_info *info);
+
+template usparse::usparse_status
+usparse::spmv::internal::usparse_coomv_clear_imp<usparse::usparse_int, usparse::usparse_fp64>(
+    usparse::mat::usparse_mat_info *info);
