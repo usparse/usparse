@@ -201,10 +201,10 @@ void usparse::device_daxpy(const DATA_TYPE alpha, const F_TYPE *x, DATA_TYPE *y,
 }
 
 template <typename INDEX_TYPE, typename DATA_TYPE>
-void usparse::device_dscal(const DATA_TYPE alpha, DATA_TYPE *x, const INDEX_TYPE N) {
+void usparse::device_dscal(const DATA_TYPE alpha, DATA_TYPE *x, const INDEX_TYPE N, hipStream_t stream) {
   constexpr int THREADS_PER_BLOCK = 512;
   const int BLOCKS = N / THREADS_PER_BLOCK + (N % THREADS_PER_BLOCK == 0 ? 0 : 1);
-  dscal_kernel<<<BLOCKS, THREADS_PER_BLOCK>>>(alpha, x, N);
+  dscal_kernel<<<BLOCKS, THREADS_PER_BLOCK, 0, stream>>>(alpha, x, N);
 }
 
 template <typename INDEX_TYPE, typename DATA_TYPE>
@@ -235,11 +235,11 @@ template <typename INDEX_TYPE, typename DATA_TYPE> void usparse::device_memset(D
 }
 
 template <typename INDEX_TYPE, typename DATA_TYPE>
-void usparse::device_scale_set(const DATA_TYPE alpha, DATA_TYPE *data, const INDEX_TYPE N) {
+void usparse::device_scale_set(const DATA_TYPE alpha, DATA_TYPE *data, const INDEX_TYPE N, hipStream_t stream) {
   constexpr unsigned int THREADS = 256;
   const unsigned int grid_size = (N + THREADS - 1) / THREADS;
 
-  (sacle_set_kernel<INDEX_TYPE, DATA_TYPE, THREADS>)<<<grid_size, THREADS>>>(alpha, data, N);
+  (sacle_set_kernel<INDEX_TYPE, DATA_TYPE, THREADS>)<<<grid_size, THREADS, 0, stream>>>(alpha, data, N);
 }
 
 template void usparse::device_calculateNorm<uint, double>(const double *d_vec, uint N, double *d_result,
@@ -256,25 +256,30 @@ template void usparse::device_daxpy<uint, float, double>(const double alpha, con
 template void usparse::device_daxpy<uint, float, float>(const float alpha, const float *x, float *y, const uint N);
 template void usparse::device_daxpy<uint, double, double>(const double alpha, const double *x, double *y, const uint N);
 
-template void usparse::device_dscal<uint, double>(const double alpha, double *x, const uint N);
-template void usparse::device_dscal<uint, float>(const float alpha, float *x, const uint N);
-template void usparse::device_dscal<int, int>(const int alpha, int *x, const int N);
-template void usparse::device_dscal<int, double>(const double alpha, double *x, const int N);
-template void usparse::device_dscal<int, float>(const float alpha, float *x, const int N);
+template void usparse::device_dscal<uint, double>(const double alpha, double *x, const uint N, hipStream_t stream);
+template void usparse::device_dscal<uint, float>(const float alpha, float *x, const uint N, hipStream_t stream);
+template void usparse::device_dscal<int, int>(const int alpha, int *x, const int N, hipStream_t stream);
+template void usparse::device_dscal<int, double>(const double alpha, double *x, const int N, hipStream_t stream);
+template void usparse::device_dscal<int, float>(const float alpha, float *x, const int N, hipStream_t stream);
 template void usparse::device_dscal<int, usparse::usparse_fpc64>(const usparse::usparse_fpc64 alpha,
-                                                                 usparse::usparse_fpc64 *x, const int N);
+                                                                 usparse::usparse_fpc64 *x, const int N,
+                                                                 hipStream_t stream);
 template void usparse::device_dscal<int, usparse::usparse_fpc32>(const usparse::usparse_fpc32 alpha,
-                                                                 usparse::usparse_fpc32 *x, const int N);
+                                                                 usparse::usparse_fpc32 *x, const int N,
+                                                                 hipStream_t stream);
 
-template void usparse::device_scale_set<uint, double>(const double alpha, double *data, const uint N);
-template void usparse::device_scale_set<uint, float>(const float alpha, float *data, const uint N);
-template void usparse::device_scale_set<int, int>(const int alpha, int *data, const int N);
-template void usparse::device_scale_set<int, double>(const double alpha, double *data, const int N);
-template void usparse::device_scale_set<int, float>(const float alpha, float *data, const int N);
+template void usparse::device_scale_set<uint, double>(const double alpha, double *data, const uint N,
+                                                      hipStream_t stream);
+template void usparse::device_scale_set<uint, float>(const float alpha, float *data, const uint N, hipStream_t stream);
+template void usparse::device_scale_set<int, int>(const int alpha, int *data, const int N, hipStream_t stream);
+template void usparse::device_scale_set<int, double>(const double alpha, double *data, const int N, hipStream_t stream);
+template void usparse::device_scale_set<int, float>(const float alpha, float *data, const int N, hipStream_t stream);
 template void usparse::device_scale_set<int, usparse::usparse_fpc64>(const usparse::usparse_fpc64 alpha,
-                                                                     usparse::usparse_fpc64 *data, const int N);
+                                                                     usparse::usparse_fpc64 *data, const int N,
+                                                                     hipStream_t stream);
 template void usparse::device_scale_set<int, usparse::usparse_fpc32>(const usparse::usparse_fpc32 alpha,
-                                                                     usparse::usparse_fpc32 *data, const int N);
+                                                                     usparse::usparse_fpc32 *data, const int N,
+                                                                     hipStream_t stream);
 
 template void usparse::device_dcopy<uint, double>(const double *src, double *dst, const uint N);
 template void usparse::device_dcopy<uint, float>(const float *src, float *dst, const uint N);
