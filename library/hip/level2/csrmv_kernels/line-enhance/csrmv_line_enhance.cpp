@@ -6,21 +6,10 @@
 #include "line_enhance_kernels_imp.h"
 #include "usparse_types.h"
 
-template <typename INDEX_TYPE, typename DATA_TYPE, int R, int ROWS_PER_BLOCK, int VEC_SIZE, int THREADS_PER_BLOCK>
-void line_enhance_sparse_spmv(hipStream_t stream, int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
-                              const csr_desc<INDEX_TYPE, DATA_TYPE> d_csr_desc, const DATA_TYPE *x, DATA_TYPE *y) {
-  VAR_FROM_CSR_DESC(DATA_TYPE, d_csr_desc)
-
-  constexpr int REDUCE_OPTION = VEC_SIZE == 0 ? LE_REDUCE_OPTION_DIRECT : LE_REDUCE_OPTION_VEC;
-
-  int BLOCKS = m / ROWS_PER_BLOCK + (m % ROWS_PER_BLOCK == 0 ? 0 : 1);
-  LINE_ENHANCE_KERNEL_WRAPPER(stream, DATA_TYPE, INDEX_TYPE, INDEX_TYPE, DATA_TYPE, DATA_TYPE, DATA_TYPE, REDUCE_OPTION,
-                              ROWS_PER_BLOCK, VEC_SIZE, R, BLOCKS, THREADS_PER_BLOCK);
-}
 
 template <typename INDEX_TYPE, typename DATA_TYPE>
 void line_enhance_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
-                              const csr_desc<INDEX_TYPE, DATA_TYPE> d_csr_desc, const DATA_TYPE *x, DATA_TYPE *y) {
+const csr_desc<INDEX_TYPE, DATA_TYPE> d_csr_desc, const DATA_TYPE *x, DATA_TYPE *y) {
   constexpr int R = 2;
   constexpr int ROWS_PER_BLOCK = 32; // note: make sure ROWS_PER_BLOCK * VEC_SIZE <= THREADS_PER_BLOCK.
   constexpr int VEC_SIZE = 4;        // note: if using direct reduce, VEC_SIZE must set to 1.
@@ -33,8 +22,11 @@ void line_enhance_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE 
 
 // todo: better MACRO define
 #define USPARSE_ENABLE_TUNER
+
 #ifdef USPARSE_ENABLE_TUNER
+/*
 // todo: cpp17 checking
+
 void __not_called_line_enhance_template_instantiate_fp64() {
   constexpr std::array<int, 4> R = {1, 2, 3, 4};
   constexpr std::array<int, 4> ROWS_PER_BLOCK = {16, 32, 64, 128};
@@ -68,6 +60,7 @@ void __not_called_line_enhance_template_instantiate_fp64() {
      ...);
   }(std::make_index_sequence<S1 * S2 * S3 * S4>{});
 }
+*/
 #endif
 
 template <typename T, typename I, typename J, typename A, typename X, typename Y>
@@ -145,14 +138,14 @@ LINE_ENHANCE_INSTANTIATE(float, int64_t, int64_t);
 LINE_ENHANCE_INSTANTIATE(double, int32_t, int32_t);
 LINE_ENHANCE_INSTANTIATE(double, int64_t, int32_t);
 LINE_ENHANCE_INSTANTIATE(double, int64_t, int64_t);
-
+/*
 LINE_ENHANCE_INSTANTIATE(usparse::usparse_fpc32, int32_t, int32_t);
 LINE_ENHANCE_INSTANTIATE(usparse::usparse_fpc32, int64_t, int32_t);
 LINE_ENHANCE_INSTANTIATE(usparse::usparse_fpc32, int64_t, int64_t);
 LINE_ENHANCE_INSTANTIATE(usparse::usparse_fpc64, int32_t, int32_t);
 LINE_ENHANCE_INSTANTIATE(usparse::usparse_fpc64, int64_t, int32_t);
 LINE_ENHANCE_INSTANTIATE(usparse::usparse_fpc64, int64_t, int64_t);
-
+*/
 #define LINE_ENHANCE_INSTANTIATE_MIXED(TTYPE, ITYPE, JTYPE, ATYPE, XTYPE, YTYPE)                                       \
   template void adaptive_enhance_sparse_spmv<TTYPE, ITYPE, JTYPE, ATYPE, XTYPE, YTYPE>(                                \
       hipStream_t stream, int trans, const TTYPE alpha, const TTYPE beta,                                              \
@@ -167,17 +160,18 @@ LINE_ENHANCE_INSTANTIATE_MIXED(int32_t, int64_t, int64_t, int8_t, int8_t, int32_
 LINE_ENHANCE_INSTANTIATE_MIXED(float, int32_t, int32_t, int8_t, int8_t, float)
 LINE_ENHANCE_INSTANTIATE_MIXED(float, int64_t, int32_t, int8_t, int8_t, float)
 LINE_ENHANCE_INSTANTIATE_MIXED(float, int64_t, int64_t, int8_t, int8_t, float)
+/*
 LINE_ENHANCE_INSTANTIATE_MIXED(usparse::usparse_fpc32, int32_t, int32_t, float, usparse::usparse_fpc32,
                                usparse::usparse_fpc32)
 LINE_ENHANCE_INSTANTIATE_MIXED(usparse::usparse_fpc32, int64_t, int32_t, float, usparse::usparse_fpc32,
                                usparse::usparse_fpc32)
 LINE_ENHANCE_INSTANTIATE_MIXED(usparse::usparse_fpc32, int64_t, int64_t, float, usparse::usparse_fpc32,
                                usparse::usparse_fpc32)
-
+*/
 LINE_ENHANCE_INSTANTIATE_MIXED(double, int32_t, int32_t, float, double, double)
 LINE_ENHANCE_INSTANTIATE_MIXED(double, int64_t, int32_t, float, double, double)
 LINE_ENHANCE_INSTANTIATE_MIXED(double, int64_t, int64_t, float, double, double)
-
+/*
 LINE_ENHANCE_INSTANTIATE_MIXED(usparse::usparse_fpc64, int32_t, int32_t, double, usparse::usparse_fpc64,
                                usparse::usparse_fpc64)
 LINE_ENHANCE_INSTANTIATE_MIXED(usparse::usparse_fpc64, int64_t, int32_t, double, usparse::usparse_fpc64,
@@ -191,6 +185,6 @@ LINE_ENHANCE_INSTANTIATE_MIXED(usparse::usparse_fpc64, int64_t, int32_t, usparse
                                usparse::usparse_fpc64)
 LINE_ENHANCE_INSTANTIATE_MIXED(usparse::usparse_fpc64, int64_t, int64_t, usparse::usparse_fpc32, usparse::usparse_fpc64,
                                usparse::usparse_fpc64)
-
+*/
 #undef LINE_ENHANCE_INSTANTIATE_MIXED
 #undef LINE_ENHANCE_INSTANTIATE

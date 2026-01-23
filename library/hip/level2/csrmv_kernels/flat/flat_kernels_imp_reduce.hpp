@@ -11,7 +11,7 @@
 #include "primitives/reduce/wavefront/wavefront_shlf_utils.hpp"
 
 template <typename T> __device__ __forceinline__ void flat_atomic_add(T *address, T val) { atomicAdd(address, val); }
-
+/*
 // Complex number specialized version: Single precision
 __device__ __forceinline__ void flat_atomic_add(usparse::usparse_fpc32 *address, usparse::usparse_fpc32 val) {
   float *float_addr = reinterpret_cast<float *>(address);
@@ -27,7 +27,7 @@ __device__ __forceinline__ void flat_atomic_add(usparse::usparse_fpc64 *address,
   atomicAdd(double_addr + 1, std::imag(val));
   return;
 }
-
+*/
 template <typename I, typename T, int NNZ_PER_BLOCK, int R, int THREADS>
 __device__ __forceinline__ void flat_reduce_segment_sum(const int tid_in_block, const int bp_index,
                                                         const I reduce_start_row_id, const I reduce_end_row_id,

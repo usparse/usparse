@@ -1,3 +1,12 @@
+if(DEFINED MY_THREADS AND DEFINED MY_ELES AND DEFINED MY_STRIDES)
+    # 将它们通过 -D 传给 C++ 编译器
+    add_compile_definitions(TUNING_THREADS=${MY_THREADS})
+    add_compile_definitions(TUNING_ELES=${MY_ELES})
+    add_compile_definitions(TUNING_STRIDES=${MY_STRIDES})
+    
+    # 修改目标库的名字，防止同名覆盖 (可选，或者我们在脚本里改名)
+    # 这一步不是必须的，因为我们要用脚本里的 mv 来改名，保持 CMake 简单更好。
+endif()
 # set binary path and lib storage path for compiled files.
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)

@@ -261,7 +261,13 @@ void usparse::dotprod_axpy_fusion(DATA_TYPE *d_r0, const DATA_TYPE *d_v, DATA_TY
 #define FUSION_SHORT_MARK(THREADS, ELES_PER_THREAD, STRIDES)                                                           \
   dotprod_axpy_fusion_internal_imp<INDEX_TYPE, DATA_TYPE, THREADS, ELES_PER_THREAD, STRIDES, OPT_LEVEL>(               \
       d_r0, d_v, d_h, d_temp_buffer, N, VN, m, i, temp_buffer_size_byte);
-
+#if defined(TUNING_THREADS) && defined(TUNING_ELES) && defined(TUNING_STRIDES)
+  // 如果定义了这三个宏，直接使用宏指定的值，无视原有逻辑
+  constexpr int THREADS = TUNING_THREADS;
+  constexpr int ELES_PER_THREAD = TUNING_ELES;
+  constexpr int STRIDES = TUNING_STRIDES;
+  FUSION_SHORT_MARK(THREADS, ELES_PER_THREAD, STRIDES);
+ #else
   if (usparse::GMRES_OPT_MGS_FUSION_PARAMETER_STRATEGY == usparse::GMRES_OPT_MGS_FUSION_PARAMETER_STRATEGY_CLASSIC) {
     if (N < 163840) { // 163840
       constexpr int THREADS = 512;
@@ -314,7 +320,7 @@ void usparse::dotprod_axpy_fusion(DATA_TYPE *d_r0, const DATA_TYPE *d_v, DATA_TY
     constexpr int STRIDES = 4;
     FUSION_SHORT_MARK(THREADS, ELES_PER_THREAD, STRIDES);
   }
-
+#endif
 #undef FUSION_SHORT_MARK
 }
 

@@ -9,7 +9,26 @@
 #include "include/usparse_config.hpp"
 #include "usparse_blas_level1.h"
 #include "usparse_types.h"
+#include<hip/hip_complex.h>
 
+// 1. 定义 double 复数的 *= 运算
+/*
+__device__ inline rocsparse_double_complex& operator*=(rocsparse_double_complex& a, const rocsparse_double_complex& b) {
+    double old_x = a.x;
+    // 复数乘法公式
+    a.x = a.x * b.x - a.y * b.y;
+    a.y = old_x * b.y + a.y * b.x;
+    return a;
+}
+
+// 2. 定义 float 复数的 *= 运算
+__device__ inline rocsparse_float_complex& operator*=(rocsparse_float_complex& a, const rocsparse_float_complex& b) {
+    float old_x = a.x;
+    a.x = a.x * b.x - a.y * b.y;
+    a.y = old_x * b.y + a.y * b.x;
+    return a;
+}
+*/
 namespace usparse {
 
   template <typename INDEX_TYPE, typename FORM_TYPE, typename TO_TYPE>
@@ -269,11 +288,12 @@ template void usparse::device_scale_set<uint, double>(const double alpha, double
 template void usparse::device_scale_set<uint, float>(const float alpha, float *data, const uint N);
 template void usparse::device_scale_set<int, double>(const double alpha, double *data, const int N);
 template void usparse::device_scale_set<int, float>(const float alpha, float *data, const int N);
+/*
 template void usparse::device_scale_set<int, usparse::usparse_fpc64>(const usparse::usparse_fpc64 alpha,
                                                                      usparse::usparse_fpc64 *data, const int N);
 template void usparse::device_scale_set<int, usparse::usparse_fpc32>(const usparse::usparse_fpc32 alpha,
                                                                      usparse::usparse_fpc32 *data, const int N);
-
+*/
 template void usparse::device_dcopy<uint, double>(const double *src, double *dst, const uint N);
 template void usparse::device_dcopy<uint, float>(const float *src, float *dst, const uint N);
 

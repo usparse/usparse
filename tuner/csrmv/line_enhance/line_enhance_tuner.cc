@@ -27,9 +27,9 @@ USPARSE_TUNER_BENCH(uTuneLineEnhanceFP64) {
   template <int THREADS_PER_BLOCK, int R = 0, int ROWS_PER_BLOCK = 0, int VEC_SIZE = 0>
   static void utuner(usparse::tuner::States & states, std::tuple<utuner::csrmv_tuner_input<int, double>> args) {
     // skip invalid parameter group
-    if constexpr (VEC_SIZE * ROWS_PER_BLOCK > THREADS_PER_BLOCK) {
-      return;
-    }
+    if constexpr (R > 0 && ROWS_PER_BLOCK > 0 && VEC_SIZE > 0 && 
+                 (VEC_SIZE * ROWS_PER_BLOCK <= THREADS_PER_BLOCK))
+{
 
     auto [csrmv_input] = args;
 
@@ -50,6 +50,7 @@ USPARSE_TUNER_BENCH(uTuneLineEnhanceFP64) {
 
     states.counters["Bandwidth"] = usparse::tuner::Counter(
         mem_size * states.iterations(), usparse::tuner::Counter::kIsRate, usparse::tuner::Counter::kIs1024);
+}
   };
 };
 
