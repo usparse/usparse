@@ -24,4 +24,10 @@ void segment_sum_flat_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_T
                                   const csr_desc<INDEX_TYPE, DATA_TYPE> d_csr_desc, const DATA_TYPE *x, DATA_TYPE *y,
                                   BenchmarkTime *bmt);
 
+template <typename INDEX_TYPE, typename DATA_TYPE>
+void segment_sum_v2_flat_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
+                                     const csr_desc<INDEX_TYPE, DATA_TYPE> h_csr_desc,
+                                     const csr_desc<INDEX_TYPE, DATA_TYPE> d_csr_desc, const DATA_TYPE *x, DATA_TYPE *y,
+                                     BenchmarkTime *bmt);
+
 #endif // SPMV_ACC_BENCHMARK_SPMV_ACC_FLAT_HPP

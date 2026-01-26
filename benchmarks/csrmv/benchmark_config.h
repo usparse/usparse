@@ -21,6 +21,7 @@ constexpr bool ENABLE_SPMV_ACC_WF_ROW = true;
 constexpr bool ENABLE_SPMV_ACC_LE_ROW = true;
 constexpr bool ENABLE_SPMV_ACC_ADAPTIVE_PLUS = true;
 constexpr bool ENABLE_SPMV_ACC_FLAT_SEG_SUM = true;
+constexpr bool ENABLE_SPMV_ACC_FLAT_SEG_SUM_V2 = true;
 
 // rocm
 constexpr bool ENABLE_ROC_VECTOR_ROW = true;
