@@ -42,7 +42,8 @@ template <typename I, typename T> struct SpMVAccAdaptive : CsrSpMV<I, T> {
 template <typename I, typename T> struct SpMVAccFlat : CsrSpMV<I, T> {
   void csr_spmv_impl(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,
                      const csr_desc<I, T> d_csr_desc, const T *x, T *y, BenchmarkTime *bmt) {
-    flat_sparse_spmv<I, T, FLAT_PRE_CALC_BP_KERNEL_VERSION_V1>(trans, alpha, beta, h_csr_desc, d_csr_desc, x, y, bmt);
+    one_pass_flat_sparse_spmv<I, T, FLAT_PRE_CALC_BP_KERNEL_VERSION_V1>(trans, alpha, beta, h_csr_desc, d_csr_desc, x,
+                                                                        y, bmt);
   }
   bool verify_beta_y() { return true; }
 };
@@ -50,7 +51,8 @@ template <typename I, typename T> struct SpMVAccFlat : CsrSpMV<I, T> {
 template <typename I, typename T> struct SpMVAccFlatV2 : CsrSpMV<I, T> {
   void csr_spmv_impl(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,
                      const csr_desc<I, T> d_csr_desc, const T *x, T *y, BenchmarkTime *bmt) {
-    flat_sparse_spmv<I, T, FLAT_PRE_CALC_BP_KERNEL_VERSION_V2>(trans, alpha, beta, h_csr_desc, d_csr_desc, x, y, bmt);
+    one_pass_flat_sparse_spmv<I, T, FLAT_PRE_CALC_BP_KERNEL_VERSION_V2>(trans, alpha, beta, h_csr_desc, d_csr_desc, x,
+                                                                        y, bmt);
   }
   bool verify_beta_y() { return true; }
 };
