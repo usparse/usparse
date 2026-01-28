@@ -32,7 +32,7 @@ inline void flat_multi_pass_sparse_spmv(hipStream_t stream, int trans, const SCA
   hipMemsetAsync(break_points, 0, break_points_len * sizeof(BP_DATA_TYPE), stream);
 
   (pre_calc_break_point<ROW_TYPE, NNZ_TYPE, BP_DATA_TYPE, R * THREADS_PER_BLOCK>)<<<1024, 512, 0, stream>>>(
-      rowptr, m, break_points);
+      rowptr, m, break_points, break_points_len);
 
   (csrmv_flat_multi_pass_kernel<__WF_SIZE__, R, REDUCE_OPTION, REDUCE_VEC_SIZE, BLOCKS, THREADS_PER_BLOCK,
                                 SHARE_MEM_INDEX_TYPE, BP_INDEX_TYPE, BP_DATA_TYPE, SCALE_DATA_TYPE, A_TYPE,
@@ -56,7 +56,7 @@ void flat_matrix_analyse(hipStream_t stream, const csr_mat_descr<DATA_TYPE, NNZ_
   hipMallocAsync((void **)break_points, break_points_len * sizeof(BP_DATA_TYPE), stream);
   hipMemsetAsync(*break_points, 0, break_points_len * sizeof(BP_DATA_TYPE), stream);
   (pre_calc_break_point<ROW_TYPE, NNZ_TYPE, BP_DATA_TYPE, R * THREADS_PER_BLOCK>)<<<1024, 512, 0, stream>>>(
-      rowptr, m, *break_points);
+      rowptr, m, *break_points, break_points_len);
 }
 
 // just for backward compatibility.

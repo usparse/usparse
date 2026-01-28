@@ -19,13 +19,16 @@
 
 template <typename ROW_TYPE, typename NNZ_TYPE, typename BP_TYPE, NNZ_TYPE BREAK_STRIDE>
 __global__ __launch_bounds__(512) void pre_calc_break_point(const NNZ_TYPE *__restrict__ row_ptr, const ROW_TYPE m,
-                                                            BP_TYPE *__restrict__ break_points) {
+                                                            BP_TYPE *__restrict__ break_points,
+                                                            const NNZ_TYPE break_points_len) {
   const ROW_TYPE global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   const ROW_TYPE global_threads_num = blockDim.x * gridDim.x;
 
   constexpr NNZ_TYPE break_stride = BREAK_STRIDE;
   if (global_thread_id == 0) {
     break_points[0] = static_cast<BP_TYPE>(0); // start row of the block 0 and the first round.
+    // the end row of the last HIP block in the flat kernel is m.
+    break_points[break_points_len - 1] = static_cast<BP_TYPE>(m);
   }
 
   for (ROW_TYPE i = global_thread_id; i < m; i += global_threads_num) {
@@ -55,10 +58,16 @@ __global__ __launch_bounds__(512) void pre_calc_break_point(const NNZ_TYPE *__re
  */
 template <typename ROW_TYPE, typename NNZ_TYPE, typename BP_TYPE, NNZ_TYPE BREAK_STRIDE>
 __global__ __launch_bounds__(512) void pre_calc_break_point_v2(const NNZ_TYPE *__restrict__ row_ptr, const ROW_TYPE m,
-                                                               BP_TYPE *__restrict__ break_points) {
+                                                               BP_TYPE *__restrict__ break_points,
+                                                               const NNZ_TYPE break_points_len) {
   const ROW_TYPE global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
   const ROW_TYPE global_threads_num = blockDim.x * gridDim.x;
   constexpr NNZ_TYPE break_stride = BREAK_STRIDE;
+
+  if (global_thread_id == 0) {
+    // the end row of the last HIP block in the flat kernel is m.
+    break_points[break_points_len - 1] = static_cast<BP_TYPE>(m);
+  }
 
   for (ROW_TYPE i = global_thread_id; i < m; i += global_threads_num) {
     NNZ_TYPE p1 = row_ptr[i] / break_stride;

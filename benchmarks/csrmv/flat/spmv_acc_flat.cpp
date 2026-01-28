@@ -35,7 +35,8 @@ inline void flat_multi_pass_sparse_spmv(int trans, const DATA_TYPE alpha, const 
   const int break_points_len = total_rounds * BLOCKS + 1;
   hipMalloc((void **)&break_points, break_points_len * sizeof(int));
   hipMemset(break_points, 0, break_points_len * sizeof(int));
-  (pre_calc_break_point<INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, R * THREADS_PER_BLOCK>)<<<1024, 512>>>(rowptr, m, break_points);
+  (pre_calc_break_point<INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, R * THREADS_PER_BLOCK>)<<<1024, 512>>>(
+      rowptr, m, break_points, break_points_len);
   pre_timer.stop();
 
   calc_timer.start();

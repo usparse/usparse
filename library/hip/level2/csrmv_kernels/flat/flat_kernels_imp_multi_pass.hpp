@@ -76,11 +76,9 @@ __global__ __launch_bounds__(THREADS) void csrmv_flat_multi_pass_kernel(
 
     // reduce via LDS.
     const ROW_TYPE reduce_start_row_id = min(break_points[bp_index], m);
+    // note: if it is the last block, reduce_end_row_id is m (this is determined in the preprocessing stage).
     ROW_TYPE reduce_end_row_id = min(break_points[bp_index + 1], m);
-    // if it is the last block
-    if (reduce_end_row_id == 0) {
-      reduce_end_row_id = m;
-    }
+
     // if start of the next block cuts some row.
     // or some row cross multiple blocks.
     if (row_offset[reduce_end_row_id] % nnz_per_block != 0 || reduce_end_row_id == reduce_start_row_id) {
