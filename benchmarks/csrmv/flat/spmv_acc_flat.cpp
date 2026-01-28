@@ -83,8 +83,9 @@ void one_pass_flat_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE
   auto d_csr_mat_desc = usparse::csr_mat_descr<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE>(d_csr_desc);
 
   pre_timer.start();
-  csrmv_flat_mtx_info info;
-  flat_analyse<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE, BP_DATA_TYPE>(d_csr_mat_desc, &info);
+  csrmv_flat_mtx_info<INDEX_TYPE, DATA_TYPE> info;
+  flat_matrix_analyse<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE, BP_DATA_TYPE, Y_TYPE,
+                      FLAT_STORE_Y_POLICY_UNDETERMINISTIC, true>(hipStreamDefault, d_csr_mat_desc, &info);
   // todo: handle FLAT_PRE_CALC_BP_KERNEL_VERSION
   pre_timer.stop();
 
@@ -106,6 +107,7 @@ void one_pass_flat_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE
   return;
 }
 
+// reducing in a block using segment sum.
 template <typename INDEX_TYPE, typename DATA_TYPE>
 void segment_sum_flat_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
                                   const csr_desc<INDEX_TYPE, DATA_TYPE> h_csr_desc,
@@ -121,6 +123,48 @@ void segment_sum_flat_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_T
   constexpr int RED_OPT = FLAT_REDUCE_OPTION_SEGMENT_SUM;
   flat_multi_pass_sparse_spmv<INDEX_TYPE, DATA_TYPE, R, RED_OPT, 2, blocks, THREADS_PER_BLOCK>(
       trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, bmt);
+}
+
+// reducing on device using segment sum.
+template <typename INDEX_TYPE, typename DATA_TYPE>
+void segment_sum_v2_flat_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
+                                     const csr_desc<INDEX_TYPE, DATA_TYPE> h_csr_desc,
+                                     const csr_desc<INDEX_TYPE, DATA_TYPE> d_csr_desc, const DATA_TYPE *x, DATA_TYPE *y,
+                                     BenchmarkTime *bmt) {
+  using Y_TYPE = DATA_TYPE;
+  using NNZ_TYPE = INDEX_TYPE;
+  using ROW_TYPE = INDEX_TYPE;
+  using COLUMN_TYPE = INDEX_TYPE;
+  using BP_DATA_TYPE = ROW_TYPE;
+  using BP_INDEX_TYPE = INDEX_TYPE;
+
+  hip::timer::event_timer pre_timer, calc_timer;
+  auto d_csr_mat_desc = usparse::csr_mat_descr<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE>(d_csr_desc);
+
+  pre_timer.start();
+  csrmv_flat_mtx_info<INDEX_TYPE, DATA_TYPE> info;
+  flat_matrix_analyse<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE, BP_DATA_TYPE, Y_TYPE,
+                      FLAT_STORE_Y_POLICY_DETERMINISTIC, true>(hipStreamDefault, d_csr_mat_desc, &info);
+  // todo: handle FLAT_PRE_CALC_BP_KERNEL_VERSION
+  pre_timer.stop();
+
+  calc_timer.start();
+  using SCALE_DATA_TYPE = DATA_TYPE;
+  using A_TYPE = DATA_TYPE;
+  using X_TYPE = DATA_TYPE;
+
+  using SHARE_MEM_INDEX_TYPE = INDEX_TYPE;
+  using COMPUTE_MULTI_TYPE = DATA_TYPE;
+  using COMPUTE_SUM_TYPE = DATA_TYPE;
+
+  adaptive_flat_sparse_spmv<DATA_TYPE, BP_DATA_TYPE, A_TYPE, X_TYPE, Y_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE,
+                            SCALE_DATA_TYPE, BETA_Y_POLICY_AUTO, FLAT_STORE_Y_POLICY_DETERMINISTIC>(
+      hipStreamDefault, trans, alpha, beta, d_csr_mat_desc, x, y, &info);
+  calc_timer.stop(true);
+  if (bmt != nullptr) {
+    bmt->set_time(pre_timer.time_use, calc_timer.time_use, 0.0, 0.);
+  }
+  return;
 }
 
 template void one_pass_flat_sparse_spmv<int, double, FLAT_PRE_CALC_BP_KERNEL_VERSION_V1>(
@@ -152,5 +196,15 @@ template void segment_sum_flat_sparse_spmv<int, float>(int trans, const float al
                                                        const csr_desc<int, float> h_csr_desc,
                                                        const csr_desc<int, float> d_csr_desc, const float *x, float *y,
                                                        BenchmarkTime *bmt);
+
+template void segment_sum_v2_flat_sparse_spmv<int, double>(int trans, const double alpha, const double beta,
+                                                           const csr_desc<int, double> h_csr_desc,
+                                                           const csr_desc<int, double> d_csr_desc, const double *x,
+                                                           double *y, BenchmarkTime *bmt);
+
+template void segment_sum_v2_flat_sparse_spmv<int, float>(int trans, const float alpha, const float beta,
+                                                          const csr_desc<int, float> h_csr_desc,
+                                                          const csr_desc<int, float> d_csr_desc, const float *x,
+                                                          float *y, BenchmarkTime *bmt);
 
 #endif // SPMV_ACC_BENCHMARK_SPMV_ACC_FLAT_HPP

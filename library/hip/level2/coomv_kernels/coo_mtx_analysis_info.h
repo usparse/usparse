@@ -13,10 +13,13 @@ namespace usparse {
     namespace internal {
       /**
        * the matrix info for all conversion-based coomv methods.
+       * @tparam J nnz index type
+       * @tparam I row/col index type
+       * @tparam T y type in coomv
        */
-      template <typename I> struct coomv_conversion_mtx_info {
-        I *csr_row_ptr = nullptr;
-        csrmv_flat_mtx_info *flat_info = nullptr; // the flat analysis result.
+      template <typename J, typename I, typename T> struct coomv_conversion_mtx_info {
+        J *csr_row_ptr = nullptr;
+        csrmv_flat_mtx_info<I, T> *flat_info = nullptr; // the flat analysis result.
       };
     } // namespace internal
   } // namespace spmv

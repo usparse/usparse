@@ -76,6 +76,7 @@ void test_spmv(std::string mtx_path, csr_mtx<INDEX_TYPE, DATA_TYPE> h_csr, host_
   SPMV_BENCHMARK(SpMVAccLineEnhance, "spmv-acc-line-enhance", ENABLE_SPMV_ACC_LE_ROW);
   SPMV_BENCHMARK(SpMVAccAdaptivePlus, "spmv-acc-adaptive-plus", ENABLE_SPMV_ACC_ADAPTIVE_PLUS);
   SPMV_BENCHMARK(SpMVAccFlatSegSum, "spmv-acc-flat-seg-sum", ENABLE_SPMV_ACC_FLAT_SEG_SUM);
+  SPMV_BENCHMARK(SpMVAccFlatSegSumV2, "spmv-acc-flat-seg-sum-v2", ENABLE_SPMV_ACC_FLAT_SEG_SUM_V2);
 
 #ifdef __HIP_PLATFORM_HCC__
   // rocsparse

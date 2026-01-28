@@ -65,6 +65,14 @@ template <typename I, typename T> struct SpMVAccFlatSegSum : CsrSpMV<I, T> {
   bool verify_beta_y() { return true; }
 };
 
+template <typename I, typename T> struct SpMVAccFlatSegSumV2 : CsrSpMV<I, T> {
+  void csr_spmv_impl(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,
+                     const csr_desc<I, T> d_csr_desc, const T *x, T *y, BenchmarkTime *bmt) {
+    segment_sum_v2_flat_sparse_spmv<I, T>(trans, alpha, beta, h_csr_desc, d_csr_desc, x, y, bmt);
+  }
+  bool verify_beta_y() { return true; }
+};
+
 template <typename I, typename T> struct SpMVAccLight : CsrSpMV<I, T> {
   void csr_spmv_impl(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,
                      const csr_desc<I, T> d_csr_desc, const T *x, T *y, BenchmarkTime *bmt) {
