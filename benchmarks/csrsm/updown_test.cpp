@@ -72,7 +72,7 @@ T *test_updown_matrix(const MatrixData<T> &matrix_in, const T *h_b, int k, int h
   *out_time = time1 / k * 1.0;
 
   // 数据拷贝回主机
-  // hipMemcpy(h_x, d_x, n * rhs * sizeof(T), hipMemcpyDeviceToHost);
+  // USPARSE_HIP_API_CHECK(hipMemcpy(h_x, d_x, n * rhs * sizeof(T), hipMemcpyDeviceToHost));
   USPARSE_HIP_API_CHECK(hipMemcpy(h_is_solved, d_is_solved, n * rhs * sizeof(int), hipMemcpyDeviceToHost));
   USPARSE_HIP_API_CHECK(hipMemcpy(h_temp, d_temp, n * sizeof(T), hipMemcpyDeviceToHost));
 

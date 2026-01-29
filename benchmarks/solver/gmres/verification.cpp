@@ -5,6 +5,8 @@
 #include <iostream>
 #include <vector>
 
+#include "common/usparse_utils.hpp"
+
 double Verification(SpM<double> *d_A, double *x, double *b, double *r0, int N) {
   hipsparseHandle_t spHandle;
   hipsparseCreate(&spHandle);
@@ -27,7 +29,7 @@ double Verification(SpM<double> *d_A, double *x, double *b, double *r0, int N) {
   hipsparseSpMV_bufferSize(spHandle, HIPSPARSE_OPERATION_NON_TRANSPOSE, &alpha, matA, vecX, &beta, vecY, HIP_R_64F,
                            HIPSPARSE_SPMV_ALG_DEFAULT, &bufferSize);
 
-  hipMalloc(&dBuffer, bufferSize);
+  USPARSE_HIP_API_CHECK(hipMalloc(&dBuffer, bufferSize));
 
   hipsparseSpMV(spHandle, HIPSPARSE_OPERATION_NON_TRANSPOSE, &alpha, matA, vecX, &beta, vecY, HIP_R_64F,
                 HIPSPARSE_SPMV_ALG_DEFAULT, dBuffer);
@@ -41,7 +43,7 @@ double Verification(SpM<double> *d_A, double *x, double *b, double *r0, int N) {
   double den = 0.0;
   hipblasDnrm2(blasHandle, N, b, 1, &den);
 
-  hipFree(dBuffer);
+  USPARSE_HIP_API_CHECK(hipFree(dBuffer));
   hipsparseDestroySpMat(matA);
   hipsparseDestroyDnVec(vecX);
   hipsparseDestroyDnVec(vecY);

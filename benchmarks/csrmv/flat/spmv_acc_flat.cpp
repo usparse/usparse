@@ -12,6 +12,7 @@
 #include "../utils/timer_utils.h"
 #include "benchmark_config.h"
 #include "common/macros.h"
+#include "common/usparse_utils.hpp"
 #include "level2/csrmv_kernels/flat/flat_config.h"
 #include "level2/csrmv_kernels/flat/csrmv_flat.h"
 #include "level2/csrmv_kernels/flat/flat_kernels_imp_multi_pass.hpp"
@@ -33,8 +34,8 @@ inline void flat_multi_pass_sparse_spmv(int trans, const DATA_TYPE alpha, const 
       nnz / (R * THREADS_PER_BLOCK * BLOCKS) + (nnz % (R * THREADS_PER_BLOCK * BLOCKS) == 0 ? 0 : 1);
   // each round and each block both have a break point.
   const int break_points_len = total_rounds * BLOCKS + 1;
-  hipMalloc((void **)&break_points, break_points_len * sizeof(int));
-  hipMemset(break_points, 0, break_points_len * sizeof(int));
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&break_points, break_points_len * sizeof(int)));
+  USPARSE_HIP_API_CHECK(hipMemset(break_points, 0, break_points_len * sizeof(int)));
   (pre_calc_break_point<INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, R * THREADS_PER_BLOCK>)<<<1024, 512>>>(
       rowptr, m, break_points, break_points_len);
   pre_timer.stop();
