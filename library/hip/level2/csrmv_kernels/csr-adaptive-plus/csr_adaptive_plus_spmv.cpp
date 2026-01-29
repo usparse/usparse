@@ -8,6 +8,7 @@
 
 #include "common/macros.h"
 #include "common/mem_bandwidth.hpp"
+#include "common/usparse_utils.hpp"
 #include "csr_adaptive_plus_analyze.h"
 #include "csr_adaptive_plus_config.h"
 #include "csr_adaptive_plus_spmv.h"
@@ -34,11 +35,11 @@ csr_adaptive_plus_sparse_spmv_analyze(int trans, const T alpha, const T beta, co
   csr_adaptive_plus_analyze_info<I> info;
   info.HIP_BLOCKS = HIP_BLOCKS;
 
-  hipMalloc((void **)&(info.break_points), break_points_host.size() * sizeof(I));
-  hipMalloc((void **)&(info.first_process_block_of_row), (m + 1) * sizeof(I));
-  hipMemcpy(info.break_points, break_points_host.data(), break_points_host.size() * sizeof(I), hipMemcpyHostToDevice);
-  hipMemcpy(info.first_process_block_of_row, first_process_block_of_row_host.data(), (m + 1) * sizeof(I),
-            hipMemcpyHostToDevice);
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&(info.break_points), break_points_host.size() * sizeof(I)));
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&(info.first_process_block_of_row), (m + 1) * sizeof(I)));
+  USPARSE_HIP_API_CHECK(hipMemcpy(info.break_points, break_points_host.data(), break_points_host.size() * sizeof(I), hipMemcpyHostToDevice));
+  USPARSE_HIP_API_CHECK(hipMemcpy(info.first_process_block_of_row, first_process_block_of_row_host.data(), (m + 1) * sizeof(I),
+            hipMemcpyHostToDevice));
 
   if (spmv::gpu::adaptive_plus::DEBUG) {
     for (I i = 1; i < (HIP_BLOCKS + 1); i++) {
@@ -68,8 +69,8 @@ void csr_adaptive_plus_sparse_spmv_kernel(int trans, const T alpha, const T beta
 }
 
 template <typename I> void csr_adaptive_plus_sparse_spmv_destroy(csr_adaptive_plus_analyze_info<I> info) {
-  hipFree(info.break_points);
-  hipFree(info.first_process_block_of_row);
+  USPARSE_HIP_API_CHECK(hipFree(info.break_points));
+  USPARSE_HIP_API_CHECK(hipFree(info.first_process_block_of_row));
 }
 
 template <int VEC_SIZE, int R, int THREADS_PER_BLOCK, int MIN_NNZ_PER_BLOCK, typename I, typename T>

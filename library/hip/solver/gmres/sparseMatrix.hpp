@@ -9,6 +9,9 @@
 #include <stdlib.h>
 #include <string>
 #include <vector>
+
+#include "common/usparse_utils.hpp"
+
 typedef unsigned int uint;
 using namespace std;
 
@@ -49,12 +52,15 @@ public:
   }
   ~SpM() {
     if (on_device) {
-      if (rows)
-        hipFree(rows);
-      if (cols)
-        hipFree(cols);
-      if (vals)
-        hipFree(vals);
+      if (rows) {
+        USPARSE_HIP_API_CHECK(hipFree(rows));
+      }
+      if (cols) {
+        USPARSE_HIP_API_CHECK(hipFree(cols));
+      }
+      if (vals) {
+        USPARSE_HIP_API_CHECK(hipFree(vals));
+      }
     } else {
       if (rows)
         free(rows);

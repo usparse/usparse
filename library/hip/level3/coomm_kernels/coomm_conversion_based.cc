@@ -10,6 +10,7 @@
 #include "building_config.h"
 #include "coomm_conversion_based.h"
 #include "coomm_mtx_analysis_info.h"
+#include "common/usparse_utils.hpp"
 
 template <typename INDEX_TYPE, typename DATA_TYPE>
 void usparse::spmm::internal::coomm_conv_analysis(const usparse::usparse_operation trans,
@@ -17,7 +18,7 @@ void usparse::spmm::internal::coomm_conv_analysis(const usparse::usparse_operati
                                                   usparse::spmm::internal::coomm_conversion_mtx_info<INDEX_TYPE> *info,
                                                   const usparse::spmm::usparse_coomm_algorithms algo) {
   INDEX_TYPE *d_row_ptr;
-  hipMalloc((void **)&d_row_ptr, sizeof(int) * (d_coo_desc.rows + 1));
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&d_row_ptr, sizeof(int) * (d_coo_desc.rows + 1)));
   usparse::conversion::coo2csr(d_coo_desc.rows, d_coo_desc.nnz, d_coo_desc.row_index, d_row_ptr);
   info->csr_row_ptr = d_row_ptr;
 }

@@ -66,23 +66,23 @@ template <typename INDEX_TYPE, typename DATA_TYPE> struct CooSpMV {
         std::cout << "matrix name: " << mtx_path << ", strategy name: " << strategy_name << std::endl;
         std::cout << "error occur, return" << std::endl;
         std::cerr << error.what() << std::endl;
-        hipDeviceSynchronize();
+        USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
         memcpy(h_vectors.hhY, h_vectors.temphY, d_coo_desc.rows * sizeof(DATA_TYPE));
         USPARSE_HIP_API_CHECK(
             hipMemcpy(dev_y, h_vectors.temphY, d_coo_desc.rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
         return;
       }
     }
-    hipDeviceSynchronize();
+    USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
 
     // execute device SpMV
     for (int i = 0; i < BENCHMARK_ARRAY_SIZE; i++) {
       BenchmarkTime bmt;
       USPARSE_HIP_API_CHECK(
           hipMemcpy(dev_y, h_vectors.temphY, d_coo_desc.rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
-      hipDeviceSynchronize();
+      USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
       coo_spmv_impl(operation, alpha, beta, h_coo_desc, d_coo_desc, dev_x, dev_y, &bmt);
-      hipDeviceSynchronize();
+      USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
       bmt_array.append(bmt);
     }
 
@@ -90,7 +90,7 @@ template <typename INDEX_TYPE, typename DATA_TYPE> struct CooSpMV {
     USPARSE_HIP_API_CHECK(
         hipMemcpy(dev_y, h_vectors.temphY, h_coo_desc.rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
     coo_spmv_impl(operation, alpha, beta, h_coo_desc, d_coo_desc, dev_x, dev_y, nullptr);
-    hipDeviceSynchronize();
+    USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
     USPARSE_HIP_API_CHECK(hipMemcpy(h_vectors.hY, dev_y, d_coo_desc.rows * sizeof(DATA_TYPE), hipMemcpyDeviceToHost));
 
     // host side verification

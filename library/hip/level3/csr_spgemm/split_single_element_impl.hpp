@@ -56,7 +56,7 @@ void split_one_element(const size_t rows, const I *row_ptr, I *group_row_ptr, in
   (split_group_part3_kernel<I, GROUP_ONE_NUM, CLASSIFICATION_GROUP_ONE_NUM, GROUP_ONE_THRESHOLD, R, THREADS>)<<<BLOCKS, THREADS>>>(
       rows, row_ptr, group_row_ptr, split_buffer, ROW_NNZ_BEGIN_VALUE);
   if (SCAN_SIZE <= PART2_THREADS) {
-    hipDeviceSynchronize();
+    USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
     for (int i = 0; i < GROUP_ONE_NUM; ++i) {
       hgroup_num_ptr[i] = split_num_buffer[i];
     }

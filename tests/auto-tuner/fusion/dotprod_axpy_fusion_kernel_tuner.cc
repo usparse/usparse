@@ -68,13 +68,13 @@ USPARSE_TUNER_BENCH(dotProdAxpyFusion_Tuner) {
       usparse::dotprod_axpy_fusion_internal_imp<uint, T, THREADS, ELES_PER_THREAD, STRIDES,
                                                 usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
           d_r0, d_V, d_H, d_temp_buffer, (uint)N, (uint)VN, (uint)m, (uint)i, nullptr);
-      hipDeviceSynchronize();
+    TEST_HIP_CHECK(hipDeviceSynchronize());
     }
 
-    hipFree(d_r0);
-    hipFree(d_V);
-    hipFree(d_H);
-    hipFree(d_temp_buffer);
+    TEST_HIP_CHECK(hipFree(d_r0));
+    TEST_HIP_CHECK(hipFree(d_V));
+    TEST_HIP_CHECK(hipFree(d_H));
+    TEST_HIP_CHECK(hipFree(d_temp_buffer));
 
     const std::size_t mem_size = N * sizeof(T) * 2;
     states.counters["Bandwidth"] = usparse::tuner::Counter(

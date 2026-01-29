@@ -125,7 +125,7 @@ TEST(Level1Test, dotProdAxpyFusion) {
 
   usparse::dotprod_axpy_fusion<uint, double, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
       d_r0, d_V, d_H, d_temp_buffer, (uint)N, (uint)VN, (uint)m, (uint)i, 0, f_density);
-  hipDeviceSynchronize();
+  TEST_HIP_CHECK(hipDeviceSynchronize());
 
   // check result.
   double dev_result_on_host = 0; // result: H[0,0]
@@ -165,8 +165,8 @@ TEST(Level1Test, dotProdAxpyFusion) {
   }
   printf("----------------------\n");
 
-  hipFree(d_r0);
-  hipFree(d_V);
-  hipFree(d_H);
-  hipFree(d_temp_buffer);
+  TEST_HIP_CHECK(hipFree(d_r0));
+  TEST_HIP_CHECK(hipFree(d_V));
+  TEST_HIP_CHECK(hipFree(d_H));
+  TEST_HIP_CHECK(hipFree(d_temp_buffer));
 }

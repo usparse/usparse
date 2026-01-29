@@ -21,19 +21,19 @@ void uspmv(int trans, const double alpha, const double beta, const csr_desc<int,
   if (strategy == "flat") {
     // fixme: not work as expeted. pass info into it.
     adaptive_flat_sparse_spmv<int, double>(trans, alpha, beta, d_csr_desc, dx, dy, nullptr);
-    hipDeviceSynchronize();
+    TEST_HIP_CHECK(hipDeviceSynchronize());
   } else if (strategy == "line") {
     auto d_csr_mat_descr = usparse::csr_mat_descr<double, int, int, int>(d_csr_desc);
     adaptive_enhance_sparse_spmv<double, int, int, int, double, double, double, double>(trans, alpha, beta,
                                                                                         d_csr_mat_descr, dx, dy);
-    hipDeviceSynchronize();
+    TEST_HIP_CHECK(hipDeviceSynchronize());
   } else if (strategy == "vec") {
     vec_row_sparse_spmv(trans, alpha, beta, d_csr_desc, dx, dy);
-    hipDeviceSynchronize();
+    TEST_HIP_CHECK(hipDeviceSynchronize());
   } else {
     std::cerr << "Unknown strategy: " << strategy << ". Defaulting to vector_row implementation." << std::endl;
     vec_row_sparse_spmv(trans, alpha, beta, d_csr_desc, dx, dy);
-    hipDeviceSynchronize();
+    TEST_HIP_CHECK(hipDeviceSynchronize());
   }
 }
 

@@ -7,6 +7,7 @@
 
 #include "../../../level1/usparse_blas_level1.h"
 #include "common/macros.h"
+#include "common/usparse_utils.hpp"
 #include "building_config.h"
 #include "flat_config.h"
 #include "flat_kernels_imp_multi_pass.hpp"
@@ -31,8 +32,8 @@ inline void flat_multi_pass_sparse_spmv(hipStream_t stream, int trans, const SCA
       nnz / (R * THREADS_PER_BLOCK * BLOCKS) + (nnz % (R * THREADS_PER_BLOCK * BLOCKS) == 0 ? 0 : 1);
   // each round and each block both have a break point.
   const BP_INDEX_TYPE break_points_len = total_rounds * BLOCKS + 1;
-  hipMallocAsync((void **)&break_points, break_points_len * sizeof(BP_DATA_TYPE), stream);
-  hipMemsetAsync(break_points, 0, break_points_len * sizeof(BP_DATA_TYPE), stream);
+  USPARSE_HIP_API_CHECK(hipMallocAsync((void **)&break_points, break_points_len * sizeof(BP_DATA_TYPE), stream));
+  USPARSE_HIP_API_CHECK(hipMemsetAsync(break_points, 0, break_points_len * sizeof(BP_DATA_TYPE), stream));
 
   (pre_calc_break_point<ROW_TYPE, NNZ_TYPE, BP_DATA_TYPE, R * THREADS_PER_BLOCK>)<<<1024, 512, 0, stream>>>(
       rowptr, m, break_points, break_points_len);
@@ -42,7 +43,7 @@ inline void flat_multi_pass_sparse_spmv(hipStream_t stream, int trans, const SCA
                                 COMPUTE_MULTI_TYPE, COMPUTE_SUM_TYPE, X_TYPE, Y_TYPE, NNZ_TYPE, ROW_TYPE,
                                 COLUMN_TYPE>)<<<(BLOCKS), THREADS_PER_BLOCK, 0, stream>>>(
       m, alpha, beta, rowptr, break_points, colindex, value, x, y);
-  hipFreeAsync(break_points, stream);
+  USPARSE_HIP_API_CHECK(hipFreeAsync(break_points, stream));
 }
 
 template <typename DATA_TYPE, typename NNZ_TYPE, typename ROW_TYPE, typename COLUMN_TYPE, typename BP_DATA_TYPE,
@@ -57,18 +58,18 @@ void flat_matrix_analyse(hipStream_t stream, const csr_mat_descr<DATA_TYPE, NNZ_
   constexpr int TOTAL_ROUNDS = 1;
   const NNZ_TYPE break_points_len = static_cast<NNZ_TYPE>(TOTAL_ROUNDS * HIP_BLOCKS + 1);
 
-  hipMallocAsync((void **)(&(info->break_points)), break_points_len * sizeof(BP_DATA_TYPE), stream);
-  hipMemsetAsync(info->break_points, 0, break_points_len * sizeof(BP_DATA_TYPE), stream);
+  USPARSE_HIP_API_CHECK(hipMallocAsync((void **)(&(info->break_points)), break_points_len * sizeof(BP_DATA_TYPE), stream));
+  USPARSE_HIP_API_CHECK(hipMemsetAsync(info->break_points, 0, break_points_len * sizeof(BP_DATA_TYPE), stream));
   (pre_calc_break_point<ROW_TYPE, NNZ_TYPE, BP_DATA_TYPE, R * THREADS_PER_BLOCK>)<<<1024, 512, 0, stream>>>(
       rowptr, m, info->break_points, break_points_len);
 
   // create temp buffer for storing part sum of y.
   if (FLAT_STORE_Y_POLICY == FLAT_STORE_Y_POLICY_DETERMINISTIC && CREAT_PART_SUM_TEMP_BUFFER) {
     // size: 2 * (HIP_BLOCKS + 1). Note: 2x is used for reduction-by-key recursively.
-    hipMallocAsync((void **)(&(info->y_part_sum)), 2 * (HIP_BLOCKS + 1) * sizeof(Y_TYPE), stream);
-    hipMallocAsync((void **)(&(info->y_part_indices)), 2 * (HIP_BLOCKS + 1) * sizeof(ROW_TYPE), stream);
-    hipMemsetAsync(info->y_part_sum, 0, 2 * (HIP_BLOCKS + 1) * sizeof(Y_TYPE), stream);
-    hipMemsetAsync(info->y_part_indices, 0, 2 * (HIP_BLOCKS + 1) * sizeof(ROW_TYPE), stream);
+    USPARSE_HIP_API_CHECK(hipMallocAsync((void **)(&(info->y_part_sum)), 2 * (HIP_BLOCKS + 1) * sizeof(Y_TYPE), stream));
+    USPARSE_HIP_API_CHECK(hipMallocAsync((void **)(&(info->y_part_indices)), 2 * (HIP_BLOCKS + 1) * sizeof(ROW_TYPE), stream));
+    USPARSE_HIP_API_CHECK(hipMemsetAsync(info->y_part_sum, 0, 2 * (HIP_BLOCKS + 1) * sizeof(Y_TYPE), stream));
+    USPARSE_HIP_API_CHECK(hipMemsetAsync(info->y_part_indices, 0, 2 * (HIP_BLOCKS + 1) * sizeof(ROW_TYPE), stream));
   }
 }
 

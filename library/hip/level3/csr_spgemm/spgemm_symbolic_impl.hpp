@@ -94,7 +94,7 @@ public:
       ptr += align_size;
       common::max<I>(matrix_a.rows, chunk_num_ptr + 1, chunk_num_max_ptr, max_temp_buffer);
       // USPARSE_HIP_API_CHECK(hipMemcpy(&hchunk_nnz_max, chunk_num_max_ptr, sizeof(I), hipMemcpyDeviceToHost))
-      hipDeviceSynchronize();
+      USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
       hchunk_nnz_max = *chunk_num_max_ptr;
     }
 
@@ -205,7 +205,7 @@ public:
       ptr += align_size;
       common::max<I>(matrix_a.rows, chunk_num_ptr + 1, chunk_num_max_ptr, max_temp_buffer);
       // USPARSE_HIP_API_CHECK(hipMemcpy(&hchunk_nnz_max, chunk_num_max_ptr, sizeof(I), hipMemcpyDeviceToHost))
-      hipDeviceSynchronize();
+      USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
       hchunk_nnz_max = *chunk_num_max_ptr;
     }
 
@@ -505,7 +505,7 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
   // scan row_nnz -> row_ptr_c
   common::scan<I>(matrix_a.rows + 1, row_nnz_ptr_c, row_ptr_c, scan_temp_buffer);
   // USPARSE_HIP_API_CHECK(hipMemcpy(hnnz_c, row_ptr_c + matrix_a.rows, sizeof(I), hipMemcpyDeviceToHost))
-  hipDeviceSynchronize();
+  USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
   *hrow_nnz_max = *row_nnz_max_ptr;
   *hnnz_c = row_ptr_c[matrix_a.rows];
 }

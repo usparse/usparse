@@ -29,9 +29,9 @@ void spmv(int trans, int rows, int cols, int nnz, const csr_desc<int, double> d_
   }
   // allocate the temp memory.
   void *d_hola_temp;
-  hipMalloc(&d_hola_temp, temp_size);
+  USPARSE_HIP_API_CHECK(hipMalloc(&d_hola_temp, temp_size));
   if (hipDeviceSynchronize() != hipSuccess) {
-    hipFree(d_hola_temp);
+    USPARSE_HIP_API_CHECK(hipFree(d_hola_temp));
     throw std::runtime_error(hipGetErrorString(hipGetLastError()));
   }
   // use the temp memory for calculation.
@@ -41,13 +41,13 @@ void spmv(int trans, int rows, int cols, int nnz, const csr_desc<int, double> d_
   try {
     hola_spmv(d_hola_temp, temp_size, d_y, d_csr, d_x, HolaMode::Default, false, padding >= 512 ? true : false);
   } catch (const std::runtime_error &error) {
-    hipFree(d_hola_temp);
+    USPARSE_HIP_API_CHECK(hipFree(d_hola_temp));
     throw error;
   }
-  hipDeviceSynchronize();
+  USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
   calc_timer.stop();
   destroy_timer.start();
-  hipFree(d_hola_temp);
+  USPARSE_HIP_API_CHECK(hipFree(d_hola_temp));
   destroy_timer.stop();
   if (bmt != nullptr) {
     bmt->set_time(pre_timer.time_use, calc_timer.time_use, 0.0, destroy_timer.time_use);

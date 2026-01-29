@@ -11,6 +11,7 @@
 #include "../csrmv_kernels/light/spmv_hip_acc_imp.h"
 #include "../csrmv_kernels/line-enhance/csrmv_line_enhance.h"
 #include "../csrmv_kernels/vector-row/vector_row.h"
+#include "common/usparse_utils.hpp"
 #include <cassert>
 
 template <typename INDEX_TYPE, typename DATA_TYPE>
@@ -19,7 +20,7 @@ void usparse::spmv::internal::coomv_conv_analysis(const usparse::usparse_operati
                                                   coomv_conversion_mtx_info<INDEX_TYPE, INDEX_TYPE, DATA_TYPE> *info,
                                                   const usparse::spmv::usparse_coomv_algorithms algo) {
   INDEX_TYPE *d_row_ptr;
-  hipMalloc((void **)&d_row_ptr, sizeof(int) * (d_coo_desc.rows + 1));
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&d_row_ptr, sizeof(int) * (d_coo_desc.rows + 1)));
   usparse::conversion::coo2csr(d_coo_desc.rows, d_coo_desc.nnz, d_coo_desc.row_index, d_row_ptr);
   info->csr_row_ptr = d_row_ptr;
 
@@ -68,7 +69,7 @@ void usparse::spmv::internal::coomv_conv_clear(
     return;
   }
 
-  hipFree(info->csr_row_ptr); // TODO: USPARSE_HIP_API_CHECK
+  USPARSE_HIP_API_CHECK(hipFree(info->csr_row_ptr)); // TODO: USPARSE_HIP_API_CHECK
 
   if (info->flat_info != nullptr) {
     // flat_clean(); TODO: release memory.

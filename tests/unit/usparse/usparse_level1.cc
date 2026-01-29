@@ -44,7 +44,7 @@ TEST(Level1Test, dotProduction) {
   TEST_HIP_CHECK(hipMalloc(&d_temp_buffer, buffer_size));
 
   usparse::device_dotProduct<uint, double>(d_x, d_y, (uint)N, d_result, d_temp_buffer, 0);
-  hipDeviceSynchronize();
+  TEST_HIP_CHECK(hipDeviceSynchronize());
 
   double dev_result_on_host = 0;
   TEST_HIP_CHECK(hipMemcpy(&dev_result_on_host, d_result, 1 * sizeof(double), hipMemcpyDeviceToHost));
@@ -52,10 +52,10 @@ TEST(Level1Test, dotProduction) {
   // check result.
   EXPECT_DOUBLE_EQ(dev_result_on_host, h_dot_pro);
 
-  hipFree(d_x);
-  hipFree(d_y);
-  hipFree(d_result);
-  hipFree(d_temp_buffer);
+  TEST_HIP_CHECK(hipFree(d_x));
+  TEST_HIP_CHECK(hipFree(d_y));
+  TEST_HIP_CHECK(hipFree(d_result));
+  TEST_HIP_CHECK(hipFree(d_temp_buffer));
 
   delete[] h_x;
   delete[] h_y;
@@ -90,7 +90,7 @@ TEST(Level1Test, vecNorm) {
   TEST_HIP_CHECK(hipMalloc(&d_temp_buffer, (N / 256 + (N % 256 == 0 ? 0 : 1)) * sizeof(double)));
 
   usparse::device_calculateNorm<uint, double>(d_vec, (uint)N, d_result, d_temp_buffer, 0);
-  hipDeviceSynchronize();
+  TEST_HIP_CHECK(hipDeviceSynchronize());
 
   double dev_result_on_host = 0;
   TEST_HIP_CHECK(hipMemcpy(&dev_result_on_host, d_result, 1 * sizeof(double), hipMemcpyDeviceToHost));
@@ -100,9 +100,9 @@ TEST(Level1Test, vecNorm) {
   double relative_error = std::abs(dev_result_on_host - h_vec_norm) / dev_result_on_host;
   EXPECT_NEAR(relative_error, 0.0, 1e-12);
 
-  hipFree(d_vec);
-  hipFree(d_result);
-  hipFree(d_temp_buffer);
+  TEST_HIP_CHECK(hipFree(d_vec));
+  TEST_HIP_CHECK(hipFree(d_result));
+  TEST_HIP_CHECK(hipFree(d_temp_buffer));
 
   delete[] h_vec;
 }

@@ -79,7 +79,7 @@ int main(int argc, char **argv) {
   std::cout << "==================================================================" << std::endl;
 
   // Set Device Id for the following Calculation
-  hipSetDevice(0);
+  USPARSE_HIP_API_CHECK(hipSetDevice(0));
 
   // Device variable declaration
   idx_type *drow_ptr_A, *drow_ptr_B, *drow_ptr_C, *compare_drow_ptr_C;
@@ -105,7 +105,7 @@ int main(int argc, char **argv) {
                                        matrix_in.nnz, drow_ptr_B, dcol_idx_B, dval_B, &C_nnz, drow_ptr_C, &dcol_idx_C,
                                        &dval_C);
 
-  hipDeviceSynchronize();
+  USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
 
   // Stop timer kernel
   common::timer[ustb_spgemm_warmup_timer].stop();
@@ -135,7 +135,7 @@ int main(int argc, char **argv) {
                                          matrix_in.nnz, drow_ptr_B, dcol_idx_B, dval_B, &C_nnz, drow_ptr_C, &dcol_idx_C,
                                          &dval_C);
 
-    hipDeviceSynchronize();
+    USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
 
     // Stop timer kernel
     common::timer[ustb_spgemm_timer].stop();
@@ -178,7 +178,7 @@ int main(int argc, char **argv) {
       alpha, beta, opB, matrix_in.rows, matrix_in.cols, matrix_in.nnz, drow_ptr_A, dcol_idx_A, dval_A, matrix_in.nnz,
       drow_ptr_B, dcol_idx_B, dval_B, compare_drow_ptr_C, compare_dcol_idx_C, compare_dval_C);
 
-  hipDeviceSynchronize();
+  USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
 
   // Stop timer kernel
   common::timer[rocsparse_spgemm_warmup_timer].stop();
@@ -207,7 +207,7 @@ int main(int argc, char **argv) {
         alpha, beta, opB, matrix_in.rows, matrix_in.cols, matrix_in.nnz, drow_ptr_A, dcol_idx_A, dval_A, matrix_in.nnz,
         drow_ptr_B, dcol_idx_B, dval_B, compare_drow_ptr_C, compare_dcol_idx_C, compare_dval_C);
 
-    hipDeviceSynchronize();
+    USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
 
     USPARSE_HIP_API_CHECK(hipFree(compare_drow_ptr_C))
     USPARSE_HIP_API_CHECK(hipFree(compare_dcol_idx_C))

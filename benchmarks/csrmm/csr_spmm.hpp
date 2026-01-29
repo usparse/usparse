@@ -83,20 +83,20 @@ template <typename I, typename T> struct CsrSpMM {
       // call sparse spmv
       csr_spmm_impl(operation, alpha, beta, h_csr, d_csr, M, K, N, B_dev, C_dev, nullptr);
     }
-    hipDeviceSynchronize();
+    USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
 
     // execute device SpMV
     for (int i = 0; i < BENCHMARK_ARRAY_SIZE; i++) {
       BenchmarkTime bmt;
       csr_spmm_impl(operation, alpha, beta, h_csr, d_csr, M, K, N, B_dev, C_dev, &bmt);
-      hipDeviceSynchronize();
-      hipMemset(C_dev, 0, M * N * sizeof(T));
+      USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
+      USPARSE_HIP_API_CHECK(hipMemset(C_dev, 0, M * N * sizeof(T)));
       bmt_array.append(bmt);
     }
 
     // device result check
     csr_spmm_impl(operation, alpha, beta, h_csr, d_csr, M, K, N, B_dev, C_dev, nullptr);
-    hipDeviceSynchronize();
+    USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
     USPARSE_HIP_API_CHECK(hipMemcpy(C_host, C_dev, M * N * sizeof(T), hipMemcpyDeviceToHost));
 
     // host side verification

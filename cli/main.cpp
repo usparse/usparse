@@ -104,14 +104,14 @@ void test_spmv(std::string mtx_path, type_csr h_csr, host_vectors<dtype> h_vecto
     USPARSE_HIP_API_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_csr.rows * sizeof(dtype), hipMemcpyHostToDevice))
     sparse_csr_spmv(operation, alpha, beta, h_csr.as_const(), d_csr.as_const(), dev_x, dev_y);
   }
-  hipDeviceSynchronize();
+  USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
 
   my_timer timer1;
   timer1.start();
   // execute device SpMV
   for (int i = 0; i < 1; i++) {
     sparse_csr_spmv(operation, alpha, beta, h_csr.as_const(), d_csr.as_const(), dev_x, dev_y);
-    hipDeviceSynchronize();
+    USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
   }
   timer1.stop();
 
@@ -126,7 +126,7 @@ void test_spmv(std::string mtx_path, type_csr h_csr, host_vectors<dtype> h_vecto
   my_timer timer2;
   timer2.start();
   rocsparse(d_csr, dev_x, dev_y, alpha, beta);
-  hipDeviceSynchronize();
+  USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
   timer2.stop();
   std::cout << "rocsparse elapsed time:" << timer2.time_use << "(us)" << std::endl;
   USPARSE_HIP_API_CHECK(hipMemcpy(h_vectors.hhY, dev_y, d_csr.rows * sizeof(dtype), hipMemcpyDeviceToHost));

@@ -72,7 +72,7 @@ int main(int argc, char **argv) {
   cout << "==================================================================" << endl;
 
   // Set Device Id for the following Calculation
-  hipSetDevice(0);
+  USPARSE_HIP_API_CHECK(hipSetDevice(0));
 
   // Device Memory malloc + Copy
   cout << "Preparing Device Memory ... " << endl;
@@ -99,7 +99,7 @@ int main(int argc, char **argv) {
                                      device_offsetB, device_colindexB, device_valueB, &C_nnz, device_offsetC,
                                      &device_colindexC, &device_valueC);
 
-  hipDeviceSynchronize();
+  USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
 
   // Stop timer kernel
   timer_kernel_warmup.stop();
@@ -130,7 +130,7 @@ int main(int argc, char **argv) {
                                        device_offsetB, device_colindexB, device_valueB, &C_nnz, device_offsetC,
                                        &device_colindexC, &device_valueC);
 
-    hipDeviceSynchronize();
+    USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
 
     // Stop timer kernel
     timer_kernel.stop();
@@ -184,7 +184,7 @@ int main(int argc, char **argv) {
   // RocSparse Calculation
   C_nnz_compare = rocsparse_spgemm();
 
-  hipDeviceSynchronize();
+  USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
 
   // Stop timer_rocsparse
   timer_rocsparse.stop();
