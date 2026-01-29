@@ -7,7 +7,8 @@
 
 #include "common/utils.h"
 #include "usparse_types.h"
-
+#include "flat_mtx_info.h"
+#include <rocprim/rocprim.hpp>
 #include "primitives/reduce/wavefront/wavefront_shlf_utils.hpp"
 
 template <typename T> __device__ __forceinline__ void flat_atomic_add(T *address, T val) { atomicAdd(address, val); }
@@ -384,5 +385,45 @@ inline void flat_reduce_carry_out(hipStream_t stream, Y_TYPE *__restrict__ y, RO
   flat_reduce_carry_out_kernel<<<reduce_blocks, THREADS_PER_BLOCK, 0, stream>>>(y, y_part_indices, y_part_sum,
                                                                                 HIP_BLOCKS);
 }
+
+template <typename ROW, typename Y_TYPE>
+__global__ void flat_write_back_deterministic_kernel(
+    Y_TYPE *__restrict__ y,
+    const ROW *__restrict__ unique_rows,
+    const Y_TYPE *__restrict__ merged_sums,
+    const ROW *__restrict__ num_runs_ptr) 
+{
+    ROW num_runs = *num_runs_ptr;
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (tid < num_runs) {
+        // 确定性加法写回
+        y[unique_rows[tid]] += merged_sums[tid];
+    }
+}
+
+template <typename ROW, typename Y_TYPE, typename HIP_BLOCK_NUM_TYPE>
+inline void flat_reduce_carry_out_deterministic(
+    hipStream_t stream, 
+    Y_TYPE *y, 
+    csrmv_flat_mtx_info<ROW, Y_TYPE> *info, 
+    const HIP_BLOCK_NUM_TYPE HIP_BLOCKS) 
+{
+   
+    rocprim::reduce_by_key(
+        info->d_temp_storage, info->temp_storage_bytes,
+        info->y_part_indices, info->y_part_sum, HIP_BLOCKS,
+        info->d_unique_rows_out, info->d_merged_sums_out, info->d_num_runs_out,
+        rocprim::plus<Y_TYPE>(), rocprim::equal_to<ROW>(), stream
+    );
+
+   
+    int blockSize = 256;
+    
+    int gridSize = (HIP_BLOCKS + blockSize - 1) / blockSize;
+    flat_write_back_deterministic_kernel<<<gridSize, blockSize, 0, stream>>>(
+        y, info->d_unique_rows_out, info->d_merged_sums_out, info->d_num_runs_out
+    );
+}
+
 
 #endif // USPARSE_HIP_USPARSE_FLAT_KERNELS_IMP_REDUCE_HPP

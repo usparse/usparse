@@ -114,3 +114,20 @@ install(DIRECTORY "./"
         PATTERN "*.hpp"
         PATTERN "*.inl"
         )
+
+#在环境中手动安装rocprim
+set(LOCAL_ROCPRIM "/public/home/chugenshen/ustb/chenyou/usparse/rocprim")
+if(EXISTS ${LOCAL_ROCPRIM})
+    message(STATUS "Adding rocprim include path: ${LOCAL_ROCPRIM}")
+    target_include_directories(${USPARSE_LIB_NAME} PRIVATE ${LOCAL_ROCPRIM})
+else()
+    message(WARNING "rocprim directory not found: ${LOCAL_ROCPRIM}")
+endif()
+
+if(NOT TARGET roc::rocprim)
+    add_library(roc::rocprim INTERFACE IMPORTED)
+    set_target_properties(roc::rocprim PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${LOCAL_ROCPRIM}"
+    )
+endif()
+target_link_libraries(${USPARSE_LIB_NAME} PRIVATE roc::rocprim)

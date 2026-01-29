@@ -15,6 +15,8 @@
 #include "flat_kernels_imp_pre_calc.hpp"
 #include "csrmv_flat.h"
 
+#include <rocprim/rocprim.hpp>
+
 /**
  * note: multi pass does not support FLAT_STORE_Y_POLICY_DETERMINISTIC mode currently.
  */
@@ -66,10 +68,21 @@ void flat_matrix_analyse(hipStream_t stream, const csr_mat_descr<DATA_TYPE, NNZ_
   // create temp buffer for storing part sum of y.
   if (FLAT_STORE_Y_POLICY == FLAT_STORE_Y_POLICY_DETERMINISTIC && CREAT_PART_SUM_TEMP_BUFFER) {
     // size: 2 * (HIP_BLOCKS + 1). Note: 2x is used for reduction-by-key recursively.
-    USPARSE_HIP_API_CHECK(hipMallocAsync((void **)(&(info->y_part_sum)), 2 * (HIP_BLOCKS + 1) * sizeof(Y_TYPE), stream));
-    USPARSE_HIP_API_CHECK(hipMallocAsync((void **)(&(info->y_part_indices)), 2 * (HIP_BLOCKS + 1) * sizeof(ROW_TYPE), stream));
-    USPARSE_HIP_API_CHECK(hipMemsetAsync(info->y_part_sum, 0, 2 * (HIP_BLOCKS + 1) * sizeof(Y_TYPE), stream));
-    USPARSE_HIP_API_CHECK(hipMemsetAsync(info->y_part_indices, 0, 2 * (HIP_BLOCKS + 1) * sizeof(ROW_TYPE), stream));
+    USPARSE_HIP_API_CHECK(hipMallocAsync((void **)(&(info->y_part_sum)), (HIP_BLOCKS + 1) * sizeof(Y_TYPE), stream));
+    USPARSE_HIP_API_CHECK(hipMallocAsync((void **)(&(info->y_part_indices)), (HIP_BLOCKS + 1) * sizeof(ROW_TYPE), stream));
+    USPARSE_HIP_API_CHECK(hipMallocAsync((void **)(&(info->d_num_runs_out)), sizeof(ROW_TYPE), stream));
+    USPARSE_HIP_API_CHECK(hipMallocAsync((void **)(&(info->d_unique_rows_out)), (HIP_BLOCKS + 1) * sizeof(ROW_TYPE), stream));
+    USPARSE_HIP_API_CHECK(hipMallocAsync((void **)(&(info->d_merged_sums_out)), (HIP_BLOCKS + 1) * sizeof(Y_TYPE), stream));
+
+    size_t temp_storage_bytes = 0;
+    rocprim::reduce_by_key(
+        nullptr, temp_storage_bytes,
+        info->y_part_indices, info->y_part_sum, HIP_BLOCKS,
+        info->d_unique_rows_out, info->d_merged_sums_out, info->d_num_runs_out,
+        rocprim::plus<Y_TYPE>(), rocprim::equal_to<ROW_TYPE>(), stream
+    );
+    info->temp_storage_bytes = temp_storage_bytes;
+    hipMallocAsync(&(info->d_temp_storage), temp_storage_bytes, stream);
   }
 }
 
@@ -88,9 +101,11 @@ template <typename HIP_BLOCK_NUM_TYPE, typename SHARE_MEM_INDEX_TYPE, typename B
 inline void flat_one_pass_sparse_spmv(hipStream_t stream, int trans, const SCALE_DATA_TYPE alpha,
                                       const SCALE_DATA_TYPE beta, ROW_TYPE m, COLUMN_TYPE n, NNZ_TYPE nnz,
                                       const NNZ_TYPE *rowptr, const COLUMN_TYPE *colindex, const A_TYPE *value,
-                                      const X_TYPE *x, Y_TYPE *y, const BP_DATA_TYPE *break_points,
-                                      ROW_TYPE *y_part_indices, Y_TYPE *y_part_sum) {
+                                      const X_TYPE *x, Y_TYPE *y,const csrmv_flat_mtx_info<BP_DATA_TYPE, Y_TYPE> *info) {
   // each block can process `R*THREADS_PER_BLOCK` non-zeros.
+  const BP_DATA_TYPE *break_points = info->break_points;
+  ROW_TYPE *y_part_indices = info->y_part_indices;
+  Y_TYPE *y_part_sum = info->y_part_sum;
   const HIP_BLOCK_NUM_TYPE HIP_BLOCKS = nnz / (R * THREADS_PER_BLOCK) + ((nnz % (R * THREADS_PER_BLOCK) == 0) ? 0 : 1);
 
   (csrmv_flat_one_pass_kernel<FLAT_STORE_Y_POLICY, __WF_SIZE__, R, REDUCE_OPTION, REDUCE_VEC_SIZE, THREADS_PER_BLOCK,
@@ -105,9 +120,8 @@ inline void flat_one_pass_sparse_spmv(hipStream_t stream, int trans, const SCALE
       return;
     }
     // reduce by key. value: y_part_sum, key: y_part_indices, result: y.
-    constexpr int CARRY_OUT_THREADS_PER_BLOCK = THREADS_PER_BLOCK;
-    flat_reduce_carry_out<ROW_TYPE, Y_TYPE, HIP_BLOCK_NUM_TYPE, CARRY_OUT_THREADS_PER_BLOCK>(stream, y, y_part_indices,
-                                                                                             y_part_sum, HIP_BLOCKS);
+    flat_reduce_carry_out_deterministic<ROW_TYPE, Y_TYPE, HIP_BLOCK_NUM_TYPE>(
+        stream, y, const_cast<csrmv_flat_mtx_info<ROW_TYPE, Y_TYPE>*>(info), HIP_BLOCKS);
   }
   return;
 }
@@ -215,7 +229,7 @@ void adaptive_flat_sparse_spmv(hipStream_t stream, int trans, const SCALE_TYPE a
     flat_one_pass_sparse_spmv<HIP_BLOCK_NUM_TYPE, SHARE_MEM_INDEX_TYPE, BP_INDEX_TYPE, BP_DATA_TYPE, A, X, Y,
                               COMPUTE_MULTI_TYPE, COMPUTE_SUM_TYPE, SCALE_TYPE, NNZ, ROW, COL, R, RED_OPT, VEC_SIZE,
                               THREADS_PER_BLOCK, FLAT_STORE_Y_POLICY>(
-        stream, trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points, y_part_indices, y_part_sum);
+        stream, trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, info);
     return;
   }
 
@@ -228,7 +242,7 @@ void adaptive_flat_sparse_spmv(hipStream_t stream, int trans, const SCALE_TYPE a
     flat_one_pass_sparse_spmv<HIP_BLOCK_NUM_TYPE, SHARE_MEM_INDEX_TYPE, BP_INDEX_TYPE, BP_DATA_TYPE, A, X, Y,
                               COMPUTE_MULTI_TYPE, COMPUTE_SUM_TYPE, SCALE_TYPE, NNZ, ROW, COL, R, REDUCE_OPT, VEC_SIZE,
                               THREADS_PER_BLOCK, FLAT_STORE_Y_POLICY>(
-        stream, trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points, y_part_indices, y_part_sum);
+        stream, trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, info);
   } else if (avg_block_nnz_max <= 64) {
     constexpr int REDUCE_OPT = FLAT_REDUCE_OPTION_VEC;
     // use more threads (4 threads) in vector to reduce if average nnz of row is larger than 32.
@@ -236,7 +250,7 @@ void adaptive_flat_sparse_spmv(hipStream_t stream, int trans, const SCALE_TYPE a
     flat_one_pass_sparse_spmv<HIP_BLOCK_NUM_TYPE, SHARE_MEM_INDEX_TYPE, BP_INDEX_TYPE, BP_DATA_TYPE, A, X, Y,
                               COMPUTE_MULTI_TYPE, COMPUTE_SUM_TYPE, SCALE_TYPE, NNZ, ROW, COL, R, REDUCE_OPT, VEC_SIZE,
                               THREADS_PER_BLOCK, FLAT_STORE_Y_POLICY>(
-        stream, trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points, y_part_indices, y_part_sum);
+        stream, trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y,info);
   } else {
     constexpr int REDUCE_OPT = FLAT_REDUCE_OPTION_VEC;
     // use more threads (16 threads) in vector to reduce if average nnz of row is larger than 64.
@@ -244,7 +258,7 @@ void adaptive_flat_sparse_spmv(hipStream_t stream, int trans, const SCALE_TYPE a
     flat_one_pass_sparse_spmv<HIP_BLOCK_NUM_TYPE, SHARE_MEM_INDEX_TYPE, BP_INDEX_TYPE, BP_DATA_TYPE, A, X, Y,
                               COMPUTE_MULTI_TYPE, COMPUTE_SUM_TYPE, SCALE_TYPE, NNZ, ROW, COL, R, REDUCE_OPT, VEC_SIZE,
                               THREADS_PER_BLOCK, FLAT_STORE_Y_POLICY>(
-        stream, trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points, y_part_indices, y_part_sum);
+        stream, trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, info);
   }
 }
 
