@@ -52,7 +52,7 @@ void test_csr_spmm(std::string &mtx_path, csr_mtx<type_sparse_default_index, PRE
   PRECISION *dev_B = nullptr;
   PRECISION *dev_C = nullptr;
   ubench::ubench_malloc_and_init_host_dev_vector<type_sparse_default_index, PRECISION, false>(&host_B, &dev_B, K * N);
-  HIP_CHECK(hipMalloc((void **)&dev_C, M * N * sizeof(PRECISION)))
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dev_C, M * N * sizeof(PRECISION)))
 
   std::vector<PRECISION> C_host_check =
       std::vector<PRECISION>(M * N); // for storing results calculated by the host side
@@ -61,12 +61,12 @@ void test_csr_spmm(std::string &mtx_path, csr_mtx<type_sparse_default_index, PRE
   UsparseCsrMMVector<type_sparse_default_index, PRECISION> vec;
   vec.test(mtx_path, "row-split", usparse::usparse_operation::operation_none, alpha, beta, h_csr, dev_csr, M, K, N,
            dev_B, dev_C, host_B, host_C, C_host_check.data());
-  HIP_CHECK(hipDeviceSynchronize());
+  USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
 
   RocSparseCsrMM<type_sparse_default_index, PRECISION> roc;
   roc.test(mtx_path, "rocSparse", usparse::usparse_operation::operation_none, alpha, beta, h_csr, dev_csr, M, K, N,
            dev_B, dev_C, host_B, host_C, C_host_check.data());
-  HIP_CHECK(hipDeviceSynchronize());
+  USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
 
   ubench::ubench_free_device_csr<type_sparse_default_index, PRECISION>(dev_csr);
 }

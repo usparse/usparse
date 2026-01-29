@@ -10,15 +10,7 @@
 #include "building_config.h"
 #include "matrix_format/sparse_format.h"
 
-#define HIP_CHECK(stat)                                                                                                \
-  {                                                                                                                    \
-    hipError_t err = stat;                                                                                             \
-    if (err != hipSuccess) {                                                                                           \
-      std::cerr << "Error: HIP reports " << hipGetErrorString(err) << std::endl;                                       \
-      std::cerr << "Raised in file " << __FILE__ << "#" << __func__ << "#line " << __LINE__ << std::endl;              \
-      std::abort();                                                                                                    \
-    }                                                                                                                  \
-  }
+#include "common/usparse_utils.hpp"
 
 #define ROCSPARSE_CHECK(stat)                                                                                          \
   {                                                                                                                    \
@@ -129,17 +121,19 @@ inline csr_mtx<INDEX_TYPE, DATA_TYPE> create_device_data(csr_mtx<INDEX_TYPE, DAT
   dev_csr.cols = A_num_cols;
   dev_csr.nnz = A_nnz;
 
-  HIP_CHECK(hipMalloc((void **)&dev_csr.row_ptr, (A_num_rows + 1) * sizeof(INDEX_TYPE)))
-  HIP_CHECK(hipMalloc((void **)&dev_csr.col_index, A_nnz * sizeof(INDEX_TYPE)))
-  HIP_CHECK(hipMalloc((void **)&dev_csr.values, A_nnz * sizeof(DATA_TYPE)))
-  HIP_CHECK(hipMalloc((void **)&dX, A_num_cols * sizeof(DATA_TYPE)))
-  HIP_CHECK(hipMalloc((void **)&dY, A_num_rows * sizeof(DATA_TYPE)))
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dev_csr.row_ptr, (A_num_rows + 1) * sizeof(INDEX_TYPE)))
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dev_csr.col_index, A_nnz * sizeof(INDEX_TYPE)))
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dev_csr.values, A_nnz * sizeof(DATA_TYPE)))
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dX, A_num_cols * sizeof(DATA_TYPE)))
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dY, A_num_rows * sizeof(DATA_TYPE)))
 
-  HIP_CHECK(hipMemcpy(dev_csr.row_ptr, h_csr.row_ptr, (A_num_rows + 1) * sizeof(INDEX_TYPE), hipMemcpyHostToDevice))
-  HIP_CHECK(hipMemcpy(dev_csr.col_index, h_csr.col_index, A_nnz * sizeof(INDEX_TYPE), hipMemcpyHostToDevice))
-  HIP_CHECK(hipMemcpy(dev_csr.values, h_csr.values, A_nnz * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
-  HIP_CHECK(hipMemcpy(dX, hX, A_num_cols * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
-  HIP_CHECK(hipMemcpy(dY, hY, A_num_rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
+  USPARSE_HIP_API_CHECK(
+      hipMemcpy(dev_csr.row_ptr, h_csr.row_ptr, (A_num_rows + 1) * sizeof(INDEX_TYPE), hipMemcpyHostToDevice))
+  USPARSE_HIP_API_CHECK(
+      hipMemcpy(dev_csr.col_index, h_csr.col_index, A_nnz * sizeof(INDEX_TYPE), hipMemcpyHostToDevice))
+  USPARSE_HIP_API_CHECK(hipMemcpy(dev_csr.values, h_csr.values, A_nnz * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
+  USPARSE_HIP_API_CHECK(hipMemcpy(dX, hX, A_num_cols * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
+  USPARSE_HIP_API_CHECK(hipMemcpy(dY, hY, A_num_rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
   return dev_csr;
 }
 
@@ -155,27 +149,29 @@ inline coo_mtx<INDEX_TYPE, DATA_TYPE> create_device_data(coo_mtx<INDEX_TYPE, DAT
   dev_coo.cols = A_num_cols;
   dev_coo.nnz = A_nnz;
 
-  HIP_CHECK(hipMalloc((void **)&dev_coo.row_index, A_nnz * sizeof(INDEX_TYPE)))
-  HIP_CHECK(hipMalloc((void **)&dev_coo.col_index, A_nnz * sizeof(INDEX_TYPE)))
-  HIP_CHECK(hipMalloc((void **)&dev_coo.values, A_nnz * sizeof(DATA_TYPE)))
-  HIP_CHECK(hipMalloc((void **)&dX, A_num_cols * sizeof(DATA_TYPE)))
-  HIP_CHECK(hipMalloc((void **)&dY, A_num_rows * sizeof(DATA_TYPE)))
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dev_coo.row_index, A_nnz * sizeof(INDEX_TYPE)))
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dev_coo.col_index, A_nnz * sizeof(INDEX_TYPE)))
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dev_coo.values, A_nnz * sizeof(DATA_TYPE)))
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dX, A_num_cols * sizeof(DATA_TYPE)))
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dY, A_num_rows * sizeof(DATA_TYPE)))
 
-  HIP_CHECK(hipMemcpy(dev_coo.row_index, h_coo.row_index, A_nnz * sizeof(INDEX_TYPE), hipMemcpyHostToDevice))
-  HIP_CHECK(hipMemcpy(dev_coo.col_index, h_coo.col_index, A_nnz * sizeof(INDEX_TYPE), hipMemcpyHostToDevice))
-  HIP_CHECK(hipMemcpy(dev_coo.values, h_coo.values, A_nnz * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
-  HIP_CHECK(hipMemcpy(dX, hX, A_num_cols * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
-  HIP_CHECK(hipMemcpy(dY, hY, A_num_rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
+  USPARSE_HIP_API_CHECK(
+      hipMemcpy(dev_coo.row_index, h_coo.row_index, A_nnz * sizeof(INDEX_TYPE), hipMemcpyHostToDevice))
+  USPARSE_HIP_API_CHECK(
+      hipMemcpy(dev_coo.col_index, h_coo.col_index, A_nnz * sizeof(INDEX_TYPE), hipMemcpyHostToDevice))
+  USPARSE_HIP_API_CHECK(hipMemcpy(dev_coo.values, h_coo.values, A_nnz * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
+  USPARSE_HIP_API_CHECK(hipMemcpy(dX, hX, A_num_cols * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
+  USPARSE_HIP_API_CHECK(hipMemcpy(dY, hY, A_num_rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
   return dev_coo;
 }
 
 template <typename INDEX_TYPE, typename DATA_TYPE>
 inline void destroy_device_data(csr_mtx<INDEX_TYPE, DATA_TYPE> d_csr, DATA_TYPE *&dX, DATA_TYPE *&dY) {
-  HIP_CHECK(hipFree((void *)dY))
-  HIP_CHECK(hipFree((void *)dX))
-  HIP_CHECK(hipFree((void *)d_csr.values))
-  HIP_CHECK(hipFree((void *)d_csr.col_index))
-  HIP_CHECK(hipFree((void *)d_csr.row_ptr))
+  USPARSE_HIP_API_CHECK(hipFree((void *)dY))
+  USPARSE_HIP_API_CHECK(hipFree((void *)dX))
+  USPARSE_HIP_API_CHECK(hipFree((void *)d_csr.values))
+  USPARSE_HIP_API_CHECK(hipFree((void *)d_csr.col_index))
+  USPARSE_HIP_API_CHECK(hipFree((void *)d_csr.row_ptr))
 }
 
 #endif // SPMV_ACC_UTILS_HPP

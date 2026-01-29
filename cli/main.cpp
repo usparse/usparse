@@ -29,6 +29,8 @@
 #include "utils.hpp"
 #include "verification.h"
 
+#include "common/usparse_utils.hpp"
+
 void test_spmv(std::string mtx_path, type_csr h_csr, host_vectors<dtype> h_vectors);
 
 int main(int argc, char **argv) {
@@ -87,7 +89,7 @@ int main(int argc, char **argv) {
 }
 
 void test_spmv(std::string mtx_path, type_csr h_csr, host_vectors<dtype> h_vectors) {
-  HIP_CHECK(hipSetDevice(0));
+  USPARSE_HIP_API_CHECK(hipSetDevice(0));
   dtype *dev_x, *dev_y;
   type_csr d_csr = create_device_data(h_csr, h_vectors.hX, h_vectors.temphY, dev_x, dev_y);
 
@@ -99,7 +101,7 @@ void test_spmv(std::string mtx_path, type_csr h_csr, host_vectors<dtype> h_vecto
   // warm up GPU
   for (int i = 0; i < 10; ++i) {
     // call sparse spmv
-    HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_csr.rows * sizeof(dtype), hipMemcpyHostToDevice))
+    USPARSE_HIP_API_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_csr.rows * sizeof(dtype), hipMemcpyHostToDevice))
     sparse_csr_spmv(operation, alpha, beta, h_csr.as_const(), d_csr.as_const(), dev_x, dev_y);
   }
   hipDeviceSynchronize();
@@ -114,20 +116,20 @@ void test_spmv(std::string mtx_path, type_csr h_csr, host_vectors<dtype> h_vecto
   timer1.stop();
 
   // device result check
-  HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, h_csr.rows * sizeof(dtype), hipMemcpyHostToDevice))
+  USPARSE_HIP_API_CHECK(hipMemcpy(dev_y, h_vectors.temphY, h_csr.rows * sizeof(dtype), hipMemcpyHostToDevice))
   sparse_csr_spmv(operation, alpha, beta, h_csr.as_const(), d_csr.as_const(), dev_x, dev_y);
-  HIP_CHECK(hipMemcpy(h_vectors.hY, dev_y, d_csr.rows * sizeof(dtype), hipMemcpyDeviceToHost));
+  USPARSE_HIP_API_CHECK(hipMemcpy(h_vectors.hY, dev_y, d_csr.rows * sizeof(dtype), hipMemcpyDeviceToHost));
 
 #ifdef gpu
   // device side verification
-  HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_csr.rows * sizeof(dtype), hipMemcpyHostToDevice))
+  USPARSE_HIP_API_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_csr.rows * sizeof(dtype), hipMemcpyHostToDevice))
   my_timer timer2;
   timer2.start();
   rocsparse(d_csr, dev_x, dev_y, alpha, beta);
   hipDeviceSynchronize();
   timer2.stop();
   std::cout << "rocsparse elapsed time:" << timer2.time_use << "(us)" << std::endl;
-  HIP_CHECK(hipMemcpy(h_vectors.hhY, dev_y, d_csr.rows * sizeof(dtype), hipMemcpyDeviceToHost));
+  USPARSE_HIP_API_CHECK(hipMemcpy(h_vectors.hhY, dev_y, d_csr.rows * sizeof(dtype), hipMemcpyDeviceToHost));
 #else
   // host side verification
   host_csr_spmv(alpha, beta, h_csr.values, h_csr.row_ptr, h_csr.col_index, h_csr.rows, h_csr.cols, h_csr.nnz,

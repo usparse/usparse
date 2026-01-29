@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
 
   // warming up start
   gmres_float(&A_double, &x_double[0], &b_double[0], &dev_A, dev_x, dev_y, d_csr_desc);
-  HIP_CHECK(hipMemset(dev_x, 0, A_double.nrows * sizeof(double))); // reset the solve result.
+  USPARSE_HIP_API_CHECK(hipMemset(dev_x, 0, A_double.nrows * sizeof(double))); // reset the solve result.
   // warming up end.
 
   auto res = gmres_float(&A_double, &x_double[0], &b_double[0], &dev_A, dev_x, dev_y, d_csr_desc);

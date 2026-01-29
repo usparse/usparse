@@ -10,7 +10,7 @@
 
 #include <iostream>
 
-#define HIP_CHECK(stat)                                                                                                \
+#define USPARSE_HIP_API_CHECK(stat)                                                                                    \
   {                                                                                                                    \
     hipError_t err = stat;                                                                                             \
     if (err != hipSuccess) {                                                                                           \
@@ -56,13 +56,13 @@ private:
 
 private:
   void mem_malloc() {
-    HIP_CHECK(hipHostMalloc((int **)&host_data, 1 * sizeof(int)));
-    HIP_CHECK(hipMalloc((int **)&dev_data, 1 * sizeof(int)));
+    USPARSE_HIP_API_CHECK(hipHostMalloc((int **)&host_data, 1 * sizeof(int)));
+    USPARSE_HIP_API_CHECK(hipMalloc((int **)&dev_data, 1 * sizeof(int)));
   }
 
   void mem_copy() {
-    // HIP_CHECK(hipMemcpy(dev_data, host_data, 1 * sizeof(int), hipMemcpyHostToDevice));
-    hipMemcpyHtoD(dev_data, host_data, 1 * sizeof(int)); // TODO: HIP_CHECK
+    // USPARSE_HIP_API_CHECK(hipMemcpy(dev_data, host_data, 1 * sizeof(int), hipMemcpyHostToDevice));
+    hipMemcpyHtoD(dev_data, host_data, 1 * sizeof(int)); // TODO: USPARSE_HIP_API_CHECK
   }
 };
 

@@ -1,8 +1,8 @@
 #ifndef BLOCK_REDUCE_MAX_KERNEL_HPP
 #define BLOCK_REDUCE_MAX_KERNEL_HPP
 
-#include "../check/hip_check.hpp"
 #include "../tools/set_val.hpp"
+#include "common/usparse_utils.hpp"
 #include <hip/hip_runtime.h>
 #include <limits>
 
@@ -95,7 +95,7 @@ namespace common {
     T *block_buffer = reinterpret_cast<T *>(temp_buffer);
     int *counter = reinterpret_cast<int *>(output);
 #ifdef DEVICE_MALLOC_INITILIZE
-    // HIP_CHECK(hipMemset(counter, 0, sizeof(int)))
+    // USPARSE_HIP_API_CHECK(hipMemset(counter, 0, sizeof(int)))
     set_val<int, 0>(counter);
 #endif
     (block_reduce_max_kernel<T, THREADS, ITEMS_PER_THREAD>)<<<BLOCKS, THREADS>>>(input_size, input, block_buffer,
@@ -105,11 +105,11 @@ namespace common {
   template <typename T> void block_reduce_max_wrapper(const size_t input_size, const T *input, T *output) {
     const size_t buffer_size = block_reduce_max_buffer_size<T>(input_size);
     void *temp_buffer = nullptr;
-    HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&temp_buffer), buffer_size))
+    USPARSE_HIP_API_CHECK(hipMalloc(reinterpret_cast<void **>(&temp_buffer), buffer_size))
 
     block_reduce_max_impl<T>(input_size, input, output, temp_buffer);
 
-    HIP_CHECK(hipFree(temp_buffer))
+    USPARSE_HIP_API_CHECK(hipFree(temp_buffer))
   }
 } // namespace common
 #endif // BLOCK_REDUCE_MAX_KERNEL_HPP

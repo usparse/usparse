@@ -3,10 +3,11 @@
 
 #include <cstddef>
 #include <hip/hip_runtime.h>
-#include "spgemm_common/check/hip_check.hpp"
+
 #include "align.h"
 #include "create_bp_impl.hpp"
 #include "csr_matrix.h"
+#include "common/usparse_utils.hpp"
 #include "spgemm_numeric_flag.hpp"
 #include "spgemm_numeric_bp_kernel.hpp"
 #include "spgemm_numeric_hash_kernel.hpp"
@@ -285,7 +286,7 @@ public:
 
       I *bp = nullptr;
       size_t bp_size = bp_buffer_size<T, I, CHUNK_SIZE>(matrix_b);
-      HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&bp), ALIGN_256_BYTES(bp_size)))
+      USPARSE_HIP_API_CHECK(hipMalloc(reinterpret_cast<void **>(&bp), ALIGN_256_BYTES(bp_size)))
 
       create_bp<T, I, CHUNK_SIZE>(matrix_b, bp, BP_IDX_PER_ROW);
 
@@ -295,7 +296,7 @@ public:
           matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 7,
           hgroup_num[7], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr, bp, BPS_PER_ROW, BP_IDX_PER_ROW);
 
-      HIP_CHECK(hipFree(bp));
+      USPARSE_HIP_API_CHECK(hipFree(bp));
     }
   }
 };
@@ -439,7 +440,7 @@ public:
 
       I *bp = nullptr;
       size_t bp_size = bp_buffer_size<T, I, CHUNK_SIZE>(matrix_b);
-      HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&bp), ALIGN_256_BYTES(bp_size)))
+      USPARSE_HIP_API_CHECK(hipMalloc(reinterpret_cast<void **>(&bp), ALIGN_256_BYTES(bp_size)))
 
       create_bp<T, I, CHUNK_SIZE>(matrix_b, bp, BP_IDX_PER_ROW);
 
@@ -449,7 +450,7 @@ public:
           matrix_b.row_ptr, matrix_b.col_idx_ptr, matrix_b.values_ptr, group_row_num_ptr + matrix_c.rows * 7,
           hgroup_num[7], matrix_c.row_ptr, matrix_c.col_idx_ptr, matrix_c.values_ptr, bp, BPS_PER_ROW, BP_IDX_PER_ROW);
 
-      HIP_CHECK(hipFree(bp));
+      USPARSE_HIP_API_CHECK(hipFree(bp));
     }
   }
 };

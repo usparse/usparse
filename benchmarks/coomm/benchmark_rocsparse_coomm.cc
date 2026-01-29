@@ -53,7 +53,7 @@ void RocSparseCooMM<I, T>::coo_spmm_impl(int trans, const T alpha, const T beta,
                                  ttype, rocsparse_spmm_alg_default, rocsparse_spmm_stage_buffer_size, &buffer_size,
                                  nullptr));
   void *temp_buffer;
-  HIP_CHECK(hipMalloc(&temp_buffer, buffer_size));
+  USPARSE_HIP_API_CHECK(hipMalloc(&temp_buffer, buffer_size));
 
   // preprocess.
   ROCSPARSE_CHECK(rocsparse_spmm(handle, rocsparse_operation_none, rocsparse_operation_none, &halpha, A, B, &hbeta, C,
@@ -70,7 +70,7 @@ void RocSparseCooMM<I, T>::coo_spmm_impl(int trans, const T alpha, const T beta,
   calc_timer.stop(true);
 
   destroy_time.start();
-  HIP_CHECK(hipFree(temp_buffer));
+  USPARSE_HIP_API_CHECK(hipFree(temp_buffer));
   ROCSPARSE_CHECK(rocsparse_destroy_spmat_descr(A));
   ROCSPARSE_CHECK(rocsparse_destroy_dnmat_descr(B));
   ROCSPARSE_CHECK(rocsparse_destroy_dnmat_descr(C));

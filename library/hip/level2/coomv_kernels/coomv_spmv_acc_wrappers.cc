@@ -68,7 +68,7 @@ void usparse::spmv::internal::coomv_conv_clear(
     return;
   }
 
-  hipFree(info->csr_row_ptr); // TODO: HIP_CHECK
+  hipFree(info->csr_row_ptr); // TODO: USPARSE_HIP_API_CHECK
 
   if (info->flat_info != nullptr) {
     // flat_clean(); TODO: release memory.

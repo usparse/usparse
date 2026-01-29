@@ -97,7 +97,7 @@ template <typename I, typename T> struct CsrSpMM {
     // device result check
     csr_spmm_impl(operation, alpha, beta, h_csr, d_csr, M, K, N, B_dev, C_dev, nullptr);
     hipDeviceSynchronize();
-    HIP_CHECK(hipMemcpy(C_host, C_dev, M * N * sizeof(T), hipMemcpyDeviceToHost));
+    USPARSE_HIP_API_CHECK(hipMemcpy(C_host, C_dev, M * N * sizeof(T), hipMemcpyDeviceToHost));
 
     // host side verification
     if (trans_B_C()) {

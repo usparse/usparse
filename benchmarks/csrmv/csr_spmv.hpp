@@ -52,7 +52,7 @@ template <typename INDEX_TYPE, typename DATA_TYPE> struct CsrSpMV {
     // warm up GPU
     for (int i = 0; i < 10; ++i) {
       // call sparse spmv
-      HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_csr.rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
+      USPARSE_HIP_API_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_csr.rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
       try {
         csr_spmv_impl(operation, alpha, beta, h_csr, d_csr, dev_x, dev_y, nullptr);
       } catch (const std::runtime_error &error) {
@@ -61,7 +61,7 @@ template <typename INDEX_TYPE, typename DATA_TYPE> struct CsrSpMV {
         std::cerr << error.what() << std::endl;
         hipDeviceSynchronize();
         memcpy(h_vectors.hhY, h_vectors.temphY, d_csr.rows * sizeof(DATA_TYPE));
-        HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_csr.rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
+        USPARSE_HIP_API_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_csr.rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
         return;
       }
     }
@@ -70,7 +70,7 @@ template <typename INDEX_TYPE, typename DATA_TYPE> struct CsrSpMV {
     // execute device SpMV
     for (int i = 0; i < BENCHMARK_ARRAY_SIZE; i++) {
       BenchmarkTime bmt;
-      HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_csr.rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
+      USPARSE_HIP_API_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_csr.rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
       hipDeviceSynchronize();
       csr_spmv_impl(operation, alpha, beta, h_csr, d_csr, dev_x, dev_y, &bmt);
       hipDeviceSynchronize();
@@ -78,10 +78,10 @@ template <typename INDEX_TYPE, typename DATA_TYPE> struct CsrSpMV {
     }
 
     // device result check
-    HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, h_csr.rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
+    USPARSE_HIP_API_CHECK(hipMemcpy(dev_y, h_vectors.temphY, h_csr.rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
     csr_spmv_impl(operation, alpha, beta, h_csr, d_csr, dev_x, dev_y, nullptr);
     hipDeviceSynchronize();
-    HIP_CHECK(hipMemcpy(h_vectors.hY, dev_y, d_csr.rows * sizeof(DATA_TYPE), hipMemcpyDeviceToHost));
+    USPARSE_HIP_API_CHECK(hipMemcpy(h_vectors.hY, dev_y, d_csr.rows * sizeof(DATA_TYPE), hipMemcpyDeviceToHost));
 
     // host side verification
     if (verify_beta_y()) {
@@ -99,7 +99,7 @@ template <typename INDEX_TYPE, typename DATA_TYPE> struct CsrSpMV {
                                             bmt_array.get_mid_time(), verify_result);
 
     memcpy(h_vectors.hhY, h_vectors.temphY, d_csr.rows * sizeof(DATA_TYPE));
-    HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_csr.rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
+    USPARSE_HIP_API_CHECK(hipMemcpy(dev_y, h_vectors.temphY, d_csr.rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice))
   }
 };
 

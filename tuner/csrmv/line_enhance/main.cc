@@ -11,6 +11,7 @@
 #include <string>
 #include <type_traits>
 
+#include "common/usparse_utils.hpp"
 #include "matrix_format/csr_binary_reader.hpp"
 #include "matrix_format/csr_mtx_reader.hpp"
 #include "matrix_format/matrix_market_reader.hpp"
@@ -82,7 +83,7 @@ utuner::csrmv_tuner_input<int, double> *global_csrmv_tuner_input_ptr = nullptr;
 
 template <typename INDEX_TYPE, typename DATA_TYPE>
 void test_spmv(std::string mtx_path, csr_mtx<INDEX_TYPE, DATA_TYPE> h_csr, host_vectors<DATA_TYPE> h_vectors) {
-  HIP_CHECK(hipSetDevice(0));
+  USPARSE_HIP_API_CHECK(hipSetDevice(0));
 
   if constexpr (std::is_same<DATA_TYPE, float>::value) {
     std::cerr << "the tuner currently only supports FP64 (double). Exit." << std::endl;
@@ -93,7 +94,7 @@ void test_spmv(std::string mtx_path, csr_mtx<INDEX_TYPE, DATA_TYPE> h_csr, host_
   csr_mtx<INDEX_TYPE, DATA_TYPE> d_csr = create_device_data(h_csr, h_vectors.hX, h_vectors.temphY, dev_x, dev_y);
   auto dev_csr_const = d_csr.as_const();
 
-  HIP_CHECK(hipMemcpy(dev_y, h_vectors.temphY, h_csr.rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice));
+  USPARSE_HIP_API_CHECK(hipMemcpy(dev_y, h_vectors.temphY, h_csr.rows * sizeof(DATA_TYPE), hipMemcpyHostToDevice));
 
   // set global variable for passing parameter to tuner.
   utuner::csrmv_tuner_input<INDEX_TYPE, DATA_TYPE> _csrmv_tuner_input =

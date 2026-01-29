@@ -1,7 +1,7 @@
 #ifndef USTB_SPARSE_SPGEMM_SPLIT_ONE_IMPL_HPP
 #define USTB_SPARSE_SPGEMM_SPLIT_ONE_IMPL_HPP
 
-#include "spgemm_common/check/hip_check.hpp"
+#include "common/usparse_utils.hpp"
 #include "spgemm_common/scan/scan_impl.hpp"
 #include "align.h"
 #include "split_config.h"
@@ -35,20 +35,20 @@ void split_one_element(const size_t rows, const I *row_ptr, I *group_row_ptr, in
     (split_group_part2_kernel<I, VEC_SIZE, THREADS>)<<<BLOCKS, THREADS>>>(SCAN_SIZE, STEP_WIDTH, split_buffer,
                                                                           split_num_buffer);
 
-    // HIP_CHECK(hipMemcpy(hgroup_num_ptr, split_num_buffer, sizeof(int) * GROUP_NUM, hipMemcpyDeviceToHost))
+    // USPARSE_HIP_API_CHECK(hipMemcpy(hgroup_num_ptr, split_num_buffer, sizeof(int) * GROUP_NUM, hipMemcpyDeviceToHost))
   } else {
     I *scan_temp_buffer = nullptr;
     const size_t scan_temp_buffer_size = common::scan_buffer_size<I>(BLOCKS);
-    HIP_CHECK(hipMalloc((void **)&scan_temp_buffer, scan_temp_buffer_size))
+    USPARSE_HIP_API_CHECK(hipMalloc((void **)&scan_temp_buffer, scan_temp_buffer_size))
 
 #pragma unroll GROUP_ONE_NUM
     for (int i = 0; i < GROUP_ONE_NUM; i++) {
       common::scan<I>(BLOCKS, &split_buffer[BLOCKS * i], scan_temp_buffer);
     }
 
-    HIP_CHECK(hipFree(scan_temp_buffer))
+    USPARSE_HIP_API_CHECK(hipFree(scan_temp_buffer))
     for (int i = 0; i < GROUP_ONE_NUM; i++) {
-      HIP_CHECK(
+      USPARSE_HIP_API_CHECK(
           hipMemcpy(&hgroup_num_ptr[i], &split_buffer[BLOCKS * i + BLOCKS - 1], sizeof(int), hipMemcpyDeviceToHost))
     }
   }

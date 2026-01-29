@@ -1,8 +1,9 @@
 #ifndef USTB_SPARSE_SPGEMM_COMPRESS_MATRIX_H
 #define USTB_SPARSE_SPGEMM_COMPRESS_MATRIX_H
 
-#include "spgemm_common/check/hip_check.hpp"
 #include "align.h"
+#include "common/usparse_utils.hpp"
+
 #include <cstddef>
 #include <hip/hip_runtime.h>
 #include <type_traits>
@@ -38,7 +39,7 @@ template <typename I> struct CompressMatrix {
     ptr += ALIGN_256_BYTES(rows * sizeof(int));
 
 #ifdef DEVICE_MALLOC_INITILIZE
-    HIP_CHECK(hipMemset(col_idx_ptr, 0, nnz * sizeof(BitSetEleType)))
+    USPARSE_HIP_API_CHECK(hipMemset(col_idx_ptr, 0, nnz * sizeof(BitSetEleType)))
 #endif
   }
 

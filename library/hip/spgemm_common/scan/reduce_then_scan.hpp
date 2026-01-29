@@ -1,9 +1,9 @@
 #ifndef REDUCE_THEN_SCAN_HPP
 #define REDUCE_THEN_SCAN_HPP
 
-#include "../check/hip_check.hpp"
 #include "scan_in_device.hpp"
 #include "single_block_scan.hpp"
+#include "common/usparse_utils.hpp"
 #include <hip/hip_runtime.h>
 
 namespace common {
@@ -139,9 +139,9 @@ namespace common {
     template <typename T> void reduce_then_scan_wrapper(const size_t input_size, const T *input, T *output) {
       T *temp_buffer = nullptr;
       const size_t temp_buffer_size = reduce_then_scan_buffer_size<int>(input_size);
-      HIP_CHECK(hipMalloc((void **)(&temp_buffer), temp_buffer_size))
+      USPARSE_HIP_API_CHECK(hipMalloc((void **)(&temp_buffer), temp_buffer_size))
       reduce_then_scan_impl<T>(input_size, input, output, temp_buffer);
-      HIP_CHECK(hipFree(temp_buffer))
+      USPARSE_HIP_API_CHECK(hipFree(temp_buffer))
     }
   } // namespace reduce_then_scan
 } // namespace common
