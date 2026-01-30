@@ -10,7 +10,7 @@
 
 #include <iostream>
 
-#define HIP_CHECK(stat)                                                                                                \
+#define USPARSE_HIP_API_CHECK(stat)                                                                                    \
   {                                                                                                                    \
     hipError_t err = stat;                                                                                             \
     if (err != hipSuccess) {                                                                                           \
@@ -31,7 +31,7 @@ struct sync_handle {
     if (SYNC_POLICY == SYNC_POLICY_DEVICE_SYNC) {
       return;
     } else if (SYNC_POLICY == SYNC_POLICY_EVENT_SYNC) {
-      hipEventCreate(&sync_kernel_event);
+      USPARSE_HIP_API_CHECK(hipEventCreate(&sync_kernel_event));
     } else if (SYNC_POLICY == SYNC_POLICY_MEMCOPY_SYNC) {
       mem_malloc();
     }
@@ -39,10 +39,10 @@ struct sync_handle {
 
   inline void sync() {
     if (SYNC_POLICY == SYNC_POLICY_DEVICE_SYNC) {
-      hipDeviceSynchronize();
+      USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
     } else if (SYNC_POLICY == SYNC_POLICY_EVENT_SYNC) {
       hipEventRecord(sync_kernel_event);
-      hipEventSynchronize(sync_kernel_event);
+      USPARSE_HIP_API_CHECK(hipEventSynchronize(sync_kernel_event));
     } else if (SYNC_POLICY == SYNC_POLICY_MEMCOPY_SYNC) {
       mem_copy();
     }
@@ -56,13 +56,13 @@ private:
 
 private:
   void mem_malloc() {
-    HIP_CHECK(hipHostMalloc((int **)&host_data, 1 * sizeof(int)));
-    HIP_CHECK(hipMalloc((int **)&dev_data, 1 * sizeof(int)));
+    USPARSE_HIP_API_CHECK(hipHostMalloc((int **)&host_data, 1 * sizeof(int)));
+    USPARSE_HIP_API_CHECK(hipMalloc((int **)&dev_data, 1 * sizeof(int)));
   }
 
   void mem_copy() {
-    // HIP_CHECK(hipMemcpy(dev_data, host_data, 1 * sizeof(int), hipMemcpyHostToDevice));
-    hipMemcpyHtoD(dev_data, host_data, 1 * sizeof(int)); // TODO: HIP_CHECK
+    // USPARSE_HIP_API_CHECK(hipMemcpy(dev_data, host_data, 1 * sizeof(int), hipMemcpyHostToDevice));
+    USPARSE_HIP_API_CHECK(hipMemcpyHtoD(dev_data, host_data, 1 * sizeof(int)));
   }
 };
 

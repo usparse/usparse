@@ -34,7 +34,7 @@ BENCHMARK_TEMPLATE_METHOD_F(UsparseLevel1Fixture, CalcNorm)(benchmark::State &st
   // benchmark
   for (auto _ : state) {
     usparse::device_calculateNorm<I, T>(d_x, (I)N, d_result, d_temp_buffer, 0);
-    hipDeviceSynchronize();
+    TEST_HIP_CHECK(hipDeviceSynchronize());
   }
 
   // clean
@@ -79,7 +79,7 @@ BENCHMARK_TEMPLATE_METHOD_F(UsparseLevel1Fixture, dotprod)(benchmark::State &sta
   // benchmark
   for (auto _ : state) {
     usparse::device_dotProduct<I, T>(d_x, d_y, (I)N, d_result, d_temp_buffer, 0);
-    hipDeviceSynchronize();
+    TEST_HIP_CHECK(hipDeviceSynchronize());
   }
 
   // clean
@@ -116,7 +116,7 @@ BENCHMARK_TEMPLATE_METHOD_F(UsparseLevel1Fixture, daxpy)(benchmark::State &state
   for (auto _ : state) {
     // y = y + alpha * x
     usparse::device_daxpy<I, T>(alpha, d_x, d_y, (I)N);
-    hipDeviceSynchronize();
+    TEST_HIP_CHECK(hipDeviceSynchronize());
   }
 
   // calc bandwidth
@@ -148,7 +148,7 @@ BENCHMARK_TEMPLATE_METHOD_F(UsparseLevel1Fixture, dscal)(benchmark::State &state
   for (auto _ : state) {
     // x = alpha * x
     usparse::device_dscal<I, T>(alpha, d_x, (I)N);
-    hipDeviceSynchronize();
+    TEST_HIP_CHECK(hipDeviceSynchronize());
   }
 
   // calc bandwidth
@@ -177,7 +177,7 @@ BENCHMARK_TEMPLATE_METHOD_F(UsparseLevel1Fixture, dcopy)(benchmark::State &state
   // benchmark
   for (auto _ : state) {
     usparse::device_dcopy<I, T>(d_src, d_dest, (I)N);
-    hipDeviceSynchronize();
+    TEST_HIP_CHECK(hipDeviceSynchronize());
   }
 
   // calc bandwidth

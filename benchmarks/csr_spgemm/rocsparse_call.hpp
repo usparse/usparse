@@ -17,16 +17,18 @@ void rosparse_csr_matirx_turn(csr_mtx<I, T> &csr_matrix, I *&drow_ptr, I *&dcol_
   I *dcsr_row_ptr, *dcsr_col_idx;
   T *dcsr_val;
 
-  HIP_CHECK(hipMalloc((void **)&dcsr_row_ptr, (csr_matrix.rows + 1) * sizeof(I)))
-  HIP_CHECK(hipMalloc((void **)&dcsr_col_idx, csr_matrix.nnz * sizeof(I)))
-  HIP_CHECK(hipMalloc((void **)&dcsr_val, csr_matrix.nnz * sizeof(T)))
-  HIP_CHECK(hipMemcpy(dcsr_row_ptr, csr_matrix.row_ptr, (csr_matrix.rows + 1) * sizeof(I), hipMemcpyHostToDevice))
-  HIP_CHECK(hipMemcpy(dcsr_col_idx, csr_matrix.col_index, csr_matrix.nnz * sizeof(I), hipMemcpyHostToDevice))
-  HIP_CHECK(hipMemcpy(dcsr_val, csr_matrix.values, csr_matrix.nnz * sizeof(T), hipMemcpyHostToDevice))
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dcsr_row_ptr, (csr_matrix.rows + 1) * sizeof(I)))
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dcsr_col_idx, csr_matrix.nnz * sizeof(I)))
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dcsr_val, csr_matrix.nnz * sizeof(T)))
+  USPARSE_HIP_API_CHECK(
+      hipMemcpy(dcsr_row_ptr, csr_matrix.row_ptr, (csr_matrix.rows + 1) * sizeof(I), hipMemcpyHostToDevice))
+  USPARSE_HIP_API_CHECK(
+      hipMemcpy(dcsr_col_idx, csr_matrix.col_index, csr_matrix.nnz * sizeof(I), hipMemcpyHostToDevice))
+  USPARSE_HIP_API_CHECK(hipMemcpy(dcsr_val, csr_matrix.values, csr_matrix.nnz * sizeof(T), hipMemcpyHostToDevice))
 
-  HIP_CHECK(hipMalloc((void **)&drow_ptr, (csr_matrix.cols + 1) * sizeof(I)))
-  HIP_CHECK(hipMalloc((void **)&dcol_idx, csr_matrix.nnz * sizeof(I)))
-  HIP_CHECK(hipMalloc((void **)&dval, csr_matrix.nnz * sizeof(T)))
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&drow_ptr, (csr_matrix.cols + 1) * sizeof(I)))
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dcol_idx, csr_matrix.nnz * sizeof(I)))
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dval, csr_matrix.nnz * sizeof(T)))
 
 #if T == double
   size_t buffer_size;
@@ -34,11 +36,11 @@ void rosparse_csr_matirx_turn(csr_mtx<I, T> &csr_matrix, I *&drow_ptr, I *&dcol_
                                                 dcsr_col_idx, rocsparse_action_numeric, &buffer_size))
 
   void *temp_buffer;
-  HIP_CHECK(hipMalloc(&temp_buffer, buffer_size))
+  USPARSE_HIP_API_CHECK(hipMalloc(&temp_buffer, buffer_size))
   ROCSPARSE_CHECK(rocsparse_dcsr2csc(handle, csr_matrix.rows, csr_matrix.cols, csr_matrix.nnz, dcsr_val, dcsr_row_ptr,
                                      dcsr_col_idx, dval, dcol_idx, drow_ptr, rocsparse_action_numeric,
                                      rocsparse_index_base_zero, temp_buffer))
-  HIP_CHECK(hipFree(temp_buffer))
+  USPARSE_HIP_API_CHECK(hipFree(temp_buffer))
 #elif T == float
   std::cout << "float rocsparse calls are not supported yet!" << std::endl;
   exit(0);
@@ -46,9 +48,9 @@ void rosparse_csr_matirx_turn(csr_mtx<I, T> &csr_matrix, I *&drow_ptr, I *&dcol_
 
   ROCSPARSE_CHECK(rocsparse_destroy_handle(handle))
 
-  HIP_CHECK(hipFree(dcsr_row_ptr))
-  HIP_CHECK(hipFree(dcsr_col_idx))
-  HIP_CHECK(hipFree(dcsr_val))
+  USPARSE_HIP_API_CHECK(hipFree(dcsr_row_ptr))
+  USPARSE_HIP_API_CHECK(hipFree(dcsr_col_idx))
+  USPARSE_HIP_API_CHECK(hipFree(dcsr_val))
 }
 
 template <typename I, typename T>
@@ -74,17 +76,17 @@ size_t rocsparse_spgemm(const T alpha, const T beta, const bool opB, const size_
   I *dcol_idx_D;
   T *dval_D;
 
-  HIP_CHECK(hipMalloc((void **)&drow_ptr_D, (A_rows + 1) * sizeof(I)))
-  HIP_CHECK(hipMalloc((void **)&dcol_idx_D, D_nnz * sizeof(I)))
-  HIP_CHECK(hipMalloc((void **)&dval_D, D_nnz * sizeof(T)))
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&drow_ptr_D, (A_rows + 1) * sizeof(I)))
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dcol_idx_D, D_nnz * sizeof(I)))
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dval_D, D_nnz * sizeof(T)))
 
-  HIP_CHECK(hipMemcpy(drow_ptr_D, hrow_ptr_D, (A_rows + 1) * sizeof(I), hipMemcpyHostToDevice))
-  HIP_CHECK(hipMemcpy(dcol_idx_D, &hcol_idx_D, D_nnz * sizeof(I), hipMemcpyHostToDevice))
-  HIP_CHECK(hipMemcpy(dval_D, &hval_D, D_nnz * sizeof(T), hipMemcpyHostToDevice))
+  USPARSE_HIP_API_CHECK(hipMemcpy(drow_ptr_D, hrow_ptr_D, (A_rows + 1) * sizeof(I), hipMemcpyHostToDevice))
+  USPARSE_HIP_API_CHECK(hipMemcpy(dcol_idx_D, &hcol_idx_D, D_nnz * sizeof(I), hipMemcpyHostToDevice))
+  USPARSE_HIP_API_CHECK(hipMemcpy(dval_D, &hval_D, D_nnz * sizeof(T), hipMemcpyHostToDevice))
 
   delete[] hrow_ptr_D;
 
-  HIP_CHECK(hipMalloc((void **)&drow_ptr_C, sizeof(I) * (A_rows + 1)))
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&drow_ptr_C, sizeof(I) * (A_rows + 1)))
 
   // Start timer kernel
   common::timer[rocsparse_spgemm_timer].start();
@@ -117,7 +119,7 @@ size_t rocsparse_spgemm(const T alpha, const T beta, const bool opB, const size_
                                                  descr_B, B_nnz, drow_ptr_B, dcol_idx_B, &beta, descr_D, D_nnz,
                                                  drow_ptr_D, dcol_idx_D, info_C, &buffer_size))
   void *buffer;
-  HIP_CHECK(hipMalloc(&buffer, buffer_size))
+  USPARSE_HIP_API_CHECK(hipMalloc(&buffer, buffer_size))
 
   rocsparse_int C_nnz = 0;
 
@@ -128,8 +130,8 @@ size_t rocsparse_spgemm(const T alpha, const T beta, const bool opB, const size_
   // Stop symbolic timer
   common::timer[rocsparse_spgemm_symbolic_timer].stop();
 
-  HIP_CHECK(hipMalloc((void **)&dcol_idx_C, sizeof(I) * C_nnz))
-  HIP_CHECK(hipMalloc((void **)&dval_C, sizeof(T) * C_nnz))
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dcol_idx_C, sizeof(I) * C_nnz))
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dval_C, sizeof(T) * C_nnz))
 
   // Start numeric timer
   common::timer[rocsparse_spgemm_numeric_timer].start();
@@ -137,8 +139,8 @@ size_t rocsparse_spgemm(const T alpha, const T beta, const bool opB, const size_
                                      &alpha, descr_A, A_nnz, dval_A, drow_ptr_A, dcol_idx_A, descr_B, B_nnz, dval_B,
                                      drow_ptr_B, dcol_idx_B, &beta, descr_D, D_nnz, dval_D, drow_ptr_D, dcol_idx_D,
                                      descr_C, dval_C, drow_ptr_C, dcol_idx_C, info_C, buffer))
-  HIP_CHECK(hipFree(buffer))
-  hipDeviceSynchronize();
+  USPARSE_HIP_API_CHECK(hipFree(buffer))
+  USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
   // Stop numeric timer
   common::timer[rocsparse_spgemm_numeric_timer].stop();
 
@@ -150,9 +152,9 @@ size_t rocsparse_spgemm(const T alpha, const T beta, const bool opB, const size_
   // Stop timer kernel
   common::timer[rocsparse_spgemm_timer].stop();
 
-  HIP_CHECK(hipFree(dval_D))
-  HIP_CHECK(hipFree(dcol_idx_D))
-  HIP_CHECK(hipFree(drow_ptr_D))
+  USPARSE_HIP_API_CHECK(hipFree(dval_D))
+  USPARSE_HIP_API_CHECK(hipFree(dcol_idx_D))
+  USPARSE_HIP_API_CHECK(hipFree(drow_ptr_D))
 
   return C_nnz;
 }

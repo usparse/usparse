@@ -50,7 +50,7 @@ int run_csr_benchmark(std::string mtx_path, csr_mtx<type_sparse_default_index, P
 
 template <typename INDEX_TYPE, typename DATA_TYPE>
 void test_spmv(std::string mtx_path, csr_mtx<INDEX_TYPE, DATA_TYPE> h_csr, host_vectors<DATA_TYPE> h_vectors) {
-  HIP_CHECK(hipSetDevice(0));
+  USPARSE_HIP_API_CHECK(hipSetDevice(0));
 
   DATA_TYPE *dev_x, *dev_y;
   csr_mtx<INDEX_TYPE, DATA_TYPE> d_csr = create_device_data(h_csr, h_vectors.hX, h_vectors.temphY, dev_x, dev_y);

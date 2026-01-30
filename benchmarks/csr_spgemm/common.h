@@ -10,7 +10,7 @@
 #include <rocsparse.h>
 #endif
 
-#include "spgemm_common/check/hip_check.hpp"
+#include "common/usparse_utils.hpp"
 #include "spgemm_common/timer/timer.hpp"
 
 #define ROCSPARSE_CHECK(stat)                                                                                          \

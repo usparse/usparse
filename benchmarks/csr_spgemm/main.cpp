@@ -79,7 +79,7 @@ int main(int argc, char **argv) {
   std::cout << "==================================================================" << std::endl;
 
   // Set Device Id for the following Calculation
-  hipSetDevice(0);
+  USPARSE_HIP_API_CHECK(hipSetDevice(0));
 
   // Device variable declaration
   idx_type *drow_ptr_A, *drow_ptr_B, *drow_ptr_C, *compare_drow_ptr_C;
@@ -105,7 +105,7 @@ int main(int argc, char **argv) {
                                        matrix_in.nnz, drow_ptr_B, dcol_idx_B, dval_B, &C_nnz, drow_ptr_C, &dcol_idx_C,
                                        &dval_C);
 
-  hipDeviceSynchronize();
+  USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
 
   // Stop timer kernel
   common::timer[ustb_spgemm_warmup_timer].stop();
@@ -113,7 +113,7 @@ int main(int argc, char **argv) {
   copy_results_from_device<idx_type, data_type>(matrix_c, opB, matrix_in.rows, matrix_in.cols, C_nnz, drow_ptr_C,
                                                 dcol_idx_C, dval_C);
 
-  HIP_CHECK(hipFree(dcol_idx_C))
+  USPARSE_HIP_API_CHECK(hipFree(dcol_idx_C))
 
   std::cout << "USTB-SpGEMM warmup non zero num of matrix C:" << C_nnz << std::endl;
   std::cout << "USTB-SpGEMM Warmup finished! elapsed time:" << common::timer[ustb_spgemm_warmup_timer].time_use.count() << "(us)" << std::endl;
@@ -135,12 +135,12 @@ int main(int argc, char **argv) {
                                          matrix_in.nnz, drow_ptr_B, dcol_idx_B, dval_B, &C_nnz, drow_ptr_C, &dcol_idx_C,
                                          &dval_C);
 
-    hipDeviceSynchronize();
+    USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
 
     // Stop timer kernel
     common::timer[ustb_spgemm_timer].stop();
 
-    HIP_CHECK(hipFree(dcol_idx_C))
+    USPARSE_HIP_API_CHECK(hipFree(dcol_idx_C))
 
     ustb_spgemm_timer_mean += common::timer[ustb_spgemm_timer].time_use.count();
     ustb_spgemm_symbolic_timer_mean += common::timer[ustb_spgemm_symbolic_timer].time_use.count();
@@ -151,7 +151,7 @@ int main(int argc, char **argv) {
   }
   std::cout << "==================================================================" << std::endl;
 
-  HIP_CHECK(hipFree(drow_ptr_C))
+  USPARSE_HIP_API_CHECK(hipFree(drow_ptr_C))
 
   if (DCU_ROUND > 0) {
     ustb_spgemm_timer_mean = ustb_spgemm_timer_mean / (DCU_ROUND * 1.0);
@@ -178,7 +178,7 @@ int main(int argc, char **argv) {
       alpha, beta, opB, matrix_in.rows, matrix_in.cols, matrix_in.nnz, drow_ptr_A, dcol_idx_A, dval_A, matrix_in.nnz,
       drow_ptr_B, dcol_idx_B, dval_B, compare_drow_ptr_C, compare_dcol_idx_C, compare_dval_C);
 
-  hipDeviceSynchronize();
+  USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
 
   // Stop timer kernel
   common::timer[rocsparse_spgemm_warmup_timer].stop();
@@ -186,9 +186,9 @@ int main(int argc, char **argv) {
   copy_results_from_device<idx_type, data_type>(compare_matrix_c, opB, matrix_in.rows, matrix_in.cols, compare_C_nnz,
                                                 compare_drow_ptr_C, compare_dcol_idx_C, compare_dval_C);
 
-  HIP_CHECK(hipFree(compare_drow_ptr_C))
-  HIP_CHECK(hipFree(compare_dcol_idx_C))
-  HIP_CHECK(hipFree(compare_dval_C))
+  USPARSE_HIP_API_CHECK(hipFree(compare_drow_ptr_C))
+  USPARSE_HIP_API_CHECK(hipFree(compare_dcol_idx_C))
+  USPARSE_HIP_API_CHECK(hipFree(compare_dval_C))
 
   std::cout << "Rocsparse-SpGEMM warmup non zero num of matrix C:" << compare_C_nnz << std::endl;
   std::cout << "Rocsparse-SpGEMM Warmup finished! elapsed time:" << common::timer[rocsparse_spgemm_warmup_timer].time_use.count() << "(us)" << std::endl;
@@ -207,11 +207,11 @@ int main(int argc, char **argv) {
         alpha, beta, opB, matrix_in.rows, matrix_in.cols, matrix_in.nnz, drow_ptr_A, dcol_idx_A, dval_A, matrix_in.nnz,
         drow_ptr_B, dcol_idx_B, dval_B, compare_drow_ptr_C, compare_dcol_idx_C, compare_dval_C);
 
-    hipDeviceSynchronize();
+    USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
 
-    HIP_CHECK(hipFree(compare_drow_ptr_C))
-    HIP_CHECK(hipFree(compare_dcol_idx_C))
-    HIP_CHECK(hipFree(compare_dval_C))
+    USPARSE_HIP_API_CHECK(hipFree(compare_drow_ptr_C))
+    USPARSE_HIP_API_CHECK(hipFree(compare_dcol_idx_C))
+    USPARSE_HIP_API_CHECK(hipFree(compare_dval_C))
 
     rocsparse_spgemm_timer_mean += common::timer[rocsparse_spgemm_timer].time_use.count();
     rocsparse_spgemm_symbolic_timer_mean += common::timer[rocsparse_spgemm_symbolic_timer].time_use.count();

@@ -49,12 +49,12 @@ void creat_device_matrix(I rows, I cols, T *spmat, I *&drow_ptr_B, I *&dcol_idx_
   }
   offset[l] = nonzeros;
 
-  HIP_CHECK(hipMalloc((void **)&drow_ptr_B, (rows + 1) * sizeof(I)))
-  HIP_CHECK(hipMalloc((void **)&dcol_idx_B, nonzeros * sizeof(I)))
-  HIP_CHECK(hipMalloc((void **)&dval_B, nonzeros * sizeof(T)))
-  HIP_CHECK(hipMemcpy(drow_ptr_B, offset, (rows + 1) * sizeof(I), hipMemcpyHostToDevice))
-  HIP_CHECK(hipMemcpy(dcol_idx_B, colindex, nonzeros * sizeof(I), hipMemcpyHostToDevice))
-  HIP_CHECK(hipMemcpy(dval_B, value, nonzeros * sizeof(T), hipMemcpyHostToDevice))
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&drow_ptr_B, (rows + 1) * sizeof(I)))
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dcol_idx_B, nonzeros * sizeof(I)))
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dval_B, nonzeros * sizeof(T)))
+  USPARSE_HIP_API_CHECK(hipMemcpy(drow_ptr_B, offset, (rows + 1) * sizeof(I), hipMemcpyHostToDevice))
+  USPARSE_HIP_API_CHECK(hipMemcpy(dcol_idx_B, colindex, nonzeros * sizeof(I), hipMemcpyHostToDevice))
+  USPARSE_HIP_API_CHECK(hipMemcpy(dval_B, value, nonzeros * sizeof(T), hipMemcpyHostToDevice))
 
   std::cout << "nnz of matrix_B=" << nonzeros << std::endl;
 }

@@ -33,15 +33,15 @@ namespace ubench {
     generate_vector<I, T>((*host_vec), N); // fill host vector with random number.
 
     // malloc device data and copy data from host to device.
-    HIP_CHECK(hipMalloc((void **)dev_vec, N * sizeof(T)))
-    HIP_CHECK(hipMemcpy(*dev_vec, *host_vec, N * sizeof(T), hipMemcpyHostToDevice))
+    USPARSE_HIP_API_CHECK(hipMalloc((void **)dev_vec, N * sizeof(T)))
+    USPARSE_HIP_API_CHECK(hipMemcpy(*dev_vec, *host_vec, N * sizeof(T), hipMemcpyHostToDevice))
   }
 
   template <typename I, typename T, bool FREE_HOST> void ubench_free_host_dev_vector(T *host_vec, T *dev_vec, I N) {
     if (FREE_HOST) {
       delete[] host_vec;
     }
-    HIP_CHECK(hipFree((void *)dev_vec))
+    USPARSE_HIP_API_CHECK(hipFree((void *)dev_vec))
   }
 
   template void ubench_malloc_and_init_host_dev_vector<usparse::usparse_int, usparse::usparse_fp64>(

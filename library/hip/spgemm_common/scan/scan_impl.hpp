@@ -1,10 +1,10 @@
 #ifndef COMMON_SCAN_IMPL_HPP
 #define COMMON_SCAN_IMPL_HPP
 
-#include "../check/hip_check.hpp"
 #include "lookback_scan.hpp"
 #include "reduce_then_scan.hpp"
 #include "single_block_scan.hpp"
+#include "common/usparse_utils.hpp"
 
 namespace common {
   template <typename T> size_t scan_buffer_size(const size_t input_size) {

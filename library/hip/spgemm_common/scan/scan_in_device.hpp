@@ -1,7 +1,7 @@
 #ifndef COMMON_SCAN_IN_DEVICE_HPP
 #define COMMON_SCAN_IN_DEVICE_HPP
 
-#include "../check/hip_check.hpp"
+#include "common/usparse_utils.hpp"
 #include <hip/hip_runtime.h>
 
 namespace common {

@@ -1,7 +1,7 @@
 #ifndef USTB_SPARSE_SPGEMM_SPGEMM_HPP
 #define USTB_SPARSE_SPGEMM_SPGEMM_HPP
 
-#include "spgemm_common/check/hip_check.hpp"
+#include "common/usparse_utils.hpp"
 #include "spgemm_common/tools/set_val.hpp"
 #include "api/spgemm_hip_types.h"
 #include "spgemm_core_impl.hpp"
@@ -16,7 +16,7 @@ void ustb_sparse_spgemm(const T alpha, const size_t m, const size_t n, const siz
   if (n <= 2048 * CompressMatrix<I>::BitsLen) {
     common::set_val<I, 0>(pOffsetC);
   } else {
-    HIP_CHECK(hipMemset(pOffsetC, static_cast<I>(0), (m + 1) * sizeof(I)))
+    USPARSE_HIP_API_CHECK(hipMemset(pOffsetC, static_cast<I>(0), (m + 1) * sizeof(I)))
   }
 #endif
   CsrMatrix<T, I> matrix_a(m, k, nnzA, const_cast<I *>(pOffsetA), const_cast<I *>(pColIndexA),

@@ -3,6 +3,7 @@
 //
 
 #include "csrmv_tuner_input.h"
+#include "common/usparse_utils.hpp"
 #include "hip/level2/csrmv_kernels/line-enhance/csrmv_line_enhance.h"
 #include "usparse_tuner.h"
 
@@ -21,7 +22,7 @@ inline void line_enhance_wrapper(utuner::csrmv_tuner_input<int, double> csrmv_in
                            THREADS_PER_BLOCK>(0, operation, alpha, beta, d_csr_mat_descr, csrmv_input.x,
                                               csrmv_input.y);
 
-  hipDeviceSynchronize();
+  USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
   return;
 }
 

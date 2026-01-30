@@ -1,7 +1,7 @@
 #ifndef COMMON_SINGLE_BLOCK_SCAN_HPP
 #define COMMON_SINGLE_BLOCK_SCAN_HPP
 
-#include "../check/hip_check.hpp"
+#include "common/usparse_utils.hpp"
 #include "scan_in_device.hpp"
 #include <hip/hip_runtime.h>
 

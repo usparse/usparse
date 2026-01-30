@@ -72,7 +72,7 @@ int main(int argc, char **argv) {
   cout << "==================================================================" << endl;
 
   // Set Device Id for the following Calculation
-  hipSetDevice(0);
+  USPARSE_HIP_API_CHECK(hipSetDevice(0));
 
   // Device Memory malloc + Copy
   cout << "Preparing Device Memory ... " << endl;
@@ -85,7 +85,7 @@ int main(int argc, char **argv) {
   csrIdxType *device_colindexC; // csr column index device ptr of C
   dtype *device_valueC;         // csr value device ptr of C
 
-  HIP_CHECK(hipMalloc((void **)&device_offsetC, (A_num_rows + 1) * sizeof(csrIdxType)))
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&device_offsetC, (A_num_rows + 1) * sizeof(csrIdxType)))
 
   cout << "Runing Warmup ... " << endl;
   my_timer timer_kernel_warmup;
@@ -99,13 +99,13 @@ int main(int argc, char **argv) {
                                      device_offsetB, device_colindexB, device_valueB, &C_nnz, device_offsetC,
                                      &device_colindexC, &device_valueC);
 
-  hipDeviceSynchronize();
+  USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
 
   // Stop timer kernel
   timer_kernel_warmup.stop();
 
-  HIP_CHECK(hipFree(device_colindexC))
-  // HIP_CHECK( hipFree(device_valueC) )
+  USPARSE_HIP_API_CHECK(hipFree(device_colindexC))
+  // USPARSE_HIP_API_CHECK( hipFree(device_valueC) )
 
   cout << "non zero num of matrix C : " << C_nnz << endl;
   cout << "Warmup finished!  elapsed time:" << timer_kernel_warmup.time_use << "(us)" << endl;
@@ -130,7 +130,7 @@ int main(int argc, char **argv) {
                                        device_offsetB, device_colindexB, device_valueB, &C_nnz, device_offsetC,
                                        &device_colindexC, &device_valueC);
 
-    hipDeviceSynchronize();
+    USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
 
     // Stop timer kernel
     timer_kernel.stop();
@@ -149,18 +149,18 @@ int main(int argc, char **argv) {
       host_valueC = new dtype[C_nnz];
       memset(host_valueC, 0, C_nnz * sizeof(dtype));
 
-      HIP_CHECK(hipMemcpy(host_offsetC, device_offsetC, (A_num_rows + 1) * sizeof(csrIdxType), hipMemcpyDeviceToHost))
-      HIP_CHECK(hipMemcpy(host_colindexC, device_colindexC, C_nnz * sizeof(csrIdxType), hipMemcpyDeviceToHost))
-      HIP_CHECK(hipMemcpy(host_valueC, device_valueC, C_nnz * sizeof(dtype), hipMemcpyDeviceToHost))
+      USPARSE_HIP_API_CHECK(hipMemcpy(host_offsetC, device_offsetC, (A_num_rows + 1) * sizeof(csrIdxType), hipMemcpyDeviceToHost))
+      USPARSE_HIP_API_CHECK(hipMemcpy(host_colindexC, device_colindexC, C_nnz * sizeof(csrIdxType), hipMemcpyDeviceToHost))
+      USPARSE_HIP_API_CHECK(hipMemcpy(host_valueC, device_valueC, C_nnz * sizeof(dtype), hipMemcpyDeviceToHost))
     }
 
-    HIP_CHECK(hipFree(device_colindexC))
-    // HIP_CHECK( hipFree(device_valueC) )
+    USPARSE_HIP_API_CHECK(hipFree(device_colindexC))
+    // USPARSE_HIP_API_CHECK( hipFree(device_valueC) )
 
     cout << "Round: " << i + 1 << "  elapsed time:" << timer_kernel.time_use << "(us)" << endl;
   }
 
-  HIP_CHECK(hipFree(device_offsetC))
+  USPARSE_HIP_API_CHECK(hipFree(device_offsetC))
 
   if (ROUND_GPU > 0) {
     time_use_kernel_mean = time_use_kernel / (ROUND_GPU * 1.0);
@@ -184,7 +184,7 @@ int main(int argc, char **argv) {
   // RocSparse Calculation
   C_nnz_compare = rocsparse_spgemm();
 
-  hipDeviceSynchronize();
+  USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
 
   // Stop timer_rocsparse
   timer_rocsparse.stop();

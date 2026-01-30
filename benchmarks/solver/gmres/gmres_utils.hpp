@@ -19,10 +19,10 @@ namespace utils {
   void warmup() {
     int *d_data = nullptr;
     const int N = 4096 * 64;
-    hipMalloc(&d_data, N * sizeof(int));
+    USPARSE_HIP_API_CHECK(hipMalloc(&d_data, N * sizeof(int)));
     warmup_kernel<<<N / 64, 64>>>(d_data, N);
-    hipDeviceSynchronize();
-    hipFree(d_data);
+    USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
+    USPARSE_HIP_API_CHECK(hipFree(d_data));
   }
 } // namespace utils
 

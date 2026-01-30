@@ -28,6 +28,13 @@ cmake --build --preset=rocm-hipcc-benchmark
 # to enable HOLA benchmarking.
 ```
 
+For DTK of Hygon DCU, use CMake preset `rocm-dcc-benchmark` or `rocm-dcc`.
+e.g. to build on DCU with benchmark feature, run:
+```bash
+cmake --preset=rocm-dcc-benchmark
+cmake --build --preset=rocm-dcc-benchmark
+```
+
 ## Ecosystem
 - [Performance-Explorer](https://github.com/genshen/Performance-Explorer)
 - spmv-acc: the high performance and Open Source library for SpMV on GPUs. spmv-acc is a part of usparse.

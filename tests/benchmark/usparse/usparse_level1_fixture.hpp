@@ -49,7 +49,7 @@ private:
 
   // release host and device memory space
   void free_vector_host_device(T *host_vec, T *dev_vec) {
-    hipFree(dev_vec);
+    TEST_HIP_CHECK(hipFree(dev_vec));
     delete[] host_vec;
   }
 

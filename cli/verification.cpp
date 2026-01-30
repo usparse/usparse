@@ -153,7 +153,7 @@ void rocsparse(type_csr d_csr, dtype *dev_x, dtype *dev_y, dtype &alpha, dtype &
 
   ROCSPARSE_CHECK(rocsparse_spmv(handle, rocsparse_operation_none, &alpha, matA, vecX, &beta, vecY,
                                  rocsparse_datatype_f64_r, rocsparse_spmv_alg_default, &bufferSize, nullptr));
-  HIP_CHECK(hipMalloc(&dBuffer, bufferSize));
+  USPARSE_HIP_API_CHECK(hipMalloc(&dBuffer, bufferSize));
   ROCSPARSE_CHECK(rocsparse_spmv(handle, rocsparse_operation_none, &alpha, matA, vecX, &beta, vecY,
                                  rocsparse_datatype_f64_r, rocsparse_spmv_alg_default, &bufferSize, dBuffer));
 }

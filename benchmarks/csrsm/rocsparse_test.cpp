@@ -4,6 +4,8 @@
 #include <iostream>
 #include <rocsparse/rocsparse.h>
 
+#include "common/usparse_utils.hpp"
+
 // template <typename T>
 // T* test_rocsparse_matrix(const MatrixData<T>& matrix_in, const T* h_b, int k,
 //                         int h_rhs, int* out_m, float* out_time)
@@ -245,15 +247,15 @@ T *test_rocsparse_matrix(const MatrixData<T> &matrix_in, const T *h_b, int k, in
   T *dB = nullptr;
   void *temp_buffer = nullptr;
 
-  hipMalloc((void **)&dcsr_row_ptr, sizeof(rocsparse_int) * (m + 1));
-  hipMalloc((void **)&dcsr_col_ind, sizeof(rocsparse_int) * nnz);
-  hipMalloc((void **)&dcsr_val, sizeof(T) * nnz);
-  hipMalloc((void **)&dB, sizeof(T) * m * nrhs);
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dcsr_row_ptr, sizeof(rocsparse_int) * (m + 1)));
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dcsr_col_ind, sizeof(rocsparse_int) * nnz));
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dcsr_val, sizeof(T) * nnz));
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dB, sizeof(T) * m * nrhs));
 
-  hipMemcpy(dcsr_row_ptr, hcsr_row_ptr, sizeof(rocsparse_int) * (m + 1), hipMemcpyHostToDevice);
-  hipMemcpy(dcsr_col_ind, hcsr_col_ind, sizeof(rocsparse_int) * nnz, hipMemcpyHostToDevice);
-  hipMemcpy(dcsr_val, hcsr_val, sizeof(T) * nnz, hipMemcpyHostToDevice);
-  hipMemcpy(dB, h_b, sizeof(T) * m * nrhs, hipMemcpyHostToDevice);
+  USPARSE_HIP_API_CHECK(hipMemcpy(dcsr_row_ptr, hcsr_row_ptr, sizeof(rocsparse_int) * (m + 1), hipMemcpyHostToDevice));
+  USPARSE_HIP_API_CHECK(hipMemcpy(dcsr_col_ind, hcsr_col_ind, sizeof(rocsparse_int) * nnz, hipMemcpyHostToDevice));
+  USPARSE_HIP_API_CHECK(hipMemcpy(dcsr_val, hcsr_val, sizeof(T) * nnz, hipMemcpyHostToDevice));
+  USPARSE_HIP_API_CHECK(hipMemcpy(dB, h_b, sizeof(T) * m * nrhs, hipMemcpyHostToDevice));
 
   // Create ROCm handles and descriptors
   rocsparse_handle handle;
@@ -273,7 +275,7 @@ T *test_rocsparse_matrix(const MatrixData<T> &matrix_in, const T *h_b, int k, in
                                  descr, dcsr_val, dcsr_row_ptr, dcsr_col_ind, dB, m, info, rocsparse_solve_policy_auto,
                                  &buffer_size);
 
-    hipMalloc(&temp_buffer, buffer_size);
+    USPARSE_HIP_API_CHECK(hipMalloc(&temp_buffer, buffer_size));
 
     // Analysis phase
     rocsparse_dcsrsm_analysis(handle, rocsparse_operation_none, rocsparse_operation_none, m, nrhs, nnz, &alpha, descr,
@@ -295,16 +297,16 @@ T *test_rocsparse_matrix(const MatrixData<T> &matrix_in, const T *h_b, int k, in
                              dcsr_val, dcsr_row_ptr, dcsr_col_ind, dB, m, info, rocsparse_solve_policy_auto,
                              temp_buffer);
 
-      hipDeviceSynchronize();
+      USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
       tm.stop();
       total_time += tm.time_use;
 
       if (i == 0) {
-        hipMemcpy(hB.data(), dB, sizeof(T) * m * nrhs, hipMemcpyDeviceToHost);
+        USPARSE_HIP_API_CHECK(hipMemcpy(hB.data(), dB, sizeof(T) * m * nrhs, hipMemcpyDeviceToHost));
       }
     }
     *out_time = static_cast<float>(total_time / k);
-    hipFree(temp_buffer);
+    USPARSE_HIP_API_CHECK(hipFree(temp_buffer));
   } else {
     // Query buffer size
     size_t buffer_size;
@@ -312,7 +314,7 @@ T *test_rocsparse_matrix(const MatrixData<T> &matrix_in, const T *h_b, int k, in
                                  descr, dcsr_val, dcsr_row_ptr, dcsr_col_ind, dB, m, info, rocsparse_solve_policy_auto,
                                  &buffer_size);
 
-    hipMalloc(&temp_buffer, buffer_size);
+    USPARSE_HIP_API_CHECK(hipMalloc(&temp_buffer, buffer_size));
 
     // Analysis phase
     rocsparse_scsrsm_analysis(handle, rocsparse_operation_none, rocsparse_operation_none, m, nrhs, nnz, &alpha, descr,
@@ -336,18 +338,18 @@ T *test_rocsparse_matrix(const MatrixData<T> &matrix_in, const T *h_b, int k, in
                              dcsr_val, dcsr_row_ptr, dcsr_col_ind, dB, m, info, rocsparse_solve_policy_auto,
                              temp_buffer);
 
-      hipFree(temp_buffer);
+      USPARSE_HIP_API_CHECK(hipFree(temp_buffer));
 
-      hipDeviceSynchronize();
+      USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
       tm.stop();
       total_time += tm.time_use;
 
       if (i == 0) {
-        hipMemcpy(hB.data(), dB, sizeof(T) * m * nrhs, hipMemcpyDeviceToHost);
+        USPARSE_HIP_API_CHECK(hipMemcpy(hB.data(), dB, sizeof(T) * m * nrhs, hipMemcpyDeviceToHost));
       }
     }
     *out_time = static_cast<float>(total_time / k);
-    hipFree(temp_buffer);
+    USPARSE_HIP_API_CHECK(hipFree(temp_buffer));
   }
 
   // Check for zero pivot
@@ -362,11 +364,11 @@ T *test_rocsparse_matrix(const MatrixData<T> &matrix_in, const T *h_b, int k, in
   rocsparse_destroy_mat_info(info);
   rocsparse_destroy_mat_descr(descr);
   rocsparse_destroy_handle(handle);
-  hipFree(dcsr_row_ptr);
-  hipFree(dcsr_col_ind);
-  hipFree(dcsr_val);
-  hipFree(dB);
-  // hipFree(temp_buffer);
+  USPARSE_HIP_API_CHECK(hipFree(dcsr_row_ptr));
+  USPARSE_HIP_API_CHECK(hipFree(dcsr_col_ind));
+  USPARSE_HIP_API_CHECK(hipFree(dcsr_val));
+  USPARSE_HIP_API_CHECK(hipFree(dB));
+  // USPARSE_HIP_API_CHECK(hipFree(temp_buffer));
 
   return result;
 }

@@ -11,6 +11,7 @@
 
 #include "building_config.h"
 #include "common/macros.h"
+#include "common/usparse_utils.hpp"
 
 #define LIGHT_KERNEL_CALLER(N)                                                                                         \
   ((spmv_light_kernel<N, __WF_SIZE__, DATA_TYPE>)<<<256, 256>>> (m, alpha, beta, hip_row_counter, rowptr, colindex, value, x, y))
@@ -21,9 +22,9 @@ void light_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
   VAR_FROM_CSR_DESC(DATA_TYPE, d_csr_desc);
 
   int *hip_row_counter;
-  hipMalloc((void **)&hip_row_counter, sizeof(int));
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&hip_row_counter, sizeof(int)));
   const int avg_eles_per_row = d_csr_desc.nnz / m;
-  hipMemset(hip_row_counter, 0, sizeof(int));
+  USPARSE_HIP_API_CHECK(hipMemset(hip_row_counter, 0, sizeof(int)));
 
   if (avg_eles_per_row <= 2) {
     LIGHT_KERNEL_CALLER(1);
@@ -41,7 +42,7 @@ void light_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
     LIGHT_KERNEL_CALLER(64);
   }
 
-  hipFree(hip_row_counter);
+  USPARSE_HIP_API_CHECK(hipFree(hip_row_counter));
 }
 
 template void light_sparse_spmv<usparse::usparse_int, usparse::usparse_fp32>(

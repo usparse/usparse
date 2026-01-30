@@ -43,8 +43,8 @@ template <typename T, typename I> struct PolicyFlag {
   //       } else {
   //         NumericBreakpointFlag = true;
   //         if (temp_buffer_size < BreakPointNumericPolicy::template buffer_size<T, I>(matrix_a, matrix_b)) {
-  //           HIP_CHECK(hipFree(temp_buffer));
-  //           HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&temp_buffer),
+  //           USPARSE_HIP_API_CHECK(hipFree(temp_buffer));
+  //           USPARSE_HIP_API_CHECK(hipMalloc(reinterpret_cast<void **>(&temp_buffer),
   //                               BreakPointNumericPolicy::template buffer_size<T, I>(matrix_a, matrix_b)))
   //         }
   //       }
@@ -52,8 +52,8 @@ template <typename T, typename I> struct PolicyFlag {
   //   } else {
   //     NumericBreakpointFlag = true;
   //     if (temp_buffer_size < BreakPointNumericPolicy::template buffer_size<T, I>(matrix_a, matrix_b)) {
-  //       HIP_CHECK(hipFree(temp_buffer));
-  //       HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&temp_buffer),
+  //       USPARSE_HIP_API_CHECK(hipFree(temp_buffer));
+  //       USPARSE_HIP_API_CHECK(hipMalloc(reinterpret_cast<void **>(&temp_buffer),
   //                           BreakPointNumericPolicy::template buffer_size<T, I>(matrix_a, matrix_b)))
   //     }
   //   }
@@ -83,7 +83,7 @@ public:
     policyflag.SetNumericPolicyFlag(row_nnz_max, matrix_a, matrix_b, matrix_c, temp_buffer, temp_buffer_size);
     if (policyflag.NumericEscFlag) {
 #ifdef DEVICE_MALLOC_INITILIZE
-      HIP_CHECK(hipMemset(matrix_c.col_idx_ptr, 0, ALIGN_256_BYTES(matrix_c.nnz * sizeof(I)) + ALIGN_256_BYTES(matrix_c.nnz * sizeof(T))))
+      USPARSE_HIP_API_CHECK(hipMemset(matrix_c.col_idx_ptr, 0, ALIGN_256_BYTES(matrix_c.nnz * sizeof(I)) + ALIGN_256_BYTES(matrix_c.nnz * sizeof(T))))
 #endif
       spgemm_numeric<T, I, EscNumericPolicy>(alpha, matrix_a, matrix_b, matrix_c, temp_buffer);
     } else if (policyflag.NumericHashFlag) {

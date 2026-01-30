@@ -1,6 +1,9 @@
 set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE BOOL "")
 set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "")
 add_subdirectory(${PROJECT_SOURCE_DIR}/third-party/google-benchmark-1.9.4 gbench-1.9.4)
+if(TARGET benchmark AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(benchmark PRIVATE -Wno-return-type)
+endif()
 
 find_package(rocSPARSE REQUIRED)
 

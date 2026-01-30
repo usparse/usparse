@@ -1,10 +1,10 @@
 #ifndef USTB_SPARSE_SPGEMM_SPGEMM_SYMBOLIC_IMPL_HPP
 #define USTB_SPARSE_SPGEMM_SPGEMM_SYMBOLIC_IMPL_HPP
 
-#include "spgemm_common/check/hip_check.hpp"
 #include "spgemm_common/max/max_impl.hpp"
 #include "spgemm_common/scan/scan_impl.hpp"
 #include "align.h"
+#include "common/usparse_utils.hpp"
 #include "compress_matrix.h"
 #include "csr_matrix.h"
 #include "spgemm_compress_impl.hpp"
@@ -93,8 +93,8 @@ public:
       align_size = ALIGN_256_BYTES(alloc_size);
       ptr += align_size;
       common::max<I>(matrix_a.rows, chunk_num_ptr + 1, chunk_num_max_ptr, max_temp_buffer);
-      // HIP_CHECK(hipMemcpy(&hchunk_nnz_max, chunk_num_max_ptr, sizeof(I), hipMemcpyDeviceToHost))
-      hipDeviceSynchronize();
+      // USPARSE_HIP_API_CHECK(hipMemcpy(&hchunk_nnz_max, chunk_num_max_ptr, sizeof(I), hipMemcpyDeviceToHost))
+      USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
       hchunk_nnz_max = *chunk_num_max_ptr;
     }
 
@@ -147,10 +147,10 @@ public:
                                                            temp_buffer);
       } else {
         void *alternative_buffer = nullptr;
-        HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&alternative_buffer), alternative_policy_buffer_size))
+        USPARSE_HIP_API_CHECK(hipMalloc(reinterpret_cast<void **>(&alternative_buffer), alternative_policy_buffer_size))
         AlternativePolicy::template symbolic_row_nnz<T, I>(matrix_a, matrix_b, row_nnz_ptr_c, max_temp_buffer,
                                                            alternative_buffer);
-        HIP_CHECK(hipFree(alternative_buffer))
+        USPARSE_HIP_API_CHECK(hipFree(alternative_buffer))
       }
     }
   }
@@ -204,8 +204,8 @@ public:
       align_size = ALIGN_256_BYTES(alloc_size);
       ptr += align_size;
       common::max<I>(matrix_a.rows, chunk_num_ptr + 1, chunk_num_max_ptr, max_temp_buffer);
-      // HIP_CHECK(hipMemcpy(&hchunk_nnz_max, chunk_num_max_ptr, sizeof(I), hipMemcpyDeviceToHost))
-      hipDeviceSynchronize();
+      // USPARSE_HIP_API_CHECK(hipMemcpy(&hchunk_nnz_max, chunk_num_max_ptr, sizeof(I), hipMemcpyDeviceToHost))
+      USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
       hchunk_nnz_max = *chunk_num_max_ptr;
     }
 
@@ -295,10 +295,10 @@ public:
                                                            temp_buffer);
       } else {
         void *alternative_buffer = nullptr;
-        HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&alternative_buffer), alternative_policy_buffer_size))
+        USPARSE_HIP_API_CHECK(hipMalloc(reinterpret_cast<void **>(&alternative_buffer), alternative_policy_buffer_size))
         AlternativePolicy::template symbolic_row_nnz<T, I>(matrix_a, matrix_b, row_nnz_ptr_c, max_temp_buffer,
                                                            alternative_buffer);
-        HIP_CHECK(hipFree(alternative_buffer))
+        USPARSE_HIP_API_CHECK(hipFree(alternative_buffer))
       }
     }
   }
@@ -501,11 +501,11 @@ void spgemm_symbolic(const CsrMatrix<T, I> &matrix_a, const CsrMatrix<T, I> &mat
 
   // find max in row_nnz
   common::max<I>(matrix_a.rows + 1, row_nnz_ptr_c, row_nnz_max_ptr, max_temp_buffer);
-  // HIP_CHECK(hipMemcpy(hrow_nnz_max, row_nnz_max_ptr, sizeof(I), hipMemcpyDeviceToHost))
+  // USPARSE_HIP_API_CHECK(hipMemcpy(hrow_nnz_max, row_nnz_max_ptr, sizeof(I), hipMemcpyDeviceToHost))
   // scan row_nnz -> row_ptr_c
   common::scan<I>(matrix_a.rows + 1, row_nnz_ptr_c, row_ptr_c, scan_temp_buffer);
-  // HIP_CHECK(hipMemcpy(hnnz_c, row_ptr_c + matrix_a.rows, sizeof(I), hipMemcpyDeviceToHost))
-  hipDeviceSynchronize();
+  // USPARSE_HIP_API_CHECK(hipMemcpy(hnnz_c, row_ptr_c + matrix_a.rows, sizeof(I), hipMemcpyDeviceToHost))
+  USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
   *hrow_nnz_max = *row_nnz_max_ptr;
   *hnnz_c = row_ptr_c[matrix_a.rows];
 }

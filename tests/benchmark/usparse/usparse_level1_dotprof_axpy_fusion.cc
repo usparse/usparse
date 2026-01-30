@@ -65,13 +65,13 @@ template <typename T> static void Usparse_dotprod_axpy_fusion(benchmark::State &
   for (auto _ : state) {
     usparse::dotprod_axpy_fusion<uint, T, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
         d_r0, d_V, d_H, d_temp_buffer, (uint)N, (uint)VN, (uint)m, (uint)i, 0, f_density);
-    hipDeviceSynchronize();
+    TEST_HIP_CHECK(hipDeviceSynchronize());
   }
 
-  hipFree(d_r0);
-  hipFree(d_V);
-  hipFree(d_H);
-  hipFree(d_temp_buffer);
+  TEST_HIP_CHECK(hipFree(d_r0));
+  TEST_HIP_CHECK(hipFree(d_V));
+  TEST_HIP_CHECK(hipFree(d_H));
+  TEST_HIP_CHECK(hipFree(d_temp_buffer));
 
   const std::size_t mem_size = N * sizeof(T) * 2;
   state.counters["Bandwidth"] =
@@ -135,17 +135,17 @@ template <typename T> static void Usparse_dotprod_axpy_normal(benchmark::State &
   for (auto _ : state) {
     for (int k = 0; k <= i; k++) {
       usparse::device_dotProduct<uint, T>(d_r0, d_V + k * N, N, &d_H[k * RESTART_TIMES + i], d_temp_buffer, 0);
-      hipDeviceSynchronize();
+      TEST_HIP_CHECK(hipDeviceSynchronize());
       const T alpha = -d_H[k * RESTART_TIMES + i];
       usparse::device_daxpy<uint, T, T>(alpha, d_V + N * k, d_r0, N);
     }
-    hipDeviceSynchronize();
+    TEST_HIP_CHECK(hipDeviceSynchronize());
   }
 
-  hipFree(d_r0);
-  hipFree(d_V);
-  hipFree(d_H);
-  hipFree(d_temp_buffer);
+  TEST_HIP_CHECK(hipFree(d_r0));
+  TEST_HIP_CHECK(hipFree(d_V));
+  TEST_HIP_CHECK(hipFree(d_H));
+  TEST_HIP_CHECK(hipFree(d_temp_buffer));
 }
 
 BENCHMARK_TEMPLATE(Usparse_dotprod_axpy_normal, float)
@@ -189,7 +189,7 @@ BENCHMARK_TEMPLATE_METHOD_F(UsparseLevel1Fixture, dotDaxpyFusion)(benchmark::Sta
   // benchmark
   for (auto _ : state) {
     usparse::dot_daxpy_fusion<I, T>(d_x, d_y, d_result, d_temp_buffer, N, m, i, &buffer_size);
-    hipDeviceSynchronize();
+    TEST_HIP_CHECK(hipDeviceSynchronize());
   }
 
   // clean

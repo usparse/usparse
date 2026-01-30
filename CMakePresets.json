@@ -66,6 +66,17 @@
                 "HIP_HIPCC_FLAGS": "-std=c++14"
             }
         },
+        {
+            "name": "use-dcc",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "dcc",
+                "CMAKE_CXX_COMPILER": "dcc",
+                "CMAKE_C_FLAGS": "-Wno-return-type",
+                "CMAKE_CXX_FLAGS": "-Wno-return-type",
+                "HIP_HIPCC_FLAGS": "-std=c++14 -Wno-return-type"
+            }
+        },
 
         {
             "name": "rocm-hipcc",
@@ -77,11 +88,30 @@
             ]
         },
         {
+            "name": "rocm-dcc",
+            "displayName": "Build for ROCm platform using dcc without benchmark",
+            "inherits": [
+                "use-dcc",
+                "use-platform-rocm",
+                "default-build-dir"
+            ]
+        },
+        {
             "name": "cuda-hipcc",
             "displayName": "Build for CUDA platform using hipcc without benchmark",
             "inherits": [
                 "use-nv-hipcc-wrapper",
                 "use-platform-cuda",
+                "default-build-dir"
+            ]
+        },
+        {
+            "name": "rocm-dcc-benchmark",
+            "displayName": "Build for ROCm platform using dcc with benchmark enabled",
+            "inherits": [
+                "use-dcc",
+                "enable-benchmark",
+                "use-platform-rocm",
                 "default-build-dir"
             ]
         },
@@ -108,12 +138,21 @@
     ],
     "buildPresets": [
         {
+            "name": "rocm-dcc",
+            "configurePreset": "rocm-dcc"
+        },
+        {
             "name": "rocm-hipcc",
             "configurePreset": "rocm-hipcc"
         },
         {
             "name": "cuda-hipcc",
             "configurePreset": "cuda-hipcc"
+        },
+
+        {
+            "name": "rocm-dcc-benchmark",
+            "configurePreset": "rocm-dcc-benchmark"
         },
         {
             "name": "rocm-hipcc-benchmark",

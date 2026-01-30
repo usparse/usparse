@@ -1,8 +1,9 @@
 #ifndef LOOKBACK_SCAN_HPP
 #define LOOKBACK_SCAN_HPP
 
-#include "../check/hip_check.hpp"
 #include "../tools/set_val.hpp"
+#include "common/usparse_utils.hpp"
+
 #include <hip/hip_runtime.h>
 
 namespace common {
@@ -229,7 +230,7 @@ namespace common {
 
       int *id_count_ptr = reinterpret_cast<int *>(ptr);
 #ifdef DEVICE_MALLOC_INITILIZE
-      // HIP_CHECK(hipMemset(id_count_ptr, 0, sizeof(int)))
+      // USPARSE_HIP_API_CHECK(hipMemset(id_count_ptr, 0, sizeof(int)))
       set_val<int, 0>(id_count_ptr);
 #endif
 
@@ -241,11 +242,11 @@ namespace common {
       const size_t buffer_size = decoupled_look_back_scan_buffer_size<T>(input_size);
 
       void *temp_buffer = nullptr;
-      HIP_CHECK(hipMalloc(reinterpret_cast<void **>(&temp_buffer), buffer_size))
+      USPARSE_HIP_API_CHECK(hipMalloc(reinterpret_cast<void **>(&temp_buffer), buffer_size))
 
       decoupled_look_back_scan_impl<T>(input_size, input, output, temp_buffer);
 
-      HIP_CHECK(hipFree(temp_buffer))
+      USPARSE_HIP_API_CHECK(hipFree(temp_buffer))
     }
   } // namespace lookback_scan
 } // namespace common

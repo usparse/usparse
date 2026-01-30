@@ -111,11 +111,11 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
   // std::cout << "d_sn =" << d_sn << std::endl;
   // std::cout << "d_vi =" << d_vi << std::endl;
 
-  HIP_CHECK(hipMalloc(&d_beta, sizeof(double)));
-  HIP_CHECK(hipMalloc(&d_b, N * sizeof(double)));
-  HIP_CHECK(hipMalloc(&d_temp_buffer, (N / 256 + (N % 256 == 0 ? 0 : 1)) * sizeof(double)));
-  HIP_CHECK(hipMemcpy(dev_x, x_d, N * sizeof(double), hipMemcpyHostToDevice));
-  HIP_CHECK(hipMemcpy(d_b, _b, N * sizeof(double), hipMemcpyHostToDevice));
+  USPARSE_HIP_API_CHECK(hipMalloc(&d_beta, sizeof(double)));
+  USPARSE_HIP_API_CHECK(hipMalloc(&d_b, N * sizeof(double)));
+  USPARSE_HIP_API_CHECK(hipMalloc(&d_temp_buffer, (N / 256 + (N % 256 == 0 ? 0 : 1)) * sizeof(double)));
+  USPARSE_HIP_API_CHECK(hipMemcpy(dev_x, x_d, N * sizeof(double), hipMemcpyHostToDevice));
+  USPARSE_HIP_API_CHECK(hipMemcpy(d_b, _b, N * sizeof(double), hipMemcpyHostToDevice));
 
   usparse::csrmv_mat_info csrmv_info;
   usparse::device_adaptive_analysis(0, 1.0, 0.0, d_csr_desc, usparse::usparse_csrmv_algo_flat, &csrmv_info);
@@ -151,8 +151,8 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
 
     usparse::device_dcopy(dev_y, d_V, N);
 
-    HIP_CHECK(hipMemset(d_s, 0.0, (RESTART_TIMES + 1) * sizeof(double)));
-    HIP_CHECK(hipMemcpy(&d_s[0], d_beta, sizeof(double), hipMemcpyDeviceToDevice));
+    USPARSE_HIP_API_CHECK(hipMemset(d_s, 0.0, (RESTART_TIMES + 1) * sizeof(double)));
+    USPARSE_HIP_API_CHECK(hipMemcpy(&d_s[0], d_beta, sizeof(double), hipMemcpyDeviceToDevice));
 
     resid = std::abs(beta);
     i = -1;
@@ -218,9 +218,9 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
   // destory data
   destory_device_matrix(d_r0, d_V, d_s, d_H, d_cs, d_sn, d_vi);
 
-  HIP_CHECK(hipFree(d_beta));
-  HIP_CHECK(hipFree(d_b));
-  HIP_CHECK(hipFree(d_temp_buffer));
+  USPARSE_HIP_API_CHECK(hipFree(d_beta));
+  USPARSE_HIP_API_CHECK(hipFree(d_b));
+  USPARSE_HIP_API_CHECK(hipFree(d_temp_buffer));
   // todo: destroy csrmv info.
   return make_tuple(iteration, test_time, resid / init_res); // 禁止修改
 }
@@ -285,9 +285,9 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   init_device_matrix_float(&d_V_f, &d_H_f, &d_vi_f, &d_sn_f, &d_cs_f, &d_r0_f, &d_A_val_f, &d_s_f, &d_b_f, N,
                            RESTART_TIMES, dev_A->nnz);
 
-  HIP_CHECK(hipMalloc(&d_b, N * sizeof(double)));
-  HIP_CHECK(hipMemcpy(dev_x, x_d, N * sizeof(double), hipMemcpyHostToDevice));
-  HIP_CHECK(hipMemcpy(d_b, _b, N * sizeof(double), hipMemcpyHostToDevice));
+  USPARSE_HIP_API_CHECK(hipMalloc(&d_b, N * sizeof(double)));
+  USPARSE_HIP_API_CHECK(hipMemcpy(dev_x, x_d, N * sizeof(double), hipMemcpyHostToDevice));
+  USPARSE_HIP_API_CHECK(hipMemcpy(d_b, _b, N * sizeof(double), hipMemcpyHostToDevice));
 
   utils::warmup();
   
@@ -301,13 +301,13 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   // 任何对稀疏矩阵的预处理操作，如稀疏矩阵压缩格式转换、非零元数组或向量的精度转换、稀疏矩阵的非零元特征计算等，均需放在计时范围内，相关内存申请和释放除外
 
   if (usparse::GMRES_ORTHO_USE == usparse::GMRES_OPT_USE_GS) {
-    HIP_CHECK(hipMalloc(&d_gs_buffer, RESTART_TIMES * (N / 256 + (N % 256 == 0 ? 0 : 1)) * sizeof(float)));
+    USPARSE_HIP_API_CHECK(hipMalloc(&d_gs_buffer, RESTART_TIMES * (N / 256 + (N % 256 == 0 ? 0 : 1)) * sizeof(float)));
     // TODO: strategy selection.
   }
 
   // additional 1 float for d_beta_f.
   const int tmp_buf_len = N / 256 + (N % 256 == 0 ? 0 : 1);
-  HIP_CHECK(hipMalloc(&d_temp_buffer, (tmp_buf_len + 1) * sizeof(float)));
+  USPARSE_HIP_API_CHECK(hipMalloc(&d_temp_buffer, (tmp_buf_len + 1) * sizeof(float)));
   d_beta_f = d_temp_buffer + tmp_buf_len;
 
   // force conversion precision form dev_A.val to d_A_val_f
@@ -356,7 +356,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
         usparse::device_dcopy<uint, float>(d_r0_f, d_V_f, N);
 
         usparse::device_memset<uint, float>(d_s_f, (RESTART_TIMES + 1));
-        HIP_CHECK(hipMemcpy(&d_s_f[0], d_beta_f, sizeof(float), hipMemcpyDeviceToDevice));
+        USPARSE_HIP_API_CHECK(hipMemcpy(&d_s_f[0], d_beta_f, sizeof(float), hipMemcpyDeviceToDevice));
       } else {
         // input: dev_y (double[])
         // output: d_r0_f <- (float [])(dev_y) - d_b_f
@@ -370,11 +370,11 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
         usparse::gmres::big_fusion_outter_itl_v1<uint, double, float>(dev_y, d_r0_f, d_b_f, d_V_f, d_s_f, d_temp_buffer,
                                                                       d_beta_f, N, S_LEN);
         float beta_host_f32 = 0.0;
-        HIP_CHECK(hipMemcpy(&beta_host_f32, d_beta_f, sizeof(float), hipMemcpyDeviceToHost)); // sync kernel
+        USPARSE_HIP_API_CHECK(hipMemcpy(&beta_host_f32, d_beta_f, sizeof(float), hipMemcpyDeviceToHost)); // sync kernel
         beta = beta_host_f32;                                                                 // fp32 to fp64
 
         // note: d2d can be async on DCU, but we dont need sync. Because it is ready before using `d_s_f`.
-        HIP_CHECK(hipMemcpy(&d_s_f[0], d_beta_f, sizeof(float), hipMemcpyDeviceToDevice));
+        USPARSE_HIP_API_CHECK(hipMemcpy(&d_s_f[0], d_beta_f, sizeof(float), hipMemcpyDeviceToDevice));
       }
     } else {
       // if it is the first iteration. the above code in if branch can be simplified as following.
@@ -390,7 +390,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
         usparse::device_dcopy<uint, float>(d_r0_f, d_V_f, N);
 
         usparse::device_memset<uint, float>(d_s_f, (RESTART_TIMES + 1));
-        HIP_CHECK(hipMemcpy(&d_s_f[0], d_beta_f, sizeof(float), hipMemcpyDeviceToDevice));
+        USPARSE_HIP_API_CHECK(hipMemcpy(&d_s_f[0], d_beta_f, sizeof(float), hipMemcpyDeviceToDevice));
       } else {
         // input: d_b_f
         // output: d_r0_f: (d_b_f) * (1.0/beta). (omitted. because d_r0_f is overwrite later)
@@ -400,7 +400,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
         usparse::gmres::big_fusion_outter_itl_v0_wrapper<uint, float>(d_b_f, d_V_f, d_s_f, beta, N, S_LEN);
         const float beta_fp32 = beta;
         // copying d_s_f does not need sync: it is ready before using `d_s_f`.
-        HIP_CHECK(hipMemcpy(&d_s_f[0], &beta_fp32, sizeof(float), hipMemcpyHostToDevice));
+        USPARSE_HIP_API_CHECK(hipMemcpy(&d_s_f[0], &beta_fp32, sizeof(float), hipMemcpyHostToDevice));
       }
     }
 
@@ -563,9 +563,9 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   destory_device_matrix(d_r0, d_V, d_s, d_H, d_cs, d_sn, d_vi);
   destory_device_float(d_V_f, d_H_f, d_vi_f, d_sn_f, d_cs_f, d_r0_f, d_A_val_f, d_s_f, d_b_f);
 
-  // HIP_CHECK(hipFree(d_beta_f));
-  HIP_CHECK(hipFree(d_b));
-  HIP_CHECK(hipFree(d_temp_buffer));
+  // USPARSE_HIP_API_CHECK(hipFree(d_beta_f));
+  USPARSE_HIP_API_CHECK(hipFree(d_b));
+  USPARSE_HIP_API_CHECK(hipFree(d_temp_buffer));
   return make_tuple(iteration, test_time, resid / init_res); // 禁止修改
 }
 

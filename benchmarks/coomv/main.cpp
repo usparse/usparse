@@ -47,7 +47,7 @@ int run_coo_benchmark(std::string mtx_path, coo_mtx<type_sparse_default_index, P
 
 template <typename INDEX_TYPE, typename DATA_TYPE>
 void test_spmv(std::string mtx_path, coo_mtx<INDEX_TYPE, DATA_TYPE> h_coo, host_vectors<DATA_TYPE> h_vectors) {
-  HIP_CHECK(hipSetDevice(0));
+  USPARSE_HIP_API_CHECK(hipSetDevice(0));
   DATA_TYPE *dev_x, *dev_y;
   coo_mtx<INDEX_TYPE, DATA_TYPE> d_coo =
       create_device_data<INDEX_TYPE, DATA_TYPE>(h_coo, h_vectors.hX, h_vectors.temphY, dev_x, dev_y);
