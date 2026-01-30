@@ -1,5 +1,23 @@
 add_subdirectory(${PROJECT_SOURCE_DIR}/third-party/googletest-1.16/ gtest-1.16)
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        if(TARGET gtest)
+                target_compile_options(gtest PRIVATE -Wno-return-type)
+        endif()
+
+        if(TARGET gtest_main)
+                target_compile_options(gtest_main PRIVATE -Wno-return-type)
+        endif()
+
+        if(TARGET gmock)
+                target_compile_options(gmock PRIVATE -Wno-return-type)
+        endif()
+
+        if(TARGET gmock_main)
+                target_compile_options(gmock_main PRIVATE -Wno-return-type)
+        endif()
+endif()
+
 enable_testing()
 find_package(rocSPARSE REQUIRED)
 
