@@ -16,7 +16,7 @@ add_subdirectory(library)
 add_subdirectory(cli)
 
 if(USPARSE_AUTO_TUNER_ENABLE)
-    add_subdirectory(tuner/csrmv/line_enhance)
+    add_subdirectory(tuner)
 endif()
 
 if(USPARSE_BUILD_BENCHMARK)

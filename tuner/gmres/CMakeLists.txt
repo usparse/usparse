@@ -1,7 +1,7 @@
 find_package(rocSPARSE REQUIRED)
 
-set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
-set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/utuner/bin)
+set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/utuner/lib)
 
 add_executable(
         usparse_kernel_auto_tuner
