@@ -33,7 +33,7 @@
             "name": "use-platform-rocm",
             "hidden": true,
             "cacheVariables": {
-                "WAVEFRONT_SIZE": "64",
+                "UPSARSE_WAVEFRONT_SIZE": "64",
                 "BENCHMARK_CUDA_ENABLE_FLAG": "OFF"
             }
         },
@@ -41,7 +41,7 @@
             "name": "use-platform-cuda",
             "hidden": true,
             "cacheVariables": {
-                "WAVEFRONT_SIZE": "32",
+                "UPSARSE_WAVEFRONT_SIZE": "32",
                 "BENCHMARK_CUDA_ENABLE_FLAG": "ON",
                 // set cuda arch here.
                 "HIP_NVCC_FLAGS": "-arch=sm_89 -rdc=true -Xcompiler -fdiagnostics-color=always"
