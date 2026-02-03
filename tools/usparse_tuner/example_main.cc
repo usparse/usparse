@@ -9,7 +9,7 @@
 // OFFSET is the parameter to be tuned.
 template <int OFFSET> int Sqrt(int n) {
   for (int i = 0; i < 1000 * OFFSET * n; i++) {
-    sqrt(i + 0.0);
+    double r = sqrt(i + 0.0);
   }
   return 0;
 }
