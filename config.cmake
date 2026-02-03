@@ -4,11 +4,10 @@ option(USPARSE_BUILD_BENCHMARK "build usparse benchmark" OFF)
 option(USPARSE_BUILD_DEP_BY_PKG "use pkg for package manager" OFF)
 option(UPSARSE_DEVICE_SIDE_VERIFY "Verify result of device side" OFF)
 option(UPSARSE_BUILD_FOR_ROCSPARSE "build lib for rocsparse" OFF)
+# threads number in a wavefront (which is usually 64 for AMD GPU and 32 for NVIDIA GPU)
 set(UPSARSE_WAVEFRONT_SIZE "64" CACHE STRING "threads number in a wavefront")
 
 # gmres-gpu start
-option(HIP_ENABLE_FLAG "Enable HIP" ON)
-
 option(USPARSE_UNIT_TEST_ENABLE "Enable unit tests" ON)
 option(USPARSE_BENCHMARK_TESTS_ENABLE "Enable kernel benchmark" ON)
 
@@ -28,7 +27,6 @@ set(SPMV_ACC_CLI_LIB sparse_cli)
 ### floowing cmake comes from spmv-acc: todo: merge it.
 
 # enable to use hip to accelerate on GPU side, currently, it must be `ON`.
-option(SPMV_BUILD_TOOLS "build tools" OFF)
 option(SPMV_OMP_ENABLED_FLAG "Enable OpenMP to parse input file" OFF)
 
 # default: perform result verification on CPU side.
@@ -37,8 +35,6 @@ option(DEVICE_SIDE_VERIFY_FLAG "Verify result of device side" OFF)
 option(BENCHMARK_CUDA_ENABLE_FLAG "Enable performance benchmark test on CUDA device" OFF)
 option(BENCHMARK_FORCE_SYNC_KERNELS "Add `hipDeviceSynchronize` between kernelss while benchmarking for getting real kernel time" OFF)
 set(AVAILABLE_CU "60" CACHE STRING "available Compute Units per GPU")
-# threads number in a wavefront (which is usually 64 for AMD GPU and 32 for NVIDIA GPU)
-set(WAVEFRONT_SIZE "64" CACHE STRING "threads number in a wavefront")
 set(KERNEL_STRATEGY "DEFAULT" CACHE STRING "SpMV strategy")
 # options are:
 # - DEFAULT: default strategy. The source files are saved in 'acc/hip'.
@@ -100,7 +96,6 @@ if(DEVICE_SIDE_VERIFY_FLAG)
     add_definitions(-DDEVICE_SIDE_VERIFY_FLAG)
 endif()
 
-set(WAVEFRONT_SIZE "64" CACHE STRING "threads number in a wavefront")
 set(KERNEL_STRATEGY "DEFAULT" CACHE STRING "SpGEMM strategy")
 
 set(SPGEMM_BIN_NAME spgemm-hip)

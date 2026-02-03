@@ -55,7 +55,7 @@ if (DEVICE_MALLOC_INITILIZE_FLAG)
     MESSAGE(STATUS "device side malloc initialization")
 endif ()
 
-set(__WF_SIZE__ ${WAVEFRONT_SIZE})
+set(__WF_SIZE__ ${UPSARSE_WAVEFRONT_SIZE})
 
 configure_file(
         "${CMAKE_CURRENT_SOURCE_DIR}/building_config.h.in"

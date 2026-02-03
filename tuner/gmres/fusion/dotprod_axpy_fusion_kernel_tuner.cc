@@ -11,7 +11,6 @@
 #include <hip/hip_runtime_api.h>
 #include <rocsparse/rocsparse.h>
 
-#include "../../unit/tests_utils.hpp"
 #include "kernels/usparse_gmres.h"
 
 USPARSE_TUNER_BENCH(dotProdAxpyFusion_Tuner) {
@@ -49,12 +48,12 @@ USPARSE_TUNER_BENCH(dotProdAxpyFusion_Tuner) {
     T *d_r0 = nullptr;
     T *d_V = nullptr;
     T *d_H = nullptr;
-    TEST_HIP_CHECK(hipMalloc(&d_r0, N * sizeof(T)));
-    TEST_HIP_CHECK(hipMalloc(&d_V, N * (RESTART_TIMES + 1) * sizeof(T)));
-    TEST_HIP_CHECK(hipMalloc(&d_H, (RESTART_TIMES + 1) * RESTART_TIMES * sizeof(T)));
-    TEST_HIP_CHECK(hipMemcpy(d_r0, h_r0.data(), N * sizeof(T), hipMemcpyHostToDevice));
-    TEST_HIP_CHECK(hipMemcpy(d_V, h_V.data(), N * (RESTART_TIMES + 1) * sizeof(T), hipMemcpyHostToDevice));
-    TEST_HIP_CHECK(
+    USPARSE_HIP_API_CHECK(hipMalloc(&d_r0, N * sizeof(T)));
+    USPARSE_HIP_API_CHECK(hipMalloc(&d_V, N * (RESTART_TIMES + 1) * sizeof(T)));
+    USPARSE_HIP_API_CHECK(hipMalloc(&d_H, (RESTART_TIMES + 1) * RESTART_TIMES * sizeof(T)));
+    USPARSE_HIP_API_CHECK(hipMemcpy(d_r0, h_r0.data(), N * sizeof(T), hipMemcpyHostToDevice));
+    USPARSE_HIP_API_CHECK(hipMemcpy(d_V, h_V.data(), N * (RESTART_TIMES + 1) * sizeof(T), hipMemcpyHostToDevice));
+    USPARSE_HIP_API_CHECK(
         hipMemcpy(d_H, h_H.data(), (RESTART_TIMES) * (RESTART_TIMES + 1) * sizeof(T), hipMemcpyHostToDevice));
 
     std::size_t buffer_size = 0;
@@ -62,19 +61,19 @@ USPARSE_TUNER_BENCH(dotProdAxpyFusion_Tuner) {
     auto VN = usparse::get_r0_v_mem_len(N);
     usparse::dotprod_axpy_fusion<uint, T, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
         nullptr, nullptr, nullptr, d_temp_buffer, (uint)N, (uint)VN, (uint)m, (uint)i, &buffer_size, f_density);
-    TEST_HIP_CHECK(hipMalloc(&d_temp_buffer, buffer_size));
+    USPARSE_HIP_API_CHECK(hipMalloc(&d_temp_buffer, buffer_size));
 
     for (auto _ : states) {
       usparse::dotprod_axpy_fusion_internal_imp<uint, T, THREADS, ELES_PER_THREAD, STRIDES,
                                                 usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
           d_r0, d_V, d_H, d_temp_buffer, (uint)N, (uint)VN, (uint)m, (uint)i, nullptr);
-    TEST_HIP_CHECK(hipDeviceSynchronize());
+    USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
     }
 
-    TEST_HIP_CHECK(hipFree(d_r0));
-    TEST_HIP_CHECK(hipFree(d_V));
-    TEST_HIP_CHECK(hipFree(d_H));
-    TEST_HIP_CHECK(hipFree(d_temp_buffer));
+    USPARSE_HIP_API_CHECK(hipFree(d_r0));
+    USPARSE_HIP_API_CHECK(hipFree(d_V));
+    USPARSE_HIP_API_CHECK(hipFree(d_H));
+    USPARSE_HIP_API_CHECK(hipFree(d_temp_buffer));
 
     const std::size_t mem_size = N * sizeof(T) * 2;
     states.counters["Bandwidth"] = usparse::tuner::Counter(
