@@ -7,8 +7,6 @@ option(UPSARSE_BUILD_FOR_ROCSPARSE "build lib for rocsparse" OFF)
 set(UPSARSE_WAVEFRONT_SIZE "64" CACHE STRING "threads number in a wavefront")
 
 # gmres-gpu start
-option(HIP_ENABLE_FLAG "Enable HIP" ON)
-
 option(USPARSE_UNIT_TEST_ENABLE "Enable unit tests" ON)
 option(USPARSE_BENCHMARK_TESTS_ENABLE "Enable kernel benchmark" ON)
 

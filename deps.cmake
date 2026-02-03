@@ -1,5 +1,5 @@
 # find HIP
-if (HIP_ENABLE_FLAG)
+if (USPARSE_ENABLE_HIP)
     # see https://github.com/ROCm-Developer-Tools/HIP/blob/master/samples/2_Cookbook/12_cmake_hip_add_executable
     if (NOT DEFINED HIP_PATH)
         if (NOT DEFINED ENV{HIP_PATH})
@@ -17,5 +17,5 @@ if (HIP_ENABLE_FLAG)
         message(FATAL_ERROR "Could not find HIP. Ensure that HIP is either installed in /opt/rocm/hip or the variable HIP_PATH is set to point to the right location.")
     endif ()
 
-    set(USPARSE_HIPCC_OPTIONS)
+    set(USPARSE_HIPCC_OPTIONS) # set hipcc arguments
 endif ()
