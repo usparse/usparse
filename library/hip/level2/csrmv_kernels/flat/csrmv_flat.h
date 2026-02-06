@@ -45,8 +45,7 @@ void adaptive_flat_sparse_spmv(int trans, const T alpha, const T beta, const csr
  * FLAT_STORE_Y_POLICY is FLAT_STORE_Y_POLICY_DETERMINISTIC).
  */
 template <typename DATA_TYPE, typename NNZ_TYPE, typename ROW_TYPE, typename COLUMN_TYPE, typename BP_DATA_TYPE,
-          typename Y_TYPE, int FLAT_STORE_Y_POLICY = FLAT_STORE_Y_POLICY_UNDETERMINISTIC,
-          bool CREAT_PART_SUM_TEMP_BUFFER = true>
+          typename Y_TYPE, int FLAT_STORE_Y_POLICY, bool CREAT_PART_SUM_TEMP_BUFFER>
 void flat_matrix_analyse(hipStream_t stream, const csr_mat_descr<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE> d_csr_desc,
                          csrmv_flat_mtx_info<BP_DATA_TYPE, Y_TYPE> *info);
 
