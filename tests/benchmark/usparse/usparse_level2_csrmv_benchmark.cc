@@ -20,7 +20,8 @@ void uspmv(int trans, const double alpha, const double beta, const csr_desc<int,
            const csr_desc<int, double> d_csr_desc, const double *dx, double *dy, const std::string &strategy) {
   if (strategy == "flat") {
     // fixme: not work as expeted. pass info into it.
-    adaptive_flat_sparse_spmv<int, double>(trans, alpha, beta, d_csr_desc, dx, dy, nullptr);
+    adaptive_csrmv_flat_atomic<double, int, double, double, double, int, int, int, double>(
+        hipStreamDefault, trans, alpha, beta, d_csr_desc, dx, dy, nullptr);
     TEST_HIP_CHECK(hipDeviceSynchronize());
   } else if (strategy == "line") {
     auto d_csr_mat_descr = usparse::csr_mat_descr<double, int, int, int>(d_csr_desc);

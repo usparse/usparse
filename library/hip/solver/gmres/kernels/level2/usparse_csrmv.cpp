@@ -31,7 +31,8 @@ void usparse::device_adaptive_analysis(int trans, const VALUE_TYPE alpha, const 
     auto d_csr_mat_descr = usparse::csr_mat_descr<VALUE_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE>(d_csr_desc);
     csrmv_flat_mtx_info<INDEX_TYPE, VALUE_TYPE> *flat_info =
         reinterpret_cast<csrmv_flat_mtx_info<INDEX_TYPE, VALUE_TYPE> *>(info->flat_info);
-    flat_analyse(d_csr_mat_descr, flat_info);
+    flat_matrix_analyse_atomic<VALUE_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, VALUE_TYPE>(
+        hipStreamDefault, d_csr_mat_descr, flat_info);
   } else if (algo == usparse::usparse_csrmv_algo_line_enhance) {
     return;
   } else if (algo == usparse::usparse_csrmv_algo_vector) {
@@ -73,7 +74,9 @@ void usparse::device_adaptive_spmv(int trans, const VALUE_TYPE alpha, const VALU
   if (algo == usparse::usparse_csrmv_algo_flat && d_csr_desc.nnz > 0) {
     csrmv_flat_mtx_info<INDEX_TYPE, VALUE_TYPE> *flat_info =
         reinterpret_cast<csrmv_flat_mtx_info<INDEX_TYPE, VALUE_TYPE> *>(info->flat_info);
-    adaptive_flat_sparse_spmv<INDEX_TYPE, VALUE_TYPE, BETA_Y_POLICY>(trans, alpha, beta, d_csr_desc, dx, dy, flat_info);
+    adaptive_csrmv_flat_atomic<VALUE_TYPE, INDEX_TYPE, VALUE_TYPE, VALUE_TYPE, VALUE_TYPE, INDEX_TYPE, INDEX_TYPE,
+                               INDEX_TYPE, VALUE_TYPE, BETA_Y_POLICY>(hipStreamDefault, trans, alpha, beta, d_csr_desc,
+                                                                      dx, dy, flat_info);
   } else if (algo == usparse::usparse_csrmv_algo_line_enhance) {
     auto d_csr_mat_descr = usparse::csr_mat_descr<VALUE_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE>(d_csr_desc);
     adaptive_enhance_sparse_spmv<VALUE_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, VALUE_TYPE, VALUE_TYPE, VALUE_TYPE,

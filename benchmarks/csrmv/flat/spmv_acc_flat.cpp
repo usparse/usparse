@@ -84,8 +84,8 @@ void one_pass_flat_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE
 
   pre_timer.start();
   csrmv_flat_mtx_info<INDEX_TYPE, DATA_TYPE> info;
-  flat_matrix_analyse<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE, BP_DATA_TYPE, Y_TYPE,
-                      FLAT_STORE_Y_POLICY_UNDETERMINISTIC, true>(hipStreamDefault, d_csr_mat_desc, &info);
+  flat_matrix_analyse_atomic<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE, BP_DATA_TYPE, Y_TYPE>(hipStreamDefault,
+                                                                                               d_csr_mat_desc, &info);
   // todo: handle FLAT_PRE_CALC_BP_KERNEL_VERSION
   pre_timer.stop();
 
@@ -98,8 +98,8 @@ void one_pass_flat_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE
   using COMPUTE_MULTI_TYPE = DATA_TYPE;
   using COMPUTE_SUM_TYPE = DATA_TYPE;
 
-  adaptive_flat_sparse_spmv<DATA_TYPE, BP_DATA_TYPE, A_TYPE, X_TYPE, Y_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE,
-                            SCALE_DATA_TYPE>(hipStreamDefault, trans, alpha, beta, d_csr_mat_desc, x, y, &info);
+  adaptive_csrmv_flat_atomic<DATA_TYPE, BP_DATA_TYPE, A_TYPE, X_TYPE, Y_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE,
+                             SCALE_DATA_TYPE>(hipStreamDefault, trans, alpha, beta, d_csr_mat_desc, x, y, &info);
   calc_timer.stop(true);
   if (bmt != nullptr) {
     bmt->set_time(pre_timer.time_use, calc_timer.time_use, 0.0, 0.);
@@ -143,8 +143,8 @@ void segment_sum_v2_flat_sparse_spmv(int trans, const DATA_TYPE alpha, const DAT
 
   pre_timer.start();
   csrmv_flat_mtx_info<INDEX_TYPE, DATA_TYPE> info;
-  flat_matrix_analyse<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE, BP_DATA_TYPE, Y_TYPE,
-                      FLAT_STORE_Y_POLICY_DETERMINISTIC, true>(hipStreamDefault, d_csr_mat_desc, &info);
+  flat_matrix_analyse_segmented<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE, BP_DATA_TYPE, Y_TYPE>(
+      hipStreamDefault, d_csr_mat_desc, &info);
   // todo: handle FLAT_PRE_CALC_BP_KERNEL_VERSION
   pre_timer.stop();
 
@@ -157,9 +157,9 @@ void segment_sum_v2_flat_sparse_spmv(int trans, const DATA_TYPE alpha, const DAT
   using COMPUTE_MULTI_TYPE = DATA_TYPE;
   using COMPUTE_SUM_TYPE = DATA_TYPE;
 
-  adaptive_flat_sparse_spmv<DATA_TYPE, BP_DATA_TYPE, A_TYPE, X_TYPE, Y_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE,
-                            SCALE_DATA_TYPE, BETA_Y_POLICY_AUTO, FLAT_STORE_Y_POLICY_DETERMINISTIC>(
-      hipStreamDefault, trans, alpha, beta, d_csr_mat_desc, x, y, &info);
+  adaptive_csrmv_flat_segmented<DATA_TYPE, BP_DATA_TYPE, A_TYPE, X_TYPE, Y_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE,
+                                SCALE_DATA_TYPE, BETA_Y_POLICY_AUTO>(hipStreamDefault, trans, alpha, beta,
+                                                                     d_csr_mat_desc, x, y, &info);
   calc_timer.stop(true);
   if (bmt != nullptr) {
     bmt->set_time(pre_timer.time_use, calc_timer.time_use, 0.0, 0.);
