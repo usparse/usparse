@@ -267,6 +267,20 @@ template void usparse::device_dscal<int, usparse::usparse_fpc64>(const usparse::
 template void usparse::device_dscal<int, usparse::usparse_fpc32>(const usparse::usparse_fpc32 alpha,
                                                                  usparse::usparse_fpc32 *x, const int N,
                                                                  hipStream_t stream);
+template void usparse::device_dscal<int64_t, int32_t>(const int32_t alpha, int32_t *x, const int64_t N,
+                                                      hipStream_t stream);
+template void usparse::device_dscal<int64_t, usparse::usparse_fp64>(const usparse::usparse_fp64 alpha,
+                                                                    usparse::usparse_fp64 *x, const int64_t N,
+                                                                    hipStream_t stream);
+template void usparse::device_dscal<int64_t, usparse::usparse_fp32>(const usparse::usparse_fp32 alpha,
+                                                                    usparse::usparse_fp32 *x, const int64_t N,
+                                                                    hipStream_t stream);
+template void usparse::device_dscal<int64_t, usparse::usparse_fpc64>(const usparse::usparse_fpc64 alpha,
+                                                                     usparse::usparse_fpc64 *x, const int64_t N,
+                                                                     hipStream_t stream);
+template void usparse::device_dscal<int64_t, usparse::usparse_fpc32>(const usparse::usparse_fpc32 alpha,
+                                                                     usparse::usparse_fpc32 *x, const int64_t N,
+                                                                     hipStream_t stream);
 
 template void usparse::device_scale_set<uint, double>(const double alpha, double *data, const uint N,
                                                       hipStream_t stream);
@@ -280,6 +294,20 @@ template void usparse::device_scale_set<int, usparse::usparse_fpc64>(const uspar
 template void usparse::device_scale_set<int, usparse::usparse_fpc32>(const usparse::usparse_fpc32 alpha,
                                                                      usparse::usparse_fpc32 *data, const int N,
                                                                      hipStream_t stream);
+template void usparse::device_scale_set<int64_t, int32_t>(const int32_t alpha, int32_t *data, const int64_t N,
+                                                          hipStream_t stream);
+template void usparse::device_scale_set<int64_t, usparse::usparse_fp64>(const usparse::usparse_fp64 alpha,
+                                                                        usparse::usparse_fp64 *data, const int64_t N,
+                                                                        hipStream_t stream);
+template void usparse::device_scale_set<int64_t, usparse::usparse_fp32>(const usparse::usparse_fp32 alpha,
+                                                                        usparse::usparse_fp32 *data, const int64_t N,
+                                                                        hipStream_t stream);
+template void usparse::device_scale_set<int64_t, usparse::usparse_fpc64>(const usparse::usparse_fpc64 alpha,
+                                                                         usparse::usparse_fpc64 *data, const int64_t N,
+                                                                         hipStream_t stream);
+template void usparse::device_scale_set<int64_t, usparse::usparse_fpc32>(const usparse::usparse_fpc32 alpha,
+                                                                         usparse::usparse_fpc32 *data, const int64_t N,
+                                                                         hipStream_t stream);
 
 template void usparse::device_dcopy<uint, double>(const double *src, double *dst, const uint N);
 template void usparse::device_dcopy<uint, float>(const float *src, float *dst, const uint N);
