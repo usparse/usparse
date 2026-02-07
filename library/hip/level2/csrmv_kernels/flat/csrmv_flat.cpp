@@ -46,41 +46,6 @@ inline void flat_multi_pass_sparse_spmv(hipStream_t stream, int trans, const SCA
   USPARSE_HIP_API_CHECK(hipFreeAsync(break_points, stream));
 }
 
-template <typename DATA_TYPE, typename NNZ_TYPE, typename ROW_TYPE, typename COLUMN_TYPE, typename BP_DATA_TYPE,
-          typename Y_TYPE, int FLAT_STORE_Y_POLICY, bool CREAT_PART_SUM_TEMP_BUFFER>
-void flat_matrix_analyse(hipStream_t stream, const csr_mat_descr<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE> d_csr_desc,
-                         csrmv_flat_mtx_info<BP_DATA_TYPE, Y_TYPE> *info) {
-  EXPAND_FROM_CSR_MAT_DESCR(DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE, d_csr_desc)
-
-  constexpr int R = 2;
-  constexpr int THREADS_PER_BLOCK = 512;
-  const int HIP_BLOCKS = nnz / (R * THREADS_PER_BLOCK) + ((nnz % (R * THREADS_PER_BLOCK) == 0) ? 0 : 1);
-  constexpr int TOTAL_ROUNDS = 1;
-  const NNZ_TYPE break_points_len = static_cast<NNZ_TYPE>(TOTAL_ROUNDS * HIP_BLOCKS + 1);
-
-  USPARSE_HIP_API_CHECK(hipMallocAsync((void **)(&(info->break_points)), break_points_len * sizeof(BP_DATA_TYPE), stream));
-  USPARSE_HIP_API_CHECK(hipMemsetAsync(info->break_points, 0, break_points_len * sizeof(BP_DATA_TYPE), stream));
-  (pre_calc_break_point<ROW_TYPE, NNZ_TYPE, BP_DATA_TYPE, R * THREADS_PER_BLOCK>)<<<1024, 512, 0, stream>>>(
-      rowptr, m, info->break_points, break_points_len);
-
-  // create temp buffer for storing part sum of y.
-  if (FLAT_STORE_Y_POLICY == FLAT_STORE_Y_POLICY_DETERMINISTIC && CREAT_PART_SUM_TEMP_BUFFER) {
-    // size: 2 * (HIP_BLOCKS + 1). Note: 2x is used for reduction-by-key recursively.
-    USPARSE_HIP_API_CHECK(hipMallocAsync((void **)(&(info->y_part_sum)), 2 * (HIP_BLOCKS + 1) * sizeof(Y_TYPE), stream));
-    USPARSE_HIP_API_CHECK(hipMallocAsync((void **)(&(info->y_part_indices)), 2 * (HIP_BLOCKS + 1) * sizeof(ROW_TYPE), stream));
-    USPARSE_HIP_API_CHECK(hipMemsetAsync(info->y_part_sum, 0, 2 * (HIP_BLOCKS + 1) * sizeof(Y_TYPE), stream));
-    USPARSE_HIP_API_CHECK(hipMemsetAsync(info->y_part_indices, 0, 2 * (HIP_BLOCKS + 1) * sizeof(ROW_TYPE), stream));
-  }
-}
-
-// just for backward compatibility.
-template <typename DATA_TYPE, typename NNZ_TYPE, typename ROW_TYPE, typename COLUMN_TYPE, typename BP_DATA_TYPE>
-void flat_analyse(const csr_mat_descr<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE> d_csr_desc,
-                  csrmv_flat_mtx_info<BP_DATA_TYPE, DATA_TYPE> *info) {
-  hipStream_t stream = hipStreamDefault;
-  flat_matrix_analyse<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE, BP_DATA_TYPE, DATA_TYPE>(stream, d_csr_desc, info);
-}
-
 template <typename HIP_BLOCK_NUM_TYPE, typename SHARE_MEM_INDEX_TYPE, typename BP_INDEX_TYPE, typename BP_DATA_TYPE,
           typename A_TYPE, typename X_TYPE, typename Y_TYPE, typename COMPUTE_MULTI_TYPE, typename COMPUTE_SUM_TYPE,
           typename SCALE_DATA_TYPE, typename NNZ_TYPE, typename ROW_TYPE, typename COLUMN_TYPE, int R,
@@ -110,6 +75,173 @@ inline void flat_one_pass_sparse_spmv(hipStream_t stream, int trans, const SCALE
                                                                                              y_part_sum, HIP_BLOCKS);
   }
   return;
+}
+
+template <typename DATA_TYPE, typename NNZ_TYPE, typename ROW_TYPE, typename COLUMN_TYPE, typename BP_DATA_TYPE,
+          typename Y_TYPE, int FLAT_STORE_Y_POLICY, bool CREAT_PART_SUM_TEMP_BUFFER, int R, int THREADS_PER_BLOCK>
+void flat_matrix_analyse_imp(hipStream_t stream,
+                             const csr_mat_descr<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE> d_csr_desc,
+                             const csrmv_flat_mtx_info<BP_DATA_TYPE, Y_TYPE> *info) {
+  const NNZ_TYPE nnz = d_csr_desc.nnz;
+  const ROW_TYPE m = d_csr_desc.rows;
+
+  const int HIP_BLOCKS = nnz / (R * THREADS_PER_BLOCK) + ((nnz % (R * THREADS_PER_BLOCK) == 0) ? 0 : 1);
+  constexpr int TOTAL_ROUNDS = 1;
+  const NNZ_TYPE break_points_len = static_cast<NNZ_TYPE>(TOTAL_ROUNDS * HIP_BLOCKS + 1);
+
+  USPARSE_HIP_API_CHECK(
+      hipMallocAsync((void **)(&(info->break_points)), break_points_len * sizeof(BP_DATA_TYPE), stream));
+  USPARSE_HIP_API_CHECK(hipMemsetAsync(info->break_points, 0, break_points_len * sizeof(BP_DATA_TYPE), stream));
+  (pre_calc_break_point<ROW_TYPE, NNZ_TYPE, BP_DATA_TYPE, R * THREADS_PER_BLOCK>)<<<1024, 512, 0, stream>>>(
+      d_csr_desc.row_ptr, m, info->break_points, break_points_len);
+
+  // create temp buffer for storing part sum of y.
+  if (FLAT_STORE_Y_POLICY == FLAT_STORE_Y_POLICY_DETERMINISTIC && CREAT_PART_SUM_TEMP_BUFFER) {
+    // size: 2 * (HIP_BLOCKS + 1). Note: 2x is used for reduction-by-key recursively.
+    USPARSE_HIP_API_CHECK(
+        hipMallocAsync((void **)(&(info->y_part_sum)), 2 * (HIP_BLOCKS + 1) * sizeof(Y_TYPE), stream));
+    USPARSE_HIP_API_CHECK(
+        hipMallocAsync((void **)(&(info->y_part_indices)), 2 * (HIP_BLOCKS + 1) * sizeof(ROW_TYPE), stream));
+    USPARSE_HIP_API_CHECK(hipMemsetAsync(info->y_part_sum, 0, 2 * (HIP_BLOCKS + 1) * sizeof(Y_TYPE), stream));
+    USPARSE_HIP_API_CHECK(hipMemsetAsync(info->y_part_indices, 0, 2 * (HIP_BLOCKS + 1) * sizeof(ROW_TYPE), stream));
+  }
+}
+
+constexpr int FLAT_STAGE_ANALYSE = 0;
+constexpr int FLAT_STAGE_COMPUTE = 1;
+constexpr int FLAT_STAGE_DESTROY = 2;
+
+/**
+ * run different stage of the flat in one function, which can avoid code duplication of different stage calling and make
+ * the logic clearer. In this function, we can set the compile-time parameter via template paramter.
+ * @tparam T the compute data type.
+ * @tparam DATA_TYPE the data type of the matrix value.
+ * @tparam STAGE current compute stage: can be `FLAT_STAGE_ANALYSE`, `FLAT_STAGE_COMPUTE` or `FLAT_STAGE_DESTROY`.
+ *
+ * @param stage: the current stage of the flat, can be FLAT_STAGE_ANALYSE, FLAT_STAGE_COMPUTE or FLAT_STAGE_DESTROY.
+ * @param stream the hip stream used for launching kernel and memory operations.
+ * @param d_csr_desc the csr matrix descriptor.
+ * @param info pointer to the matrix analyse info.
+ * @param trans matrix transpose.
+ * @param alpha the alpha in SpMV: y = alpha * A * x + beta * y.
+ * @param beta the alpha in SpMV: y = alpha * A * x + beta * y.
+ * @param x the vector x in SpMV: y = alpha * A * x + beta * y.
+ * @param y the vector y in SpMV: y = alpha * A * x + beta * y.
+ * @note: for the analyse stage. @param trans, alpha, beta, x and y can be ignored.
+ *  for the compute stage, the above parameters should be set based on the csrmv input.
+ *  for the destroy stage, all parameters (except @param stage, info, stream) can be ignored.
+ */
+template <typename T, typename NNZ_TYPE, typename ROW_TYPE, typename COLUMN_TYPE, typename BP_DATA_TYPE,
+          typename DATA_TYPE, typename X_TYPE, typename Y_TYPE, typename SCALE_TYPE, int STAGE, int FLAT_STORE_Y_POLICY,
+          bool CREAT_PART_SUM_TEMP_BUFFER, int R, int THREADS_PER_BLOCK, int FLAT_REDUCE_VEC_SIZE>
+inline void flat_run_stage_template(hipStream_t stream,
+                                    const csr_mat_descr<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE> d_csr_desc,
+                                    const csrmv_flat_mtx_info<BP_DATA_TYPE, Y_TYPE> *info, int trans,
+                                    const SCALE_TYPE alpha, const SCALE_TYPE beta, const X_TYPE *x, Y_TYPE *y) {
+  constexpr bool __stage_check =
+      (STAGE == FLAT_STAGE_ANALYSE || STAGE == FLAT_STAGE_COMPUTE || STAGE == FLAT_STAGE_DESTROY);
+  static_assert(__stage_check,
+                "the stage should be `FLAT_STAGE_ANALYSE`, `FLAT_STAGE_COMPUTE` or `FLAT_STAGE_DESTROY`.");
+
+  EXPAND_FROM_CSR_MAT_DESCR(DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE, d_csr_desc)
+
+  if (STAGE == FLAT_STAGE_ANALYSE) {
+    flat_matrix_analyse_imp<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE, BP_DATA_TYPE, Y_TYPE, FLAT_STORE_Y_POLICY,
+                            CREAT_PART_SUM_TEMP_BUFFER, R, THREADS_PER_BLOCK>(stream, d_csr_desc, info);
+  } else if (STAGE == FLAT_STAGE_COMPUTE) {
+    using COMPUTE_MULTI_TYPE = T;
+    using COMPUTE_SUM_TYPE = T;
+
+    using HIP_BLOCK_NUM_TYPE = int;
+    using SHARE_MEM_INDEX_TYPE = int;
+    using BP_INDEX_TYPE = int;
+
+    // todo: if y_part_sum is null. malloc device memory.
+
+    BP_DATA_TYPE *break_points = info->break_points;
+    Y_TYPE *y_part_sum = info->y_part_sum;
+    ROW_TYPE *y_part_indices = info->y_part_indices;
+    // Note: memset to 0 for y_part_sum and y_part_indices before the kernel launching is unnecessary.
+    // because the csrmv kernel will write result using `y_part_sum[i] = val`, instead of `y_part_sum[i] += val`.
+
+    constexpr int FLAT_REDUCE_OPTION = FLAT_REDUCE_VEC_SIZE == 1 ? FLAT_REDUCE_OPTION_DIRECT : FLAT_REDUCE_OPTION_VEC;
+    flat_one_pass_sparse_spmv<HIP_BLOCK_NUM_TYPE, SHARE_MEM_INDEX_TYPE, BP_INDEX_TYPE, BP_DATA_TYPE, DATA_TYPE, X_TYPE,
+                              Y_TYPE, COMPUTE_MULTI_TYPE, COMPUTE_SUM_TYPE, SCALE_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE,
+                              R, FLAT_REDUCE_OPTION, FLAT_REDUCE_VEC_SIZE, THREADS_PER_BLOCK, FLAT_STORE_Y_POLICY>(
+        stream, trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points, y_part_indices, y_part_sum);
+  } else if (STAGE == FLAT_STAGE_DESTROY) {
+    USPARSE_HIP_API_CHECK(hipFreeAsync(info->break_points, stream));
+    if (FLAT_STORE_Y_POLICY == FLAT_STORE_Y_POLICY_DETERMINISTIC) {
+      USPARSE_HIP_API_CHECK(hipFreeAsync(info->y_part_sum, stream));
+      USPARSE_HIP_API_CHECK(hipFreeAsync(info->y_part_indices, stream));
+    }
+  } else {
+    // return
+  }
+}
+
+/**
+ * adaptively select compile-time parameter based on the matrix characteristics for analyse, compute and destroy stage.
+ *
+ * Note: the matrix analyse and computer stages should all call this function.
+ * Because matrix analyse and compute shoule pass the same R, THREADS_PER_BLOCK and FLAT_REDUCE_VEC_SIZE for the same
+ * matrix. we use this adaptive parameter selection routine to select the compile-time parameter for both stages to
+ * avoid code duplication.
+ */
+template <typename T, typename NNZ_TYPE, typename ROW_TYPE, typename COLUMN_TYPE, typename BP_DATA_TYPE, typename A,
+          typename X_TYPE, typename Y_TYPE, typename SCALE_TYPE, int STAGE, int FLAT_STORE_Y_POLICY,
+          bool CREAT_PART_SUM_TEMP_BUFFER>
+inline void adaptive_flat_param_dispatch_for_stages(hipStream_t stream,
+                                                    const csr_mat_descr<A, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE> d_csr_desc,
+                                                    const csrmv_flat_mtx_info<BP_DATA_TYPE, Y_TYPE> *info,
+                                                    const int trans, const SCALE_TYPE alpha, const SCALE_TYPE beta,
+                                                    const X_TYPE *x, Y_TYPE *y) {
+  EXPAND_FROM_CSR_MAT_DESCR(A, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE, d_csr_desc)
+
+#define FLAT_RUN_STAGE_WITH_PARAM(R, THREADS_PER_BLOCK, FLAT_REDUCE_VEC_SIZE)                                          \
+  flat_run_stage_template<T, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE, BP_DATA_TYPE, A, X_TYPE, Y_TYPE, SCALE_TYPE, STAGE,      \
+                          FLAT_STORE_Y_POLICY, CREAT_PART_SUM_TEMP_BUFFER, R, THREADS_PER_BLOCK,                       \
+                          FLAT_REDUCE_VEC_SIZE>(stream, d_csr_desc, info, trans, alpha, beta, x, y);
+
+  // set different compile-time parameter (R, THREADS_PER_BLOCK and FLAT_REDUCE_VEC_SIZE) based on the matrix
+  // characteristics.
+  NNZ_TYPE avg_block_nnz_max = nnz / m;
+  if (avg_block_nnz_max <= 32) {
+    // use single thread to reduce if average nnz of row is less than 32.
+    FLAT_RUN_STAGE_WITH_PARAM(2, 512, 1);
+  } else if (avg_block_nnz_max <= 64) {
+    // use more threads (4 threads) in vector to reduce if average nnz of row is larger than 32.
+    FLAT_RUN_STAGE_WITH_PARAM(2, 512, 4);
+  } else {
+    constexpr int REDUCE_OPT = FLAT_REDUCE_OPTION_VEC;
+    // use more threads (16 threads) in vector to reduce if average nnz of row is larger than 64.
+    FLAT_RUN_STAGE_WITH_PARAM(2, 512, 16);
+  }
+}
+
+template <typename DATA_TYPE, typename NNZ_TYPE, typename ROW_TYPE, typename COLUMN_TYPE, typename BP_DATA_TYPE,
+          typename Y_TYPE, int FLAT_STORE_Y_POLICY, bool CREAT_PART_SUM_TEMP_BUFFER>
+void flat_matrix_analyse(hipStream_t stream, const csr_mat_descr<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE> d_csr_desc,
+                         csrmv_flat_mtx_info<BP_DATA_TYPE, Y_TYPE> *info) {
+  using T = DATA_TYPE;               // T is not used in the analyse stage.
+  using SCALE_DATA_TYPE = DATA_TYPE; // SCALE_DATA_TYPE is not used in the analyse stage.
+  using X_TYPE = Y_TYPE;             // X_TYPE is not used in the analyse stage.
+  constexpr int trans = 0;           // trans is not used in the analyse stage.
+
+  adaptive_flat_param_dispatch_for_stages<T, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE, BP_DATA_TYPE, DATA_TYPE, X_TYPE, Y_TYPE,
+                                          SCALE_DATA_TYPE, FLAT_STAGE_ANALYSE, FLAT_STORE_Y_POLICY,
+                                          CREAT_PART_SUM_TEMP_BUFFER>(
+      stream, d_csr_desc, info, trans, static_cast<SCALE_DATA_TYPE>(0.0), static_cast<SCALE_DATA_TYPE>(0.0), nullptr,
+      nullptr);
+}
+
+// just for backward compatibility.
+template <typename DATA_TYPE, typename NNZ_TYPE, typename ROW_TYPE, typename COLUMN_TYPE, typename BP_DATA_TYPE>
+void flat_analyse(const csr_mat_descr<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE> d_csr_desc,
+                  csrmv_flat_mtx_info<BP_DATA_TYPE, DATA_TYPE> *info) {
+  hipStream_t stream = hipStreamDefault;
+  flat_matrix_analyse<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE, BP_DATA_TYPE, DATA_TYPE,
+                      FLAT_STORE_Y_POLICY_UNDETERMINISTIC, false>(stream, d_csr_desc, info);
 }
 
 // template for backward compatibility.
@@ -175,12 +307,12 @@ template <typename T, typename BP_DATA_TYPE, typename A, typename X, typename Y,
 void adaptive_flat_sparse_spmv(hipStream_t stream, int trans, const SCALE_TYPE alpha, const SCALE_TYPE beta,
                                const csr_mat_descr<A, NNZ, ROW, COL> d_csr_desc, const X *x, Y *y,
                                const csrmv_flat_mtx_info<BP_DATA_TYPE, Y> *info) {
-  EXPAND_FROM_CSR_MAT_DESCR(A, NNZ, ROW, COL, d_csr_desc)
+  flat_set_beta_y<Y, SCALE_TYPE, ROW, BETA_Y_POLICY>(stream, y, d_csr_desc.rows, beta);
 
-  flat_set_beta_y<Y, SCALE_TYPE, ROW, BETA_Y_POLICY>(stream, y, m, beta);
-
-  constexpr int R = 2;
-  constexpr int THREADS_PER_BLOCK = 512;
+  EXPAND_FROM_CSR_MAT_DESCR(A, NNZ, ROW, COL, d_csr_desc);
+  BP_DATA_TYPE *break_points = info->break_points;
+  Y *y_part_sum = info->y_part_sum;
+  ROW *y_part_indices = info->y_part_indices;
 
   using COMPUTE_MULTI_TYPE = T;
   using COMPUTE_SUM_TYPE = T;
@@ -188,9 +320,10 @@ void adaptive_flat_sparse_spmv(hipStream_t stream, int trans, const SCALE_TYPE a
   using HIP_BLOCK_NUM_TYPE = int;
   using SHARE_MEM_INDEX_TYPE = int;
   using BP_INDEX_TYPE = int;
-
   // for non one-pass.
   if (!FLAT_ONE_PASS) {
+    constexpr int R = 2;
+    constexpr int THREADS_PER_BLOCK = 512;
     constexpr HIP_BLOCK_NUM_TYPE blocks = 512;
     constexpr int RED_OPT = FLAT_REDUCE_OPTION_VEC;
 
@@ -203,13 +336,9 @@ void adaptive_flat_sparse_spmv(hipStream_t stream, int trans, const SCALE_TYPE a
 
   // todo: if y_part_sum is null. malloc device memory.
 
-  BP_DATA_TYPE *break_points = info->break_points;
-  Y *y_part_sum = info->y_part_sum;
-  ROW *y_part_indices = info->y_part_indices;
-  // Note: memset to 0 for y_part_sum and y_part_indices before the kernel launching is unnecessary.
-  // because the csrmv kernel will write result using `y_part_sum[i] = val`, instead of `y_part_sum[i] += val`.
-
   if (!FLAT_ONE_PASS_ADAPTIVE) {
+    constexpr int R = 2;
+    constexpr int THREADS_PER_BLOCK = 512;
     constexpr int RED_OPT = FLAT_REDUCE_OPTION_VEC;
     constexpr int VEC_SIZE = 4;
     flat_one_pass_sparse_spmv<HIP_BLOCK_NUM_TYPE, SHARE_MEM_INDEX_TYPE, BP_INDEX_TYPE, BP_DATA_TYPE, A, X, Y,
@@ -219,33 +348,12 @@ void adaptive_flat_sparse_spmv(hipStream_t stream, int trans, const SCALE_TYPE a
     return;
   }
 
-  // divide the matrix into 2 parts and get the max nnz per row of each part.
-  NNZ avg_block_nnz_max = nnz / m;
-  if (avg_block_nnz_max <= 32) {
-    // use single thread to reduce if average nnz of row is less than 32.
-    constexpr int REDUCE_OPT = FLAT_REDUCE_OPTION_DIRECT;
-    constexpr int VEC_SIZE = 1;
-    flat_one_pass_sparse_spmv<HIP_BLOCK_NUM_TYPE, SHARE_MEM_INDEX_TYPE, BP_INDEX_TYPE, BP_DATA_TYPE, A, X, Y,
-                              COMPUTE_MULTI_TYPE, COMPUTE_SUM_TYPE, SCALE_TYPE, NNZ, ROW, COL, R, REDUCE_OPT, VEC_SIZE,
-                              THREADS_PER_BLOCK, FLAT_STORE_Y_POLICY>(
-        stream, trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points, y_part_indices, y_part_sum);
-  } else if (avg_block_nnz_max <= 64) {
-    constexpr int REDUCE_OPT = FLAT_REDUCE_OPTION_VEC;
-    // use more threads (4 threads) in vector to reduce if average nnz of row is larger than 32.
-    constexpr int VEC_SIZE = 4;
-    flat_one_pass_sparse_spmv<HIP_BLOCK_NUM_TYPE, SHARE_MEM_INDEX_TYPE, BP_INDEX_TYPE, BP_DATA_TYPE, A, X, Y,
-                              COMPUTE_MULTI_TYPE, COMPUTE_SUM_TYPE, SCALE_TYPE, NNZ, ROW, COL, R, REDUCE_OPT, VEC_SIZE,
-                              THREADS_PER_BLOCK, FLAT_STORE_Y_POLICY>(
-        stream, trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points, y_part_indices, y_part_sum);
-  } else {
-    constexpr int REDUCE_OPT = FLAT_REDUCE_OPTION_VEC;
-    // use more threads (16 threads) in vector to reduce if average nnz of row is larger than 64.
-    constexpr int VEC_SIZE = 16;
-    flat_one_pass_sparse_spmv<HIP_BLOCK_NUM_TYPE, SHARE_MEM_INDEX_TYPE, BP_INDEX_TYPE, BP_DATA_TYPE, A, X, Y,
-                              COMPUTE_MULTI_TYPE, COMPUTE_SUM_TYPE, SCALE_TYPE, NNZ, ROW, COL, R, REDUCE_OPT, VEC_SIZE,
-                              THREADS_PER_BLOCK, FLAT_STORE_Y_POLICY>(
-        stream, trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points, y_part_indices, y_part_sum);
-  }
+  // use adaptive one-pass.
+  constexpr bool create_temp_buffer = false; // create_temp_buffer is not used in the compute stage.
+  adaptive_flat_param_dispatch_for_stages<T, NNZ, ROW, COL, BP_DATA_TYPE, A, X, Y, SCALE_TYPE, FLAT_STAGE_COMPUTE,
+                                          FLAT_STORE_Y_POLICY, create_temp_buffer>(stream, d_csr_desc, info, trans,
+                                                                                   alpha, beta, x, y);
+  return;
 }
 
 template <typename I, typename T, int BETA_Y_POLICY>
@@ -339,8 +447,8 @@ FLAT_SPMV_ANALYSE_INSTANTIATE(usparse::usparse_fpc64, usparse::usparse_int, uspa
                               usparse::usparse_int, usparse::usparse_fpc64);
 FLAT_SPMV_ANALYSE_INSTANTIATE(usparse::usparse_fpc32, usparse::usparse_int, usparse::usparse_int, usparse::usparse_int,
                               usparse::usparse_int, usparse::usparse_fpc32);
-FLAT_SPMV_ANALYSE_INSTANTIATE(int8_t, usparse::usparse_int, usparse::usparse_int, usparse::usparse_int,
-                              usparse::usparse_int, int8_t);
+// FLAT_SPMV_ANALYSE_INSTANTIATE(int8_t, usparse::usparse_int, usparse::usparse_int, usparse::usparse_int,
+//                               usparse::usparse_int, int8_t);
 
 #undef FLAT_SPMV_INSTANTIATE_MIXED
 #undef FLAT_SPMV_INSTANTIATE_DEPRECATED
