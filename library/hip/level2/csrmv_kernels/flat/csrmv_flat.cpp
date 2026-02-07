@@ -145,7 +145,7 @@ inline void flat_run_stage_template(hipStream_t stream,
 
   EXPAND_FROM_CSR_MAT_DESCR(DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE, d_csr_desc)
 
-  if (STAGE == FLAT_STAGE_ANALYSE) {
+  if constexpr (STAGE == FLAT_STAGE_ANALYSE) {
     flat_matrix_analyse_imp<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE, BP_DATA_TYPE, Y_TYPE, FLAT_STORE_Y_POLICY,
                             CREAT_PART_SUM_TEMP_BUFFER, R, THREADS_PER_BLOCK>(stream, d_csr_desc, info);
   } else if (STAGE == FLAT_STAGE_COMPUTE) {
@@ -425,6 +425,71 @@ FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fpc64, usparse::usparse_int, uspars
                             usparse::usparse_fpc64, usparse::usparse_fpc64, usparse::usparse_int, usparse::usparse_int,
                             usparse::usparse_int, usparse::usparse_fpc64)
 
+FLAT_SPMV_INSTANTIATE_MIXED(int32_t, int32_t, int8_t, int8_t, int32_t, int32_t, int32_t, int32_t, int32_t)
+FLAT_SPMV_INSTANTIATE_MIXED(int32_t, int32_t, int8_t, int8_t, int32_t, int64_t, int32_t, int32_t, int32_t)
+FLAT_SPMV_INSTANTIATE_MIXED(int32_t, int64_t, int8_t, int8_t, int32_t, int64_t, int64_t, int64_t, int32_t)
+
+FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fp32, int32_t, int8_t, int8_t, usparse::usparse_fp32, int32_t, int32_t,
+                            int32_t, usparse::usparse_fp32)
+FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fp64, int32_t, int8_t, int8_t, usparse::usparse_fp64, int32_t, int32_t,
+                            int32_t, usparse::usparse_fp64)
+FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fpc32, int32_t, int8_t, int8_t, usparse::usparse_fpc32, int32_t, int32_t,
+                            int32_t, usparse::usparse_fpc32)
+FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fpc64, int32_t, int8_t, int8_t, usparse::usparse_fpc64, int32_t, int32_t,
+                            int32_t, usparse::usparse_fpc64)
+
+FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fp32, int32_t, int8_t, int8_t, usparse::usparse_fp32, int64_t, int32_t,
+                            int32_t, usparse::usparse_fp32)
+FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fp32, int64_t, int8_t, int8_t, usparse::usparse_fp32, int64_t, int64_t,
+                            int64_t, usparse::usparse_fp32)
+FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fp64, int32_t, usparse::usparse_fp32, usparse::usparse_fp64,
+                            usparse::usparse_fp64, int32_t, int32_t, int32_t, usparse::usparse_fp64)
+FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fp64, int32_t, usparse::usparse_fp32, usparse::usparse_fp64,
+                            usparse::usparse_fp64, int64_t, int32_t, int32_t, usparse::usparse_fp64)
+FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fp64, int64_t, usparse::usparse_fp32, usparse::usparse_fp64,
+                            usparse::usparse_fp64, int64_t, int64_t, int64_t, usparse::usparse_fp64)
+
+FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fpc32, int32_t, usparse::usparse_fp32, usparse::usparse_fpc32,
+                            usparse::usparse_fpc32, int32_t, int32_t, int32_t, usparse::usparse_fpc32)
+FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fpc32, int32_t, usparse::usparse_fp32, usparse::usparse_fpc32,
+                            usparse::usparse_fpc32, int64_t, int32_t, int32_t, usparse::usparse_fpc32)
+FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fpc32, int64_t, usparse::usparse_fp32, usparse::usparse_fpc32,
+                            usparse::usparse_fpc32, int64_t, int64_t, int64_t, usparse::usparse_fpc32)
+
+FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fpc64, int32_t, usparse::usparse_fpc32, usparse::usparse_fpc64,
+                            usparse::usparse_fpc64, int32_t, int32_t, int32_t, usparse::usparse_fpc64)
+FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fpc64, int32_t, usparse::usparse_fpc32, usparse::usparse_fpc64,
+                            usparse::usparse_fpc64, int64_t, int32_t, int32_t, usparse::usparse_fpc64)
+FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fpc64, int64_t, usparse::usparse_fpc32, usparse::usparse_fpc64,
+                            usparse::usparse_fpc64, int64_t, int64_t, int64_t, usparse::usparse_fpc64)
+
+FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fpc64, int32_t, usparse::usparse_fp64, usparse::usparse_fpc64,
+                            usparse::usparse_fpc64, int32_t, int32_t, int32_t, usparse::usparse_fpc64)
+FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fpc64, int32_t, usparse::usparse_fp64, usparse::usparse_fpc64,
+                            usparse::usparse_fpc64, int64_t, int32_t, int32_t, usparse::usparse_fpc64)
+FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fpc64, int64_t, usparse::usparse_fp64, usparse::usparse_fpc64,
+                            usparse::usparse_fpc64, int64_t, int64_t, int64_t, usparse::usparse_fpc64)
+
+FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fp32, int32_t, usparse::usparse_fp32, usparse::usparse_fp32,
+                            usparse::usparse_fp32, int64_t, int32_t, int32_t, usparse::usparse_fp32)
+FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fp32, int64_t, usparse::usparse_fp32, usparse::usparse_fp32,
+                            usparse::usparse_fp32, int64_t, int64_t, int64_t, usparse::usparse_fp32)
+
+FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fp64, int32_t, usparse::usparse_fp64, usparse::usparse_fp64,
+                            usparse::usparse_fp64, int64_t, int32_t, int32_t, usparse::usparse_fp64)
+FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fp64, int64_t, usparse::usparse_fp64, usparse::usparse_fp64,
+                            usparse::usparse_fp64, int64_t, int64_t, int64_t, usparse::usparse_fp64)
+
+FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fpc32, int32_t, usparse::usparse_fpc32, usparse::usparse_fpc32,
+                            usparse::usparse_fpc32, int64_t, int32_t, int32_t, usparse::usparse_fpc32)
+FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fpc32, int64_t, usparse::usparse_fpc32, usparse::usparse_fpc32,
+                            usparse::usparse_fpc32, int64_t, int64_t, int64_t, usparse::usparse_fpc32)
+
+FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fpc64, int32_t, usparse::usparse_fpc64, usparse::usparse_fpc64,
+                            usparse::usparse_fpc64, int64_t, int32_t, int32_t, usparse::usparse_fpc64)
+FLAT_SPMV_INSTANTIATE_MIXED(usparse::usparse_fpc64, int64_t, usparse::usparse_fpc64, usparse::usparse_fpc64,
+                            usparse::usparse_fpc64, int64_t, int64_t, int64_t, usparse::usparse_fpc64)
+
 #define FLAT_SPMV_INSTANTIATE_DEPRECATED(I, T)                                                                         \
   template void adaptive_flat_sparse_spmv<I, T, BETA_Y_POLICY_AUTO>(                                                   \
       int trans, const T alpha, const T beta, const csr_mat_descr<T, I, I, I> d_csr_desc, const T *x, T *y,            \
@@ -458,8 +523,19 @@ FLAT_SPMV_ANALYSE_INSTANTIATE(usparse::usparse_fpc64, usparse::usparse_int, uspa
                               usparse::usparse_int, usparse::usparse_fpc64);
 FLAT_SPMV_ANALYSE_INSTANTIATE(usparse::usparse_fpc32, usparse::usparse_int, usparse::usparse_int, usparse::usparse_int,
                               usparse::usparse_int, usparse::usparse_fpc32);
-// FLAT_SPMV_ANALYSE_INSTANTIATE(int8_t, usparse::usparse_int, usparse::usparse_int, usparse::usparse_int,
-//                               usparse::usparse_int, int8_t);
+FLAT_SPMV_ANALYSE_INSTANTIATE(int8_t, usparse::usparse_int, usparse::usparse_int, usparse::usparse_int,
+                              usparse::usparse_int, int8_t);
+
+FLAT_SPMV_ANALYSE_INSTANTIATE(int8_t, int64_t, int32_t, int32_t, int32_t, int8_t);
+FLAT_SPMV_ANALYSE_INSTANTIATE(int8_t, int64_t, int64_t, int64_t, int64_t, int8_t);
+FLAT_SPMV_ANALYSE_INSTANTIATE(usparse::usparse_fp32, int64_t, int32_t, int32_t, int32_t, usparse::usparse_fp32);
+FLAT_SPMV_ANALYSE_INSTANTIATE(usparse::usparse_fp32, int64_t, int64_t, int64_t, int64_t, usparse::usparse_fp32);
+FLAT_SPMV_ANALYSE_INSTANTIATE(usparse::usparse_fp64, int64_t, int32_t, int32_t, int32_t, usparse::usparse_fp64);
+FLAT_SPMV_ANALYSE_INSTANTIATE(usparse::usparse_fp64, int64_t, int64_t, int64_t, int64_t, usparse::usparse_fp64);
+FLAT_SPMV_ANALYSE_INSTANTIATE(usparse::usparse_fpc32, int64_t, int32_t, int32_t, int32_t, usparse::usparse_fpc32);
+FLAT_SPMV_ANALYSE_INSTANTIATE(usparse::usparse_fpc32, int64_t, int64_t, int64_t, int64_t, usparse::usparse_fpc32);
+FLAT_SPMV_ANALYSE_INSTANTIATE(usparse::usparse_fpc64, int64_t, int32_t, int32_t, int32_t, usparse::usparse_fpc64);
+FLAT_SPMV_ANALYSE_INSTANTIATE(usparse::usparse_fpc64, int64_t, int64_t, int64_t, int64_t, usparse::usparse_fpc64);
 
 #undef FLAT_SPMV_INSTANTIATE_MIXED
 #undef FLAT_SPMV_INSTANTIATE_DEPRECATED
