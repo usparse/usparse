@@ -53,7 +53,7 @@ __global__ __launch_bounds__(THREADS) void csrmv_flat_one_pass_kernel(
     reduce_end_row_id = min(reduce_end_row_id + 1, m); // make sure `reduce_end_row_id` is not larger than m
   }
 
-  if (FLAT_STORE_Y_POLICY == FLAT_STORE_Y_POLICY_DETERMINISTIC) {
+  if (FLAT_STORE_Y_POLICY == FLAT_STORE_Y_POLICY_SEGMENTED_SUM) {
     if (REDUCE_OPTION == FLAT_REDUCE_OPTION_VEC) {
       const ROW_TYPE n_reduce_rows_num = reduce_end_row_id - reduce_start_row_id;
       flat_segment_reduce_in_vector<BP_INDEX_TYPE, COMPUTE_MULTI_TYPE, SHARE_MEM_INDEX_TYPE, NNZ_TYPE, ROW_TYPE,

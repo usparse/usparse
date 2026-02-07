@@ -16,7 +16,7 @@
 #include "csrmv_flat.h"
 
 /**
- * note: multi pass does not support FLAT_STORE_Y_POLICY_DETERMINISTIC mode currently.
+ * note: multi pass does not support FLAT_STORE_Y_POLICY_SEGMENTED_SUM mode currently.
  */
 template <typename HIP_BLOCK_NUM_TYPE, typename SHARE_MEM_INDEX_TYPE, typename BP_INDEX_TYPE, typename BP_DATA_TYPE,
           typename A_TYPE, typename X_TYPE, typename Y_TYPE, typename COMPUTE_MULTI_TYPE, typename COMPUTE_SUM_TYPE,
@@ -64,7 +64,7 @@ inline void flat_one_pass_sparse_spmv(hipStream_t stream, int trans, const SCALE
                               COLUMN_TYPE>)<<<(HIP_BLOCKS), (THREADS_PER_BLOCK), 0, stream>>>(
       m, alpha, beta, rowptr, break_points, colindex, value, x, y, y_part_indices, y_part_sum);
 
-  if (FLAT_STORE_Y_POLICY == FLAT_STORE_Y_POLICY_DETERMINISTIC) {
+  if (FLAT_STORE_Y_POLICY == FLAT_STORE_Y_POLICY_SEGMENTED_SUM) {
     if (y_part_sum == nullptr || y_part_indices == nullptr) {
       // todo: return with error
       return;
@@ -96,7 +96,7 @@ void flat_matrix_analyse_imp(hipStream_t stream,
       d_csr_desc.row_ptr, m, info->break_points, break_points_len);
 
   // create temp buffer for storing part sum of y.
-  if (FLAT_STORE_Y_POLICY == FLAT_STORE_Y_POLICY_DETERMINISTIC && CREAT_PART_SUM_TEMP_BUFFER) {
+  if (FLAT_STORE_Y_POLICY == FLAT_STORE_Y_POLICY_SEGMENTED_SUM && CREAT_PART_SUM_TEMP_BUFFER) {
     // size: 2 * (HIP_BLOCKS + 1). Note: 2x is used for reduction-by-key recursively.
     USPARSE_HIP_API_CHECK(
         hipMallocAsync((void **)(&(info->y_part_sum)), 2 * (HIP_BLOCKS + 1) * sizeof(Y_TYPE), stream));
@@ -171,7 +171,7 @@ inline void flat_run_stage_template(hipStream_t stream,
         stream, trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points, y_part_indices, y_part_sum);
   } else if (STAGE == FLAT_STAGE_DESTROY) {
     USPARSE_HIP_API_CHECK(hipFreeAsync(info->break_points, stream));
-    if (FLAT_STORE_Y_POLICY == FLAT_STORE_Y_POLICY_DETERMINISTIC) {
+    if (FLAT_STORE_Y_POLICY == FLAT_STORE_Y_POLICY_SEGMENTED_SUM) {
       USPARSE_HIP_API_CHECK(hipFreeAsync(info->y_part_sum, stream));
       USPARSE_HIP_API_CHECK(hipFreeAsync(info->y_part_indices, stream));
     }
@@ -240,8 +240,8 @@ template <typename DATA_TYPE, typename NNZ_TYPE, typename ROW_TYPE, typename COL
 void flat_matrix_analyse_atomic(hipStream_t stream,
                                 const csr_mat_descr<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE> d_csr_desc,
                                 csrmv_flat_mtx_info<BP_DATA_TYPE, Y_TYPE> *info) {
-  flat_matrix_analyse<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE, BP_DATA_TYPE, Y_TYPE,
-                      FLAT_STORE_Y_POLICY_UNDETERMINISTIC, false>(stream, d_csr_desc, info);
+  flat_matrix_analyse<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE, BP_DATA_TYPE, Y_TYPE, FLAT_STORE_Y_POLICY_ATOMIC,
+                      false>(stream, d_csr_desc, info);
   return;
 }
 
@@ -251,12 +251,12 @@ void flat_matrix_analyse_segmented(hipStream_t stream,
                                    const csr_mat_descr<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE> d_csr_desc,
                                    csrmv_flat_mtx_info<BP_DATA_TYPE, Y_TYPE> *info) {
   flat_matrix_analyse<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE, BP_DATA_TYPE, Y_TYPE,
-                      FLAT_STORE_Y_POLICY_DETERMINISTIC, true>(stream, d_csr_desc, info);
+                      FLAT_STORE_Y_POLICY_SEGMENTED_SUM, true>(stream, d_csr_desc, info);
   return;
 }
 
 /**
- * note: sugment-sum does not support FLAT_STORE_Y_POLICY_DETERMINISTIC mode currently.
+ * note: sugment-sum does not support FLAT_STORE_Y_POLICY_SEGMENTED_SUM mode currently.
  */
 template <typename INDEX_TYPE, typename DATA_TYPE>
 void segment_sum_flat_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
@@ -370,8 +370,8 @@ template <typename T, typename BP_DATA_TYPE, typename A, typename X, typename Y,
 void adaptive_csrmv_flat_atomic(hipStream_t stream, int trans, const SCALE_TYPE alpha, const SCALE_TYPE beta,
                                 const csr_mat_descr<A, NNZ, ROW, COL> d_csr_desc, const X *x, Y *y,
                                 const csrmv_flat_mtx_info<BP_DATA_TYPE, Y> *info) {
-  adaptive_csrmv_flat<T, BP_DATA_TYPE, A, X, Y, NNZ, ROW, COL, SCALE_TYPE, BETA_Y_POLICY,
-                      FLAT_STORE_Y_POLICY_UNDETERMINISTIC>(stream, trans, alpha, beta, d_csr_desc, x, y, info);
+  adaptive_csrmv_flat<T, BP_DATA_TYPE, A, X, Y, NNZ, ROW, COL, SCALE_TYPE, BETA_Y_POLICY, FLAT_STORE_Y_POLICY_ATOMIC>(
+      stream, trans, alpha, beta, d_csr_desc, x, y, info);
   return;
 }
 
@@ -381,7 +381,7 @@ void adaptive_csrmv_flat_segmented(hipStream_t stream, int trans, const SCALE_TY
                                    const csr_mat_descr<A, NNZ, ROW, COL> d_csr_desc, const X *x, Y *y,
                                    const csrmv_flat_mtx_info<BP_DATA_TYPE, Y> *info) {
   adaptive_csrmv_flat<T, BP_DATA_TYPE, A, X, Y, NNZ, ROW, COL, SCALE_TYPE, BETA_Y_POLICY,
-                      FLAT_STORE_Y_POLICY_DETERMINISTIC>(stream, trans, alpha, beta, d_csr_desc, x, y, info);
+                      FLAT_STORE_Y_POLICY_SEGMENTED_SUM>(stream, trans, alpha, beta, d_csr_desc, x, y, info);
   return;
 }
 
