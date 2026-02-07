@@ -235,15 +235,6 @@ void flat_matrix_analyse(hipStream_t stream, const csr_mat_descr<DATA_TYPE, NNZ_
       nullptr);
 }
 
-// just for backward compatibility.
-template <typename DATA_TYPE, typename NNZ_TYPE, typename ROW_TYPE, typename COLUMN_TYPE, typename BP_DATA_TYPE>
-void flat_analyse(const csr_mat_descr<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE> d_csr_desc,
-                  csrmv_flat_mtx_info<BP_DATA_TYPE, DATA_TYPE> *info) {
-  hipStream_t stream = hipStreamDefault;
-  flat_matrix_analyse<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE, BP_DATA_TYPE, DATA_TYPE,
-                      FLAT_STORE_Y_POLICY_UNDETERMINISTIC, false>(stream, d_csr_desc, info);
-}
-
 template <typename DATA_TYPE, typename NNZ_TYPE, typename ROW_TYPE, typename COLUMN_TYPE, typename BP_DATA_TYPE,
           typename Y_TYPE>
 void flat_matrix_analyse_atomic(hipStream_t stream,
@@ -262,16 +253,6 @@ void flat_matrix_analyse_segmented(hipStream_t stream,
   flat_matrix_analyse<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE, BP_DATA_TYPE, Y_TYPE,
                       FLAT_STORE_Y_POLICY_DETERMINISTIC, true>(stream, d_csr_desc, info);
   return;
-}
-
-// template for backward compatibility.
-template <typename INDEX_TYPE, typename DATA_TYPE>
-void flat_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
-                      const csr_mat_descr<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE> h_csr_desc,
-                      const csr_mat_descr<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE> d_csr_desc, const DATA_TYPE *x,
-                      DATA_TYPE *y, const csrmv_flat_mtx_info<INDEX_TYPE, DATA_TYPE> *info) {
-  hipStream_t stream = hipStreamDefault;
-  adaptive_flat_sparse_spmv<INDEX_TYPE, DATA_TYPE>(trans, alpha, beta, d_csr_desc, x, y, info, stream);
 }
 
 /**
@@ -464,8 +445,6 @@ FLAT_SPMV_INSTANTIATE_DEPRECATED(usparse::usparse_int, usparse::usparse_fpc32)
 FLAT_SPMV_INSTANTIATE_DEPRECATED(usparse::usparse_int, usparse::usparse_fpc64)
 
 #define FLAT_SPMV_ANALYSE_INSTANTIATE(A, NNZ, ROW, COL, BP, Y)                                                         \
-  template void flat_analyse<A, NNZ, ROW, COL, BP>(const csr_mat_descr<A, NNZ, ROW, COL> d_csr_desc,                   \
-                                                   csrmv_flat_mtx_info<BP, Y> *info);                                  \
   template void flat_matrix_analyse_atomic<A, NNZ, ROW, COL, BP, Y>(                                                   \
       hipStream_t stream, const csr_mat_descr<A, NNZ, ROW, COL> d_csr_desc, csrmv_flat_mtx_info<BP, Y> *info);         \
   template void flat_matrix_analyse_segmented<A, NNZ, ROW, COL, BP, Y>(                                                \

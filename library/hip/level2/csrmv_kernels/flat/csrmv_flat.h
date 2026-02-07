@@ -47,15 +47,6 @@ void adaptive_csrmv_flat_segmented(hipStream_t stream, int trans, const SCALE_TY
                                    const csrmv_flat_mtx_info<BP_DATA_TYPE, Y> *info);
 
 /**
- * @deprecated. use the mixed datatype and hip stream version.
- *
- * the flat api without hip stream and mixed datatype support.
- */
-template <typename I, typename T, int BETA_Y_POLICY = BETA_Y_POLICY_AUTO>
-void adaptive_flat_sparse_spmv(int trans, const T alpha, const T beta, const csr_mat_descr<T, I, I, I> d_csr_desc,
-                               const T *x, T *y, const csrmv_flat_mtx_info<I, T> *info);
-
-/**
  * the general matrix analyse api for the flat csrmv,
  * which performs matrix analyse and return analysing results in @param info.
  * The template parameter @tparam FLAT_STORE_Y_POLICY can be FLAT_STORE_Y_POLICY_UNDETERMINISTIC or
@@ -108,16 +99,5 @@ template <typename DATA_TYPE, typename NNZ_TYPE, typename ROW_TYPE, typename COL
 void flat_matrix_analyse_segmented(hipStream_t stream,
                                    const csr_mat_descr<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE> d_csr_desc,
                                    csrmv_flat_mtx_info<BP_DATA_TYPE, Y_TYPE> *info);
-
-/*
- * @deprecated. use hip stream version.
- *
- * call preprocessing of flat.
- * todo: remove the default template parameters
- */
-template <typename DATA_TYPE, typename NNZ_TYPE = int, typename ROW_TYPE = int, typename COLUMN_TYPE = int,
-          typename BP_DATA_TYPE = ROW_TYPE>
-void flat_analyse(const csr_mat_descr<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE> d_csr_desc,
-                  csrmv_flat_mtx_info<BP_DATA_TYPE, DATA_TYPE> *info);
 
 #endif // USPARSE_HIP_USPARSE_CSRMV_FLAT_H
