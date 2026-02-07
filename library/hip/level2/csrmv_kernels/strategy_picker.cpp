@@ -26,7 +26,8 @@ void sparse_csr_spmv(int trans, const double alpha, const double beta, const csr
 
 #ifdef KERNEL_STRATEGY_FLAT
 #ifndef FLAT_SEGMENT_SUM_REDUCE
-  flat_sparse_spmv(trans, alpha, beta, h_csr_desc, d_csr_desc, x, y);
+  adaptive_csrmv_flat_atomic<double, int, double, double, double, int, int, int, double>(
+      hipStreamDefault, trans, alpha, beta, d_csr_desc, x, y, info, stream);
 #endif
 #ifdef FLAT_SEGMENT_SUM_REDUCE
   segment_sum_flat_sparse_spmv(trans, alpha, beta, h_csr_desc, d_csr_desc, x, y);

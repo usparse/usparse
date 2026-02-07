@@ -66,8 +66,11 @@ void adaptive_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta
   // which can not be applied to small data set.
   if (bp_3 > (1 << 23)) { // 2^23 = 8,388,608
     csrmv_flat_mtx_info<INDEX_TYPE, DATA_TYPE> info;
-    flat_analyse<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE>(d_csr_mat_descr, &info);
-    adaptive_flat_sparse_spmv<INDEX_TYPE, DATA_TYPE>(trans, alpha, beta, d_csr_mat_descr, x, y, &info);
+    flat_matrix_analyse_atomic<DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, DATA_TYPE>(
+        hipStreamDefault, d_csr_mat_descr, &info);
+    adaptive_csrmv_flat_atomic<DATA_TYPE, INDEX_TYPE, DATA_TYPE, DATA_TYPE, DATA_TYPE, INDEX_TYPE, INDEX_TYPE,
+                               INDEX_TYPE, DATA_TYPE>(hipStreamDefault, trans, alpha, beta, d_csr_mat_descr, x, y,
+                                                      &info);
     return;
   }
 
