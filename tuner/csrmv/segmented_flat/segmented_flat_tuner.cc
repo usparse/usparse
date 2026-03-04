@@ -21,7 +21,7 @@ inline void flat_wrapper(utuner::csrmv_tuner_input<int, double> csrmv_input, csr
   auto d_csr_mat_descr = usparse::csr_mat_descr<double, int, int, int>(csrmv_input.csr_mat);
 
   flat_run_stage_template<double, int, int, int, int, double, double, double, double, STAGE,
-                          FLAT_STORE_Y_POLICY_SEGMENTED_SUM, true, R, THREADS_PER_BLOCK, VEC_SIZE>(
+                          FLAT_STORE_Y_POLICY_SEGMENTED_SUM, true, R, THREADS_PER_BLOCK, VEC_SIZE, __WF_SIZE__>(
       hipStreamDefault, d_csr_mat_descr, info, 0, alpha, beta, csrmv_input.x, csrmv_input.y);
 
   if constexpr (STAGE == FLAT_STAGE_COMPUTE) {

@@ -21,7 +21,7 @@
 template <typename HIP_BLOCK_NUM_TYPE, typename SHARE_MEM_INDEX_TYPE, typename BP_INDEX_TYPE, typename BP_DATA_TYPE,
           typename A_TYPE, typename X_TYPE, typename Y_TYPE, typename COMPUTE_MULTI_TYPE, typename COMPUTE_SUM_TYPE,
           typename SCALE_DATA_TYPE, typename NNZ_TYPE, typename ROW_TYPE, typename COLUMN_TYPE, int R,
-          int REDUCE_OPTION, int REDUCE_VEC_SIZE, int BLOCKS, int THREADS_PER_BLOCK>
+          int REDUCE_OPTION, int REDUCE_VEC_SIZE, int BLOCKS, int THREADS_PER_BLOCK, int WF_SIZE>
 inline void flat_multi_pass_sparse_spmv(hipStream_t stream, int trans, const SCALE_DATA_TYPE alpha,
                                         const SCALE_DATA_TYPE beta, ROW_TYPE m, COLUMN_TYPE n, NNZ_TYPE nnz,
                                         const NNZ_TYPE *rowptr, const COLUMN_TYPE *colindex, const A_TYPE *value,
@@ -38,7 +38,7 @@ inline void flat_multi_pass_sparse_spmv(hipStream_t stream, int trans, const SCA
   (pre_calc_break_point<ROW_TYPE, NNZ_TYPE, BP_DATA_TYPE, R * THREADS_PER_BLOCK>)<<<1024, 512, 0, stream>>>(
       rowptr, m, break_points, break_points_len);
 
-  (csrmv_flat_multi_pass_kernel<__WF_SIZE__, R, REDUCE_OPTION, REDUCE_VEC_SIZE, BLOCKS, THREADS_PER_BLOCK,
+  (csrmv_flat_multi_pass_kernel<WF_SIZE, R, REDUCE_OPTION, REDUCE_VEC_SIZE, BLOCKS, THREADS_PER_BLOCK,
                                 SHARE_MEM_INDEX_TYPE, BP_INDEX_TYPE, BP_DATA_TYPE, SCALE_DATA_TYPE, A_TYPE,
                                 COMPUTE_MULTI_TYPE, COMPUTE_SUM_TYPE, X_TYPE, Y_TYPE, NNZ_TYPE, ROW_TYPE,
                                 COLUMN_TYPE>)<<<(BLOCKS), THREADS_PER_BLOCK, 0, stream>>>(
@@ -49,7 +49,7 @@ inline void flat_multi_pass_sparse_spmv(hipStream_t stream, int trans, const SCA
 template <typename HIP_BLOCK_NUM_TYPE, typename SHARE_MEM_INDEX_TYPE, typename BP_INDEX_TYPE, typename BP_DATA_TYPE,
           typename A_TYPE, typename X_TYPE, typename Y_TYPE, typename COMPUTE_MULTI_TYPE, typename COMPUTE_SUM_TYPE,
           typename SCALE_DATA_TYPE, typename NNZ_TYPE, typename ROW_TYPE, typename COLUMN_TYPE, int R,
-          int REDUCE_OPTION, int REDUCE_VEC_SIZE, int THREADS_PER_BLOCK, int FLAT_STORE_Y_POLICY>
+          int REDUCE_OPTION, int REDUCE_VEC_SIZE, int THREADS_PER_BLOCK, int WF_SIZE, int FLAT_STORE_Y_POLICY>
 inline void flat_one_pass_sparse_spmv(hipStream_t stream, int trans, const SCALE_DATA_TYPE alpha,
                                       const SCALE_DATA_TYPE beta, ROW_TYPE m, COLUMN_TYPE n, NNZ_TYPE nnz,
                                       const NNZ_TYPE *rowptr, const COLUMN_TYPE *colindex, const A_TYPE *value,
@@ -58,7 +58,7 @@ inline void flat_one_pass_sparse_spmv(hipStream_t stream, int trans, const SCALE
   // each block can process `R*THREADS_PER_BLOCK` non-zeros.
   const HIP_BLOCK_NUM_TYPE HIP_BLOCKS = nnz / (R * THREADS_PER_BLOCK) + ((nnz % (R * THREADS_PER_BLOCK) == 0) ? 0 : 1);
 
-  (csrmv_flat_one_pass_kernel<FLAT_STORE_Y_POLICY, __WF_SIZE__, R, REDUCE_OPTION, REDUCE_VEC_SIZE, THREADS_PER_BLOCK,
+  (csrmv_flat_one_pass_kernel<FLAT_STORE_Y_POLICY, WF_SIZE, R, REDUCE_OPTION, REDUCE_VEC_SIZE, THREADS_PER_BLOCK,
                               SHARE_MEM_INDEX_TYPE, BP_INDEX_TYPE, BP_DATA_TYPE, SCALE_DATA_TYPE, A_TYPE,
                               COMPUTE_MULTI_TYPE, COMPUTE_SUM_TYPE, X_TYPE, Y_TYPE, NNZ_TYPE, ROW_TYPE,
                               COLUMN_TYPE>)<<<(HIP_BLOCKS), (THREADS_PER_BLOCK), 0, stream>>>(
@@ -71,8 +71,8 @@ inline void flat_one_pass_sparse_spmv(hipStream_t stream, int trans, const SCALE
     }
     // reduce by key. value: y_part_sum, key: y_part_indices, result: y.
     constexpr int CARRY_OUT_THREADS_PER_BLOCK = THREADS_PER_BLOCK;
-    flat_reduce_carry_out<ROW_TYPE, Y_TYPE, HIP_BLOCK_NUM_TYPE, CARRY_OUT_THREADS_PER_BLOCK>(stream, y, key_val,
-                                                                                             HIP_BLOCKS);
+    flat_reduce_carry_out<ROW_TYPE, Y_TYPE, HIP_BLOCK_NUM_TYPE, CARRY_OUT_THREADS_PER_BLOCK, WF_SIZE>(
+        stream, y, key_val, HIP_BLOCKS);
   }
   return;
 }
@@ -131,7 +131,7 @@ constexpr int FLAT_STAGE_DESTROY = 2;
  */
 template <typename T, typename NNZ_TYPE, typename ROW_TYPE, typename COLUMN_TYPE, typename BP_DATA_TYPE,
           typename DATA_TYPE, typename X_TYPE, typename Y_TYPE, typename SCALE_TYPE, int STAGE, int FLAT_STORE_Y_POLICY,
-          bool CREAT_PART_SUM_TEMP_BUFFER, int R, int THREADS_PER_BLOCK, int FLAT_REDUCE_VEC_SIZE>
+          bool CREAT_PART_SUM_TEMP_BUFFER, int R, int THREADS_PER_BLOCK, int FLAT_REDUCE_VEC_SIZE, int WF_SIZE>
 inline void flat_run_stage_template(hipStream_t stream,
                                     const csr_mat_descr<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE> d_csr_desc,
                                     const csrmv_flat_mtx_info<BP_DATA_TYPE, Y_TYPE> *info, int trans,
@@ -164,8 +164,9 @@ inline void flat_run_stage_template(hipStream_t stream,
     constexpr int FLAT_REDUCE_OPTION = FLAT_REDUCE_VEC_SIZE == 1 ? FLAT_REDUCE_OPTION_DIRECT : FLAT_REDUCE_OPTION_VEC;
     flat_one_pass_sparse_spmv<HIP_BLOCK_NUM_TYPE, SHARE_MEM_INDEX_TYPE, BP_INDEX_TYPE, BP_DATA_TYPE, DATA_TYPE, X_TYPE,
                               Y_TYPE, COMPUTE_MULTI_TYPE, COMPUTE_SUM_TYPE, SCALE_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE,
-                              R, FLAT_REDUCE_OPTION, FLAT_REDUCE_VEC_SIZE, THREADS_PER_BLOCK, FLAT_STORE_Y_POLICY>(
-        stream, trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points, key_val);
+                              R, FLAT_REDUCE_OPTION, FLAT_REDUCE_VEC_SIZE, THREADS_PER_BLOCK, WF_SIZE,
+                              FLAT_STORE_Y_POLICY>(stream, trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y,
+                                                   break_points, key_val);
   } else if (STAGE == FLAT_STAGE_DESTROY) {
     USPARSE_HIP_API_CHECK(hipFreeAsync(info->break_points, stream));
     if (FLAT_STORE_Y_POLICY == FLAT_STORE_Y_POLICY_SEGMENTED_SUM) {
@@ -185,7 +186,7 @@ inline void flat_run_stage_template(hipStream_t stream,
  * avoid code duplication.
  */
 template <typename T, typename NNZ_TYPE, typename ROW_TYPE, typename COLUMN_TYPE, typename BP_DATA_TYPE, typename A,
-          typename X_TYPE, typename Y_TYPE, typename SCALE_TYPE, int STAGE, int FLAT_STORE_Y_POLICY,
+          typename X_TYPE, typename Y_TYPE, typename SCALE_TYPE, int STAGE, int WF_SIZE, int FLAT_STORE_Y_POLICY,
           bool CREAT_PART_SUM_TEMP_BUFFER>
 inline void adaptive_flat_param_dispatch_for_stages(hipStream_t stream,
                                                     const csr_mat_descr<A, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE> d_csr_desc,
@@ -197,7 +198,7 @@ inline void adaptive_flat_param_dispatch_for_stages(hipStream_t stream,
 #define FLAT_RUN_STAGE_WITH_PARAM(R, THREADS_PER_BLOCK, FLAT_REDUCE_VEC_SIZE)                                          \
   flat_run_stage_template<T, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE, BP_DATA_TYPE, A, X_TYPE, Y_TYPE, SCALE_TYPE, STAGE,      \
                           FLAT_STORE_Y_POLICY, CREAT_PART_SUM_TEMP_BUFFER, R, THREADS_PER_BLOCK,                       \
-                          FLAT_REDUCE_VEC_SIZE>(stream, d_csr_desc, info, trans, alpha, beta, x, y);
+                          FLAT_REDUCE_VEC_SIZE, WF_SIZE>(stream, d_csr_desc, info, trans, alpha, beta, x, y);
 
   // set different compile-time parameter (R, THREADS_PER_BLOCK and FLAT_REDUCE_VEC_SIZE) based on the matrix
   // characteristics.
@@ -233,9 +234,10 @@ void flat_matrix_analyse(hipStream_t stream, const csr_mat_descr<DATA_TYPE, NNZ_
   using SCALE_DATA_TYPE = DATA_TYPE; // SCALE_DATA_TYPE is not used in the analyse stage.
   using X_TYPE = Y_TYPE;             // X_TYPE is not used in the analyse stage.
   constexpr int trans = 0;           // trans is not used in the analyse stage.
+  constexpr int WF_SIZE = __WF_SIZE__;
 
   adaptive_flat_param_dispatch_for_stages<T, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE, BP_DATA_TYPE, DATA_TYPE, X_TYPE, Y_TYPE,
-                                          SCALE_DATA_TYPE, FLAT_STAGE_ANALYSE, FLAT_STORE_Y_POLICY,
+                                          SCALE_DATA_TYPE, FLAT_STAGE_ANALYSE, WF_SIZE, FLAT_STORE_Y_POLICY,
                                           CREAT_PART_SUM_TEMP_BUFFER>(
       stream, d_csr_desc, info, trans, static_cast<SCALE_DATA_TYPE>(0.0), static_cast<SCALE_DATA_TYPE>(0.0), nullptr,
       nullptr);
@@ -312,12 +314,13 @@ void segment_sum_flat_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_T
   constexpr int THREADS_PER_BLOCK = 512;
   constexpr int blocks = 512;
   constexpr int RED_OPT = FLAT_REDUCE_OPTION_SEGMENT_SUM;
+  constexpr int WF_SIZE = __WF_SIZE__;
 
   hipStream_t stream = hipStreamDefault;
   flat_multi_pass_sparse_spmv<INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, DATA_TYPE, DATA_TYPE, DATA_TYPE,
                               DATA_TYPE, DATA_TYPE, DATA_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE, R, RED_OPT, 2,
-                              blocks, THREADS_PER_BLOCK>(stream, trans, alpha, beta, m, n, nnz, rowptr, colindex, value,
-                                                         x, y);
+                              blocks, THREADS_PER_BLOCK, WF_SIZE>(stream, trans, alpha, beta, m, n, nnz, rowptr,
+                                                                  colindex, value, x, y);
 }
 
 template <typename Y_TYPE, typename SCALE_DATA_TYPE, typename INDEX_TYPE, int BETA_Y_POLICY>
@@ -362,6 +365,8 @@ void adaptive_csrmv_flat(hipStream_t stream, int trans, const SCALE_TYPE alpha, 
   using HIP_BLOCK_NUM_TYPE = int;
   using SHARE_MEM_INDEX_TYPE = int;
   using BP_INDEX_TYPE = int;
+  constexpr int WF_SIZE = __WF_SIZE__;
+
   // for non one-pass.
   if (!FLAT_ONE_PASS) {
     constexpr int R = 2;
@@ -371,8 +376,8 @@ void adaptive_csrmv_flat(hipStream_t stream, int trans, const SCALE_TYPE alpha, 
 
     flat_multi_pass_sparse_spmv<HIP_BLOCK_NUM_TYPE, SHARE_MEM_INDEX_TYPE, BP_INDEX_TYPE, BP_DATA_TYPE, A, X, Y,
                                 COMPUTE_MULTI_TYPE, COMPUTE_SUM_TYPE, SCALE_TYPE, NNZ, ROW, COL, R, RED_OPT, 2, blocks,
-                                THREADS_PER_BLOCK>(stream, trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x,
-                                                   y);
+                                THREADS_PER_BLOCK, WF_SIZE>(stream, trans, alpha, beta, m, n, nnz, rowptr, colindex,
+                                                            value, x, y);
     return;
   }
 
@@ -385,16 +390,16 @@ void adaptive_csrmv_flat(hipStream_t stream, int trans, const SCALE_TYPE alpha, 
     constexpr int VEC_SIZE = 4;
     flat_one_pass_sparse_spmv<HIP_BLOCK_NUM_TYPE, SHARE_MEM_INDEX_TYPE, BP_INDEX_TYPE, BP_DATA_TYPE, A, X, Y,
                               COMPUTE_MULTI_TYPE, COMPUTE_SUM_TYPE, SCALE_TYPE, NNZ, ROW, COL, R, RED_OPT, VEC_SIZE,
-                              THREADS_PER_BLOCK, FLAT_STORE_Y_POLICY>(stream, trans, alpha, beta, m, n, nnz, rowptr,
-                                                                      colindex, value, x, y, break_points, key_val);
+                              THREADS_PER_BLOCK, WF_SIZE, FLAT_STORE_Y_POLICY>(
+        stream, trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points, key_val);
     return;
   }
 
   // use adaptive one-pass.
   constexpr bool create_temp_buffer = false; // create_temp_buffer is not used in the compute stage.
   adaptive_flat_param_dispatch_for_stages<T, NNZ, ROW, COL, BP_DATA_TYPE, A, X, Y, SCALE_TYPE, FLAT_STAGE_COMPUTE,
-                                          FLAT_STORE_Y_POLICY, create_temp_buffer>(stream, d_csr_desc, info, trans,
-                                                                                   alpha, beta, x, y);
+                                          WF_SIZE, FLAT_STORE_Y_POLICY, create_temp_buffer>(stream, d_csr_desc, info,
+                                                                                            trans, alpha, beta, x, y);
   return;
 }
 
