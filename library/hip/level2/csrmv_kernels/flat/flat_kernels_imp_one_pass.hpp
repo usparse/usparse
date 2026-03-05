@@ -20,7 +20,7 @@ __global__ __launch_bounds__(THREADS) void csrmv_flat_one_pass_kernel(
     ROW_TYPE m, const SCALE_DATA_TYPE alpha, const SCALE_DATA_TYPE beta, const NNZ_TYPE *__restrict__ row_offset,
     const BP_DATA_TYPE *__restrict__ break_points, const COLUMN_TYPE *__restrict__ csr_col_ind,
     const A_TYPE *__restrict__ csr_val, const X_TYPE *__restrict__ x, Y_TYPE *__restrict__ y,
-    ROW_TYPE *__restrict__ y_part_indices, Y_TYPE *__restrict__ y_part_sum) {
+    KV<ROW_TYPE, Y_TYPE> *__restrict__ key_val) {
   const int block_id = blockIdx.x;                // block id
   const int tid_in_block = threadIdx.x % THREADS; // thread id in one block
 
@@ -59,13 +59,12 @@ __global__ __launch_bounds__(THREADS) void csrmv_flat_one_pass_kernel(
       flat_segment_reduce_in_vector<BP_INDEX_TYPE, COMPUTE_MULTI_TYPE, SHARE_MEM_INDEX_TYPE, NNZ_TYPE, ROW_TYPE,
                                     SCALE_DATA_TYPE, COMPUTE_SUM_TYPE, Y_TYPE, nnz_per_block, THREADS, REDUCE_VEC_SIZE>(
           n_reduce_rows_num, tid_in_block, bp_index, reduce_start_row_id, reduce_end_row_id, alpha, row_offset,
-          shared_val, y, y_part_indices, y_part_sum);
+          shared_val, y, key_val);
     } else {
       // direct reduction
       flat_segment_reduce_direct<BP_INDEX_TYPE, COMPUTE_MULTI_TYPE, SHARE_MEM_INDEX_TYPE, NNZ_TYPE, ROW_TYPE,
                                  SCALE_DATA_TYPE, COMPUTE_SUM_TYPE, Y_TYPE, nnz_per_block, THREADS>(
-          tid_in_block, bp_index, reduce_start_row_id, reduce_end_row_id, alpha, row_offset, shared_val, y,
-          y_part_indices, y_part_sum);
+          tid_in_block, bp_index, reduce_start_row_id, reduce_end_row_id, alpha, row_offset, shared_val, y, key_val);
     }
   } else {
     // reduce and store result to memory
