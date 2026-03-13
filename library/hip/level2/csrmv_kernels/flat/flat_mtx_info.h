@@ -30,4 +30,10 @@ template <typename INDEX_TYPE, typename Y_TYPE> struct csrmv_flat_mtx_info {
 
 using usparse_default_flat_mtx_info = csrmv_flat_mtx_info<usparse::usparse_int, usparse::usparse_fp64>;
 
+// used for releasing memory when the user does not provide the type of break_points and key_val buffer.
+struct __usparse_non_type_flat_mtx_info {
+  void *break_points = nullptr;
+  void *key_val = nullptr;
+};
+
 #endif // USPARSE_HIP_USPARSE_FLAT_MTX_INFO_H
