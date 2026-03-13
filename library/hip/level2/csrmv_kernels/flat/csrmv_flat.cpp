@@ -202,16 +202,26 @@ inline void adaptive_flat_param_dispatch_for_stages(hipStream_t stream,
   // set different compile-time parameter (R, THREADS_PER_BLOCK and FLAT_REDUCE_VEC_SIZE) based on the matrix
   // characteristics.
   NNZ_TYPE avg_block_nnz_max = nnz / m;
-  if (avg_block_nnz_max <= 32) {
-    // use single thread to reduce if average nnz of row is less than 32.
-    FLAT_RUN_STAGE_WITH_PARAM(2, 512, 1);
+
+  if (avg_block_nnz_max <= 4) {
+    // Extreme sparse class: maximize average speedup
+    FLAT_RUN_STAGE_WITH_PARAM(2, 256, 4);
+  } else if (avg_block_nnz_max <= 32) {
+    // Sparse to moderate classes: 512 threads with VEC_SIZE 8 yields the highest average acceleration
+    FLAT_RUN_STAGE_WITH_PARAM(2, 512, 8);
   } else if (avg_block_nnz_max <= 64) {
-    // use more threads (4 threads) in vector to reduce if average nnz of row is larger than 32.
-    FLAT_RUN_STAGE_WITH_PARAM(2, 512, 4);
-  } else {
+    // Shift to R=4 to mask latency for higher density
+    FLAT_RUN_STAGE_WITH_PARAM(4, 512, 8);
+  } else if (avg_block_nnz_max <= 128) {
     constexpr int REDUCE_OPT = FLAT_REDUCE_OPTION_VEC;
-    // use more threads (16 threads) in vector to reduce if average nnz of row is larger than 64.
-    FLAT_RUN_STAGE_WITH_PARAM(2, 512, 16);
+    FLAT_RUN_STAGE_WITH_PARAM(4, 512, 16);
+  } else if (avg_block_nnz_max <= 256) {
+    constexpr int REDUCE_OPT = FLAT_REDUCE_OPTION_VEC;
+    FLAT_RUN_STAGE_WITH_PARAM(4, 512, 32);
+  } else {
+    // Highly dense class
+    constexpr int REDUCE_OPT = FLAT_REDUCE_OPTION_VEC;
+    FLAT_RUN_STAGE_WITH_PARAM(4, 512, 64);
   }
 }
 
