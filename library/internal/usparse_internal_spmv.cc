@@ -53,7 +53,20 @@ usparse::usparse_status usparse::spmv::internal::usparse_csrmv_imp(
   return usparse::usparse_status::usparse_status_success;
 }
 
-usparse::usparse_status usparse::spmv::internal::usparse_csrmv_clear_imp(usparse::mat::usparse_mat_info *info) {
+usparse::usparse_status
+usparse::spmv::internal::usparse_csrmv_clear_imp(usparse::mat::usparse_mat_info *info,
+                                                 const usparse::spmv::usparse_csrmv_algorithms algo) {
+  if (algo == usparse::spmv::usparse_csrmv_algorithms::Flat) {
+    void *flat_info = info->csrmv_info->flat_info;
+    flat_matrix_clear_atomic(hipStreamDefault, flat_info);
+    delete flat_info;
+    info->csrmv_info->flat_info = nullptr;
+    return usparse::usparse_status::usparse_status_success;
+  } else if (algo == usparse::spmv::usparse_csrmv_algorithms::LineEnhance) {
+    return usparse::usparse_status::usparse_status_success;
+  } else if (algo == usparse::spmv::usparse_csrmv_algorithms::CsrVector) {
+    return usparse::usparse_status::usparse_status_success;
+  }
   // TODO: release deviece memory and info memory.
   return usparse::usparse_status::usparse_status_not_implemented;
 }
@@ -115,8 +128,9 @@ usparse::usparse_status usparse_dcsrmv(const usparse::usparse_operation trans, c
       trans, alpha, beta, dev_csr_mat, x, y, info, algo);
 }
 
-usparse::usparse_status usparse_csrmv_clear(usparse::mat::usparse_mat_info *info) {
-  return usparse::spmv::internal::usparse_csrmv_clear_imp(info);
+usparse::usparse_status usparse_csrmv_clear(usparse::mat::usparse_mat_info *info,
+                                            const usparse::spmv::usparse_csrmv_algorithms algo) {
+  return usparse::spmv::internal::usparse_csrmv_clear_imp(info, algo);
 }
 
 // For coo spmv implementation
