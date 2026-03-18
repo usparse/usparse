@@ -377,12 +377,125 @@ __global__ void flat_reduce_carry_out_kernel(Y_TYPE *__restrict__ y, ROW *__rest
   }
 }
 
+// Segmented block reduction kernel
+template <uint32_t BLOCKSIZE, typename I, typename T>
+__device__ __forceinline__ void segmented_blockreduce(const I *rows, T *vals) {
+  const int tid = hipThreadIdx_x;
+
+#pragma unroll
+  for (uint32_t j = 1; j < BLOCKSIZE; j <<= 1) {
+    T val = static_cast<T>(0);
+    if (tid >= j) {
+      if (rows[tid] == rows[tid - j]) {
+        val = vals[tid - j];
+      }
+    }
+    __syncthreads();
+
+    vals[tid] = vals[tid] + val;
+    __syncthreads();
+  }
+  return;
+}
+
+// Do the final block reduction of the block reduction buffers back into global memory
+template <uint32_t BLOCKSIZE, typename I, typename Y, typename T>
+__global__ __launch_bounds__(512) void final_segmented_loops_reduce_device(I nblocks,
+                                                                           const I *__restrict__ row_block_red,
+                                                                           const T *__restrict__ val_block_red,
+                                                                           Y *__restrict__ y) {
+  const int tid = hipThreadIdx_x;
+
+  // Shared memory to hold row indices and values for segmented reduction
+  __shared__ I shared_row[BLOCKSIZE];
+  __shared__ T shared_val[BLOCKSIZE];
+
+  // Loop over blocks that are subject for segmented reduction
+  for (I i = 0; i < nblocks; i += BLOCKSIZE) {
+    // Copy data to reduction buffers
+    shared_row[tid] = (tid + i < nblocks) ? row_block_red[tid + i] : -1;
+    shared_val[tid] = (tid + i < nblocks) ? val_block_red[tid + i] : static_cast<T>(0);
+
+    __syncthreads();
+
+    // Do segmented block reduction
+    segmented_blockreduce<BLOCKSIZE>(shared_row, shared_val);
+
+    // Add reduced sum to y if valid
+    const I row = shared_row[tid];
+    const I rowp1 = (tid < BLOCKSIZE - 1) ? shared_row[tid + 1] : -1;
+
+    if (row != rowp1 && row >= 0) {
+      y[row] = y[row] + shared_val[tid];
+    }
+
+    __syncthreads();
+  }
+  return;
+}
+
+template <uint32_t BLOCKSIZE, typename I, typename Y, typename T>
+__global__ __launch_bounds__(512) void segmented_loops_reduce_device(I nblocks, const I *__restrict__ row_block_red,
+                                                                     const T *__restrict__ val_block_red,
+                                                                     Y *__restrict__ y, I *__restrict__ temp_data_index,
+                                                                     T *__restrict__ temp_data_val) {
+  const int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  const int tid_in_block = threadIdx.x;
+
+  // Shared memory to hold row indices and values for segmented reduction
+  __shared__ I shared_row[BLOCKSIZE];
+  __shared__ T shared_val[BLOCKSIZE];
+
+  // Loop over blocks that are subject for segmented reduction
+  if (true) {
+    constexpr int i = 0;
+    // Copy data to reduction buffers
+    shared_row[tid_in_block] = (tid + i < nblocks) ? row_block_red[tid + i] : -1;
+    shared_val[tid_in_block] = (tid + i < nblocks) ? val_block_red[tid + i] : static_cast<T>(0);
+
+    __syncthreads();
+
+    // Do segmented block reduction
+    segmented_blockreduce<BLOCKSIZE>(shared_row, shared_val);
+
+    // Add reduced sum to y if valid
+    const I row = shared_row[tid_in_block];
+
+    if (tid_in_block == BLOCKSIZE - 1) {
+      // the last thread in the block writes to temp buffer
+      if (row != -1) {
+        temp_data_index[blockIdx.x] = row;
+        temp_data_val[blockIdx.x] = shared_val[tid_in_block];
+      }
+    } else {
+      const I rowp1 = (tid_in_block < BLOCKSIZE - 1) ? shared_row[tid_in_block + 1] : -1;
+      if (row != rowp1 && row >= 0) {
+        y[row] = y[row] + shared_val[tid_in_block];
+      }
+    }
+    __syncthreads();
+  }
+  return;
+}
+
 template <typename ROW, typename Y_TYPE, typename HIP_BLOCK_NUM_TYPE, int THREADS_PER_BLOCK>
 inline void flat_reduce_carry_out(hipStream_t stream, Y_TYPE *__restrict__ y, ROW *__restrict__ y_part_indices,
                                   Y_TYPE *__restrict__ y_part_sum, const HIP_BLOCK_NUM_TYPE HIP_BLOCKS) {
-  HIP_BLOCK_NUM_TYPE reduce_blocks = (HIP_BLOCKS + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
-  flat_reduce_carry_out_kernel<<<reduce_blocks, THREADS_PER_BLOCK, 0, stream>>>(y, y_part_indices, y_part_sum,
-                                                                                HIP_BLOCKS);
+  if (HIP_BLOCKS < 2 * THREADS_PER_BLOCK) {
+    final_segmented_loops_reduce_device<THREADS_PER_BLOCK, ROW, Y_TYPE, Y_TYPE>
+        <<<1, THREADS_PER_BLOCK, 0, stream>>>(HIP_BLOCKS, y_part_indices, y_part_sum, y);
+  } else {
+    int NEW_HIP_BLOCKS = (HIP_BLOCKS + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+    ROW *temp_data_index = y_part_indices + HIP_BLOCKS;
+    Y_TYPE *temp_data_val = y_part_sum + HIP_BLOCKS;
+    segmented_loops_reduce_device<THREADS_PER_BLOCK, ROW, Y_TYPE, Y_TYPE>
+        <<<NEW_HIP_BLOCKS, THREADS_PER_BLOCK, 0, stream>>>(HIP_BLOCKS, y_part_indices, y_part_sum, y, temp_data_index,
+                                                           temp_data_val);
+    hipStreamSynchronize(stream);
+    flat_reduce_carry_out<ROW, Y_TYPE, HIP_BLOCK_NUM_TYPE, THREADS_PER_BLOCK>(stream, y, temp_data_index, temp_data_val,
+                                                                              NEW_HIP_BLOCKS);
+  }
+  return;
 }
 
 #endif // USPARSE_HIP_USPARSE_FLAT_KERNELS_IMP_REDUCE_HPP
