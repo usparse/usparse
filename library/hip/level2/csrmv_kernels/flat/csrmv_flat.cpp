@@ -261,6 +261,43 @@ void flat_matrix_analyse_segmented(hipStream_t stream,
   return;
 }
 
+template <typename BP_DATA_TYPE, typename Y_TYPE, int FLAT_STORE_Y_POLICY, bool CREAT_PART_SUM_TEMP_BUFFER>
+void flat_matrix_clear(hipStream_t stream, csrmv_flat_mtx_info<BP_DATA_TYPE, Y_TYPE> *info) {
+  USPARSE_HIP_API_CHECK(hipFree(info->break_points));
+  if (FLAT_STORE_Y_POLICY == FLAT_STORE_Y_POLICY_SEGMENTED_SUM && CREAT_PART_SUM_TEMP_BUFFER) {
+    USPARSE_HIP_API_CHECK(hipFree(info->key_val));
+  }
+}
+
+template <typename BP_DATA_TYPE, typename Y_TYPE>
+void flat_matrix_clear_atomic(hipStream_t stream, csrmv_flat_mtx_info<BP_DATA_TYPE, Y_TYPE> *info) {
+  flat_matrix_clear<BP_DATA_TYPE, Y_TYPE, FLAT_STORE_Y_POLICY_ATOMIC, false>(stream, info);
+  return;
+}
+
+template <typename BP_DATA_TYPE, typename Y_TYPE>
+void flat_matrix_clear_segmented(hipStream_t stream, csrmv_flat_mtx_info<BP_DATA_TYPE, Y_TYPE> *info) {
+  flat_matrix_clear<BP_DATA_TYPE, Y_TYPE, FLAT_STORE_Y_POLICY_SEGMENTED_SUM, true>(stream, info);
+  return;
+}
+
+void flat_matrix_clear(hipStream_t stream, void *info) {
+  // todo: usparse_default_flat_mtx_info is not elegant.
+  usparse_default_flat_mtx_info *info_ptr = reinterpret_cast<usparse_default_flat_mtx_info *>(info);
+  USPARSE_HIP_API_CHECK(hipFree(info_ptr->break_points));
+  USPARSE_HIP_API_CHECK(hipFree(info_ptr->key_val));
+}
+
+void flat_matrix_clear_atomic(hipStream_t stream, void *info) {
+  // todo: usparse_default_flat_mtx_info is not elegant.
+  flat_matrix_clear_atomic(stream, reinterpret_cast<usparse_default_flat_mtx_info *>(info));
+}
+
+void flat_matrix_clear_segmented(hipStream_t stream, void *info) {
+  // todo: usparse_default_flat_mtx_info is not elegant.
+  flat_matrix_clear_segmented(stream, reinterpret_cast<usparse_default_flat_mtx_info *>(info));
+}
+
 /**
  * note: sugment-sum does not support FLAT_STORE_Y_POLICY_SEGMENTED_SUM mode currently.
  */
@@ -541,6 +578,16 @@ FLAT_SPMV_ANALYSE_INSTANTIATE(usparse::usparse_fpc32, int64_t, int64_t, int64_t,
 FLAT_SPMV_ANALYSE_INSTANTIATE(usparse::usparse_fpc64, int64_t, int32_t, int32_t, int32_t, usparse::usparse_fpc64);
 FLAT_SPMV_ANALYSE_INSTANTIATE(usparse::usparse_fpc64, int64_t, int64_t, int64_t, int64_t, usparse::usparse_fpc64);
 
+#define FLAT_SPMV_CLEAR_INSTANTIATE(BP, Y)                                                                             \
+  template void flat_matrix_clear_atomic<BP, Y>(hipStream_t stream, csrmv_flat_mtx_info<BP, Y> * info);                \
+  template void flat_matrix_clear_segmented<BP, Y>(hipStream_t stream, csrmv_flat_mtx_info<BP, Y> * info);
+
+FLAT_SPMV_CLEAR_INSTANTIATE(usparse::usparse_int, usparse::usparse_fp64);
+FLAT_SPMV_CLEAR_INSTANTIATE(usparse::usparse_int, usparse::usparse_fp32);
+FLAT_SPMV_CLEAR_INSTANTIATE(usparse::usparse_int, usparse::usparse_fpc64);
+FLAT_SPMV_CLEAR_INSTANTIATE(usparse::usparse_int, usparse::usparse_fpc32);
+
 #undef FLAT_SPMV_INSTANTIATE_MIXED
 #undef FLAT_SPMV_INSTANTIATE_DEPRECATED
 #undef FLAT_SPMV_ANALYSE_INSTANTIATE
+#undef FLAT_SPMV_CLEAR_INSTANTIATE

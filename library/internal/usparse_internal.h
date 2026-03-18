@@ -26,7 +26,8 @@ namespace usparse {
                         const usparse::csr_desc<INDEX_TYPE, DATA_TYPE> dev_csr_mat, const DATA_TYPE *x, DATA_TYPE *y,
                         usparse::mat::usparse_mat_info *info, const usparse::spmv::usparse_csrmv_algorithms algo);
 
-      usparse::usparse_status usparse_csrmv_clear_imp(usparse::mat::usparse_mat_info *info);
+      usparse::usparse_status usparse_csrmv_clear_imp(usparse::mat::usparse_mat_info *info,
+                                                      const usparse::spmv::usparse_csrmv_algorithms algo);
 
       template <typename INDEX_TYPE, typename DATA_TYPE>
       usparse::usparse_status usparse_coomv_analysis_imp(const usparse::usparse_operation trans,

@@ -99,5 +99,30 @@ template <typename DATA_TYPE, typename NNZ_TYPE, typename ROW_TYPE, typename COL
 void flat_matrix_analyse_segmented(hipStream_t stream,
                                    const csr_mat_descr<DATA_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE> d_csr_desc,
                                    csrmv_flat_mtx_info<BP_DATA_TYPE, Y_TYPE> *info);
+/**
+ * the general matrix clear api for the flat csrmv,
+ * which frees the memory allocated during the analyse stage.
+ */
+template <typename BP_DATA_TYPE, typename Y_TYPE, int FLAT_STORE_Y_POLICY, bool CREAT_PART_SUM_TEMP_BUFFER>
+void flat_matrix_clear(hipStream_t stream, csrmv_flat_mtx_info<BP_DATA_TYPE, Y_TYPE> *info);
+
+/**
+ * perform memory destruction for atomic mode.
+ */
+template <typename BP_DATA_TYPE, typename Y_TYPE>
+void flat_matrix_clear_atomic(hipStream_t stream, csrmv_flat_mtx_info<BP_DATA_TYPE, Y_TYPE> *info);
+
+/**
+ * perform memory destruction for segmented sum mode.
+ */
+template <typename BP_DATA_TYPE, typename Y_TYPE>
+void flat_matrix_clear_segmented(hipStream_t stream, csrmv_flat_mtx_info<BP_DATA_TYPE, Y_TYPE> *info);
+
+/**
+ * non-type version of matrix info desctory.
+ */
+void flat_matrix_clear(hipStream_t stream, void *info);
+void flat_matrix_clear_atomic(hipStream_t stream, void *info);
+void flat_matrix_clear_segmented(hipStream_t stream, void *info);
 
 #endif // USPARSE_HIP_USPARSE_CSRMV_FLAT_H
