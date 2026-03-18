@@ -54,7 +54,7 @@ inline void flat_one_pass_sparse_spmv(hipStream_t stream, int trans, const SCALE
                                       const SCALE_DATA_TYPE beta, ROW_TYPE m, COLUMN_TYPE n, NNZ_TYPE nnz,
                                       const NNZ_TYPE *rowptr, const COLUMN_TYPE *colindex, const A_TYPE *value,
                                       const X_TYPE *x, Y_TYPE *y, const BP_DATA_TYPE *break_points,
-                                      ROW_TYPE *y_part_indices, Y_TYPE *y_part_sum) {
+                                      KV<ROW_TYPE, Y_TYPE> *key_val) {
   // each block can process `R*THREADS_PER_BLOCK` non-zeros.
   const HIP_BLOCK_NUM_TYPE HIP_BLOCKS = nnz / (R * THREADS_PER_BLOCK) + ((nnz % (R * THREADS_PER_BLOCK) == 0) ? 0 : 1);
 
@@ -62,17 +62,17 @@ inline void flat_one_pass_sparse_spmv(hipStream_t stream, int trans, const SCALE
                               SHARE_MEM_INDEX_TYPE, BP_INDEX_TYPE, BP_DATA_TYPE, SCALE_DATA_TYPE, A_TYPE,
                               COMPUTE_MULTI_TYPE, COMPUTE_SUM_TYPE, X_TYPE, Y_TYPE, NNZ_TYPE, ROW_TYPE,
                               COLUMN_TYPE>)<<<(HIP_BLOCKS), (THREADS_PER_BLOCK), 0, stream>>>(
-      m, alpha, beta, rowptr, break_points, colindex, value, x, y, y_part_indices, y_part_sum);
+      m, alpha, beta, rowptr, break_points, colindex, value, x, y, key_val);
 
   if (FLAT_STORE_Y_POLICY == FLAT_STORE_Y_POLICY_SEGMENTED_SUM) {
-    if (y_part_sum == nullptr || y_part_indices == nullptr) {
+    if (key_val == nullptr) {
       // todo: return with error
       return;
     }
     // reduce by key. value: y_part_sum, key: y_part_indices, result: y.
     constexpr int CARRY_OUT_THREADS_PER_BLOCK = THREADS_PER_BLOCK;
-    flat_reduce_carry_out<ROW_TYPE, Y_TYPE, HIP_BLOCK_NUM_TYPE, CARRY_OUT_THREADS_PER_BLOCK>(stream, y, y_part_indices,
-                                                                                             y_part_sum, HIP_BLOCKS);
+    flat_reduce_carry_out<ROW_TYPE, Y_TYPE, HIP_BLOCK_NUM_TYPE, CARRY_OUT_THREADS_PER_BLOCK>(stream, y, key_val,
+                                                                                             HIP_BLOCKS);
   }
   return;
 }
@@ -99,11 +99,9 @@ void flat_matrix_analyse_imp(hipStream_t stream,
   if (FLAT_STORE_Y_POLICY == FLAT_STORE_Y_POLICY_SEGMENTED_SUM && CREAT_PART_SUM_TEMP_BUFFER) {
     // size: 2 * (HIP_BLOCKS + 1). Note: 2x is used for reduction-by-key recursively.
     USPARSE_HIP_API_CHECK(
-        hipMallocAsync((void **)(&(info->y_part_sum)), 2 * (HIP_BLOCKS + 1) * sizeof(Y_TYPE), stream));
+        hipMallocAsync((void **)(&(info->key_val)), 2 * (HIP_BLOCKS + 1) * sizeof(KV<ROW_TYPE, Y_TYPE>), stream));
     USPARSE_HIP_API_CHECK(
-        hipMallocAsync((void **)(&(info->y_part_indices)), 2 * (HIP_BLOCKS + 1) * sizeof(ROW_TYPE), stream));
-    USPARSE_HIP_API_CHECK(hipMemsetAsync(info->y_part_sum, 0, 2 * (HIP_BLOCKS + 1) * sizeof(Y_TYPE), stream));
-    USPARSE_HIP_API_CHECK(hipMemsetAsync(info->y_part_indices, 0, 2 * (HIP_BLOCKS + 1) * sizeof(ROW_TYPE), stream));
+        hipMemsetAsync(info->key_val, 0, 2 * (HIP_BLOCKS + 1) * sizeof(KV<ROW_TYPE, Y_TYPE>), stream));
   }
 }
 
@@ -159,8 +157,7 @@ inline void flat_run_stage_template(hipStream_t stream,
     // todo: if y_part_sum is null. malloc device memory.
 
     BP_DATA_TYPE *break_points = info->break_points;
-    Y_TYPE *y_part_sum = info->y_part_sum;
-    ROW_TYPE *y_part_indices = info->y_part_indices;
+    KV<ROW_TYPE, Y_TYPE> *key_val = info->key_val;
     // Note: memset to 0 for y_part_sum and y_part_indices before the kernel launching is unnecessary.
     // because the csrmv kernel will write result using `y_part_sum[i] = val`, instead of `y_part_sum[i] += val`.
 
@@ -168,12 +165,11 @@ inline void flat_run_stage_template(hipStream_t stream,
     flat_one_pass_sparse_spmv<HIP_BLOCK_NUM_TYPE, SHARE_MEM_INDEX_TYPE, BP_INDEX_TYPE, BP_DATA_TYPE, DATA_TYPE, X_TYPE,
                               Y_TYPE, COMPUTE_MULTI_TYPE, COMPUTE_SUM_TYPE, SCALE_TYPE, NNZ_TYPE, ROW_TYPE, COLUMN_TYPE,
                               R, FLAT_REDUCE_OPTION, FLAT_REDUCE_VEC_SIZE, THREADS_PER_BLOCK, FLAT_STORE_Y_POLICY>(
-        stream, trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points, y_part_indices, y_part_sum);
+        stream, trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points, key_val);
   } else if (STAGE == FLAT_STAGE_DESTROY) {
     USPARSE_HIP_API_CHECK(hipFreeAsync(info->break_points, stream));
     if (FLAT_STORE_Y_POLICY == FLAT_STORE_Y_POLICY_SEGMENTED_SUM) {
-      USPARSE_HIP_API_CHECK(hipFreeAsync(info->y_part_sum, stream));
-      USPARSE_HIP_API_CHECK(hipFreeAsync(info->y_part_indices, stream));
+      USPARSE_HIP_API_CHECK(hipFreeAsync(info->key_val, stream));
     }
   } else {
     // return
@@ -312,9 +308,7 @@ void adaptive_csrmv_flat(hipStream_t stream, int trans, const SCALE_TYPE alpha, 
 
   EXPAND_FROM_CSR_MAT_DESCR(A, NNZ, ROW, COL, d_csr_desc);
   BP_DATA_TYPE *break_points = info->break_points;
-  Y *y_part_sum = info->y_part_sum;
-  ROW *y_part_indices = info->y_part_indices;
-
+  KV<ROW, Y> *key_val = info->key_val;
   using COMPUTE_MULTI_TYPE = T;
   using COMPUTE_SUM_TYPE = T;
 
@@ -344,8 +338,8 @@ void adaptive_csrmv_flat(hipStream_t stream, int trans, const SCALE_TYPE alpha, 
     constexpr int VEC_SIZE = 4;
     flat_one_pass_sparse_spmv<HIP_BLOCK_NUM_TYPE, SHARE_MEM_INDEX_TYPE, BP_INDEX_TYPE, BP_DATA_TYPE, A, X, Y,
                               COMPUTE_MULTI_TYPE, COMPUTE_SUM_TYPE, SCALE_TYPE, NNZ, ROW, COL, R, RED_OPT, VEC_SIZE,
-                              THREADS_PER_BLOCK, FLAT_STORE_Y_POLICY>(
-        stream, trans, alpha, beta, m, n, nnz, rowptr, colindex, value, x, y, break_points, y_part_indices, y_part_sum);
+                              THREADS_PER_BLOCK, FLAT_STORE_Y_POLICY>(stream, trans, alpha, beta, m, n, nnz, rowptr,
+                                                                      colindex, value, x, y, break_points, key_val);
     return;
   }
 
