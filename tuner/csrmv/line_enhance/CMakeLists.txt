@@ -4,7 +4,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/utuner/lib)
 add_executable(
         usparse_tuner_csrmv_line_enhance
         line_enhance_tuner.cc
-        main.cc
+        ../common/csrmv_tuner_main.cc
         )
 target_include_directories(
         usparse_tuner_csrmv_line_enhance

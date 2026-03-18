@@ -2,7 +2,7 @@
 // Created by genshen to 2026-01-13.
 //
 
-#include "csrmv_tuner_input.h"
+#include "../common/csrmv_tuner_input.h"
 #include "common/usparse_utils.hpp"
 #include "hip/level2/csrmv_kernels/line-enhance/csrmv_line_enhance.h"
 #include "usparse_tuner.h"
