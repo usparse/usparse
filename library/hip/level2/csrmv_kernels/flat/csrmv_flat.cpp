@@ -263,6 +263,9 @@ void flat_matrix_analyse_segmented(hipStream_t stream,
 
 template <typename BP_DATA_TYPE, typename Y_TYPE, int FLAT_STORE_Y_POLICY, bool CREAT_PART_SUM_TEMP_BUFFER>
 void flat_matrix_clear(hipStream_t stream, csrmv_flat_mtx_info<BP_DATA_TYPE, Y_TYPE> *info) {
+  if(info == nullptr) {
+    return;
+  }
   USPARSE_HIP_API_CHECK(hipFree(info->break_points));
   if (FLAT_STORE_Y_POLICY == FLAT_STORE_Y_POLICY_SEGMENTED_SUM && CREAT_PART_SUM_TEMP_BUFFER) {
     USPARSE_HIP_API_CHECK(hipFree(info->key_val));
@@ -282,6 +285,9 @@ void flat_matrix_clear_segmented(hipStream_t stream, csrmv_flat_mtx_info<BP_DATA
 }
 
 void flat_matrix_clear(hipStream_t stream, void *info) {
+  if(info == nullptr) {
+    return;
+  }
   auto *info_ptr = reinterpret_cast<__usparse_non_type_flat_mtx_info *>(info);
   USPARSE_HIP_API_CHECK(hipFree(info_ptr->break_points));
   USPARSE_HIP_API_CHECK(hipFree(info_ptr->key_val));
