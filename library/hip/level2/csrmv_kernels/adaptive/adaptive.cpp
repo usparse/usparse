@@ -75,7 +75,7 @@ void adaptive_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta
   }
 
   // 5. use vector-row method for small data set.
-  line_enhance_sparse_spmv(trans, alpha, beta, d_csr_mat_descr, x, y);
+  line_enhance_sparse_spmv<INDEX_TYPE, DATA_TYPE>(trans, alpha, beta, d_csr_mat_descr, x, y);
 }
 
 template void adaptive_sparse_spmv<usparse::usparse_int, usparse::usparse_fp32>(

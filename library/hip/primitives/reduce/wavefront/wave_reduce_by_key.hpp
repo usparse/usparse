@@ -19,7 +19,8 @@ namespace usparse {
         // https://rocm.docs.amd.com/projects/HIP/en/latest/how-to/hip_cpp_language_extensions.html#warp-vote-and-ballot-functions
         // we use 60-bit __ballot in HIP:
         using WAVE_BIT_FLAG_TYPE = unsigned long long;
-        WAVE_BIT_FLAG_TYPE roots_flag = __ballot(is_root); // on CUDA, it converts uint32 to uint64 (it is ok).
+        WAVE_BIT_FLAG_TYPE roots_flag =
+            __ballot_sync(0xffffffff, is_root); // on CUDA, it converts uint32 to uint64 (it is ok).
 
         // calculate the distance of current lane to the root lane of the next row.
         int next_row_root_dist = 0;
@@ -40,7 +41,7 @@ namespace usparse {
         // calculate `pd = powerOf(next_row_root_dist - 1)`, which is the number of reductions performed on each lane.
         // if `pd` is zero, this lane can not perform reduction (the data in `temp` should be discard).
         int pd = next_row_root_dist - 1;
-        for (int shift = 1; __any(pd); shift *= 2) {
+        for (int shift = 1; __any_sync(0xffffffff, pd); shift *= 2) {
           const DATA_TYPE temp = __shfl_down(value, shift); // send to lower lane
           // which is the same as:
           // shift <= next_row_root_dist - 1

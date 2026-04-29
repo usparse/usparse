@@ -1,6 +1,10 @@
 #ifndef USTB_SPARSE_SPGEMM_SPGEMM_NUMERIC_BP_KERNEL_HPP
 #define USTB_SPARSE_SPGEMM_SPGEMM_NUMERIC_BP_KERNEL_HPP
 
+__device__ __forceinline__ int __lane_id__() {
+  return threadIdx.x % __WF_SIZE__;
+}
+
 // breakpoint policy for matrixc
 template <typename T, typename I, size_t CHUNK_SIZE, size_t THREADS, size_t VEC_SIZE>
 __global__ void __launch_bounds__(THREADS)
@@ -73,7 +77,7 @@ __global__ void __launch_bounds__(THREADS)
       unsigned long long mask = __ballot(has_nnz);
       int nnz = __popcll(mask);
 
-      unsigned long long lanemask_le = UINT64_MAX >> (sizeof(unsigned long long) * CHAR_BIT - (__lane_id() + 1));
+      unsigned long long lanemask_le = UINT64_MAX >> (sizeof(unsigned long long) * CHAR_BIT - (__lane_id__() + 1));
 
       int offset = __popcll(lanemask_le & mask);
       __syncthreads();
