@@ -71,11 +71,13 @@ void test_coo_spmm(std::string &mtx_path, usparse::coo_desc<type_sparse_default_
            usparse_dev_coo, M, K, N, dev_B, dev_C, host_B, host_C, C_host_check.data());
   USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
 
+#ifdef __HIP_PLATFORM_HCC__
   RocSparseCooMM<type_sparse_default_index, PRECISION> roc;
   roc.test(mtx_path, "rocSparse", usparse::usparse_operation::operation_none, alpha, beta, h_coo,
   usparse_dev_coo, M, K, N,
            dev_B, dev_C, host_B, host_C, C_host_check.data());
   USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
+#endif
 
   ubench::ubench_free_device_coo<type_sparse_default_index, PRECISION>(dev_coo);
 }

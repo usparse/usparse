@@ -22,11 +22,14 @@ set(HEADER_FILES
 
 set(SOURCE_FILES
         main.cc
-        benchmark_rocsparse_csrmm.cc
         benchmark_usparse_csrmm.cc
         ../utils/ubench_sparse_matrix_utils.cpp
         ../utils/ubench_vector_utils.cpp
         )
+# set rocsparse benchmark if it is on ROCm
+if (NOT BENCHMARK_CUDA_ENABLE_FLAG)
+        set(SOURCE_FILES ${SOURCE_FILES} benchmark_rocsparse_csrmm.cc)
+endif()
 
 set(CSRMM_BENCHMARK_NAME csrmm-gpu-benchmark)
 
