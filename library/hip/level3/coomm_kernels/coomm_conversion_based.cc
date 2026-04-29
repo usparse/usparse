@@ -3,6 +3,8 @@
  *
  */
 
+#include <cassert>
+
 #include "include/usparse.h"
 
 #include "../../conversion/coo2csr.h"

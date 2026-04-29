@@ -2,6 +2,8 @@
 // Created by you chen to 2026-03-06.
 //
 
+#include <hip/hip_runtime.h>
+
 #include "../common/csrmv_tuner_input.h"
 #include "common/usparse_utils.hpp"
 #include "hip/level2/csrmv_kernels/flat/csrmv_flat.cpp"

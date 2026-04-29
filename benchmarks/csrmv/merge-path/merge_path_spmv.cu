@@ -1,17 +1,17 @@
 #include "../utils/benchmark_time.h"
-#include "usparse_matrix.h"
 #include "merge_path_config.h"
 #include "merge_path_partition.h"
 #include "merge_path_reduction.h"
 #include "merge_path_spmv.h"
 #include "merge_path_update.h"
 #include "merge_path_utils.h"
+#include "usparse_matrix.h"
 #include <common/platforms/cuda/cuda_utils.hpp>
 #include <cuda_runtime.h>
 #include <utility>
 
+#include "../utils/timer_utils.h"
 #include "benchmark_config.h"
-#include "utils/timer_utils.h"
 
 template <int REDUCTION_ALGORITHM, int UPDATE_ALGORITHM>
 void merge_path_spmv(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,

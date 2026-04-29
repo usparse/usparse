@@ -5,9 +5,11 @@
 #ifndef USPARSE_HIP_LEVEL3_CSRSM_H
 #define USPARSE_HIP_LEVEL3_CSRSM_H
 
-
+#include <memory>
 #include <vector>
+
 #include <hip/hip_runtime.h>
+#include <hip/hip_runtime_api.h>
 
 constexpr int WARP_SIZE = 64;
 

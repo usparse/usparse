@@ -1,11 +1,11 @@
 #define ACSR_STDERR
 
 #include "../utils/benchmark_time.h"
+#include "../utils/timer_utils.h"
 #include "usparse_matrix.h"
-#include "timer.h"
 #include "ACSR.h"
 #include <vector>
-#include "utils/timer_utils.h"
+#include "timer/timer.h"
 
 #define BIN_MAX 30
 #define ROW_MAX 1024

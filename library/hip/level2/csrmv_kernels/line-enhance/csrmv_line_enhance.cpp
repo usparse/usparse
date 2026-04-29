@@ -2,6 +2,8 @@
 // Created by chu genshen on 2021/10/2.
 //
 
+#include <array>
+
 #include "common/macros.h"
 #include "line_enhance_kernels_imp.h"
 #include "usparse_types.h"
@@ -35,6 +37,14 @@ void line_enhance_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE 
                                                                                  x, y);
 }
 
+template void
+line_enhance_sparse_spmv<int, double, __WF_SIZE__>(int trans, const double alpha, const double beta,
+                                                   const usparse::csr_mat_descr<double, int, int, int> d_csr_desc,
+                                                   const double *x, double *y);
+template void
+line_enhance_sparse_spmv<int, float, __WF_SIZE__>(int trans, const float alpha, const float beta,
+                                                  const usparse::csr_mat_descr<float, int, int, int> d_csr_desc,
+                                                  const float *x, float *y);
 // todo: better MACRO define
 #define USPARSE_ENABLE_TUNER
 #ifdef USPARSE_ENABLE_TUNER

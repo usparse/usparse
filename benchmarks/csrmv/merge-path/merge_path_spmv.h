@@ -2,8 +2,8 @@
 #define SPMV_ACC_BENCHMARK_MERGE_PATH_SPMV_H
 
 #include "../utils/benchmark_time.h"
-#include "usparse_matrix.h"
 #include "merge_path_config.h"
+#include "usparse_matrix.h"
 
 template <int REDUCTION_ALGORITHM = Binary, int UPDATE_ALGORITHM = SingleBlock>
 void merge_path_spmv(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
