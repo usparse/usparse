@@ -13,19 +13,19 @@
 #include "../utils/timer_utils.h"
 #include "benchmark_config.h"
 
-template <int REDUCTION_ALGORITHM, int UPDATE_ALGORITHM>
-void merge_path_spmv(int trans, const double alpha, const double beta, const csr_desc<int, double> h_csr_desc,
-                     const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt) {
-  hip::timer::event_timer  pre_timer, calc_timer, calc2_timer, destroy_timer;
+template <typename DATA_TYPE, int REDUCTION_ALGORITHM, int UPDATE_ALGORITHM>
+void merge_path_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta, const csr_desc<int, DATA_TYPE> h_csr_desc,
+                     const csr_desc<int, DATA_TYPE> d_csr_desc, const DATA_TYPE *x, DATA_TYPE *y, BenchmarkTime *bmt) {
+  hip::timer::event_timer pre_timer, calc_timer, calc2_timer, destroy_timer;
   pre_timer.start();
-  cudaMemset(y, 0, h_csr_desc.rows * sizeof(double));
+  cudaMemset(y, 0, h_csr_desc.rows * sizeof(DATA_TYPE));
 
   constexpr int BLOCK_THREAD_NUM = 512;
   constexpr int ITEMS_PER_THREAD = 4;
   constexpr int ITEMS_PER_BLOCK = BLOCK_THREAD_NUM * ITEMS_PER_THREAD;
   const int GlobalBlockNum = (h_csr_desc.nnz + ITEMS_PER_BLOCK - 1) / ITEMS_PER_BLOCK;
   using I = int;
-  using T = double;
+  using T = DATA_TYPE;
 
   void *temp_storage = nullptr;
   char *remain_storage = nullptr;
@@ -67,22 +67,19 @@ void merge_path_spmv(int trans, const double alpha, const double beta, const csr
 }
 
 // template instantiation
-template void merge_path_spmv<Linear, SingleBlock>(int trans, const double alpha, const double beta,
-                                                   const csr_desc<int, double> h_csr_desc,
-                                                   const csr_desc<int, double> d_csr_desc, const double *x, double *y,
-                                                   BenchmarkTime *bmt);
+#define MERGE_PATH_INSTANTIATION(DATA_TYPE, REDUCE_ALGO, UPDATE_ALGO)                                                  \
+  template void merge_path_spmv<DATA_TYPE, REDUCE_ALGO, UPDATE_ALGO>(                                                  \
+      int trans, const DATA_TYPE alpha, const DATA_TYPE beta, const csr_desc<int, DATA_TYPE> h_csr_desc,               \
+      const csr_desc<int, DATA_TYPE> d_csr_desc, const DATA_TYPE *x, DATA_TYPE *y, BenchmarkTime *bmt);
 
-template void merge_path_spmv<Linear, LookBack>(int trans, const double alpha, const double beta,
-                                                const csr_desc<int, double> h_csr_desc,
-                                                const csr_desc<int, double> d_csr_desc, const double *x, double *y,
-                                                BenchmarkTime *bmt);
+MERGE_PATH_INSTANTIATION(float, Linear, SingleBlock);
+MERGE_PATH_INSTANTIATION(float, Linear, LookBack);
+MERGE_PATH_INSTANTIATION(float, Binary, SingleBlock);
+MERGE_PATH_INSTANTIATION(float, Binary, LookBack);
 
-template void merge_path_spmv<Binary, SingleBlock>(int trans, const double alpha, const double beta,
-                                                   const csr_desc<int, double> h_csr_desc,
-                                                   const csr_desc<int, double> d_csr_desc, const double *x, double *y,
-                                                   BenchmarkTime *bmt);
+MERGE_PATH_INSTANTIATION(double, Linear, SingleBlock);
+MERGE_PATH_INSTANTIATION(double, Linear, LookBack);
+MERGE_PATH_INSTANTIATION(double, Binary, SingleBlock);
+MERGE_PATH_INSTANTIATION(double, Binary, LookBack);
 
-template void merge_path_spmv<Binary, LookBack>(int trans, const double alpha, const double beta,
-                                                const csr_desc<int, double> h_csr_desc,
-                                                const csr_desc<int, double> d_csr_desc, const double *x, double *y,
-                                                BenchmarkTime *bmt);
+#undef MERGE_PATH_INSTANTIATION

@@ -237,18 +237,23 @@ void acsr_driver(double alpha, T *values, int *row_off, int* d_col_idx, int * d_
   }
 }
 
-
-void acsr(int trans, const double alpha, const csr_desc<int, double> h_csr_desc, const csr_desc<int, double> d_csr_desc, const double *x,
-          double *y, BenchmarkTime *bmt) {
-    double *d_values = const_cast<double *>(d_csr_desc.values);
-    double *d_x = const_cast<double *>(x);
-    double *d_y = const_cast<double *>(y);
-    int *h_row_ptr = const_cast<int *>(h_csr_desc.row_ptr);
-    int *d_row_ptr = const_cast<int *>(d_csr_desc.row_ptr);
-    int *d_col_index = const_cast<int *>(d_csr_desc.col_index);
-    int rows = h_csr_desc.rows;
-    int cols = h_csr_desc.cols;
-    int nnz = h_csr_desc.nnz;
-    acsr_driver(alpha, d_values, h_row_ptr, d_col_index, d_row_ptr, d_x, d_y, rows, cols, nnz, bmt);
+template <typename INDEX_TYPE, typename DATA_TYPE>
+void acsr(int trans, const DATA_TYPE alpha, const csr_desc<INDEX_TYPE, DATA_TYPE> h_csr_desc,
+          const csr_desc<INDEX_TYPE, DATA_TYPE> d_csr_desc, const DATA_TYPE *x, DATA_TYPE *y, BenchmarkTime *bmt) {
+  DATA_TYPE *d_values = const_cast<DATA_TYPE *>(d_csr_desc.values);
+  DATA_TYPE *d_x = const_cast<DATA_TYPE *>(x);
+  DATA_TYPE *d_y = const_cast<DATA_TYPE *>(y);
+  INDEX_TYPE *h_row_ptr = const_cast<INDEX_TYPE *>(h_csr_desc.row_ptr);
+  INDEX_TYPE *d_row_ptr = const_cast<INDEX_TYPE *>(d_csr_desc.row_ptr);
+  INDEX_TYPE *d_col_index = const_cast<INDEX_TYPE *>(d_csr_desc.col_index);
+  INDEX_TYPE rows = h_csr_desc.rows;
+  INDEX_TYPE cols = h_csr_desc.cols;
+  INDEX_TYPE nnz = h_csr_desc.nnz;
+  acsr_driver(alpha, d_values, h_row_ptr, d_col_index, d_row_ptr, d_x, d_y, rows, cols, nnz, bmt);
 }
 
+template void acsr<int, float>(int trans, const float alpha, const csr_desc<int, float> h_csr_desc,
+                               const csr_desc<int, float> d_csr_desc, const float *x, float *y, BenchmarkTime *bmt);
+
+template void acsr<int, double>(int trans, const double alpha, const csr_desc<int, double> h_csr_desc,
+                                const csr_desc<int, double> d_csr_desc, const double *x, double *y, BenchmarkTime *bmt);
