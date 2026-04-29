@@ -11,6 +11,7 @@
 #include "usparse_matrix.h"
 #include "flat_mtx_info.h"
 #include "../../spmv_api_config.hpp"
+#include "common/usparse_utils.hpp"
 #include "flat_config.h"
 
 /**
@@ -121,8 +122,21 @@ void flat_matrix_clear_segmented(hipStream_t stream, csrmv_flat_mtx_info<BP_DATA
 /**
  * non-type version of matrix info desctory.
  */
-void flat_matrix_clear(hipStream_t stream, void *info);
-void flat_matrix_clear_atomic(hipStream_t stream, void *info);
-void flat_matrix_clear_segmented(hipStream_t stream, void *info);
+inline void flat_matrix_clear(hipStream_t stream, void *info) {
+  // todo: usparse_default_flat_mtx_info is not elegant.
+  usparse_default_flat_mtx_info *info_ptr = reinterpret_cast<usparse_default_flat_mtx_info *>(info);
+  USPARSE_HIP_API_CHECK(hipFree(info_ptr->break_points));
+  USPARSE_HIP_API_CHECK(hipFree(info_ptr->key_val));
+}
+
+inline void flat_matrix_clear_atomic(hipStream_t stream, void *info) {
+  // todo: usparse_default_flat_mtx_info is not elegant.
+  flat_matrix_clear_atomic(stream, reinterpret_cast<usparse_default_flat_mtx_info *>(info));
+}
+
+inline void flat_matrix_clear_segmented(hipStream_t stream, void *info) {
+  // todo: usparse_default_flat_mtx_info is not elegant.
+  flat_matrix_clear_segmented(stream, reinterpret_cast<usparse_default_flat_mtx_info *>(info));
+}
 
 #endif // USPARSE_HIP_USPARSE_CSRMV_FLAT_H
