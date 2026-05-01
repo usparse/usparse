@@ -215,6 +215,7 @@ private:
         return ::fma(p, q, r);
     }
 
+public:
     T x;
     T y;
 };

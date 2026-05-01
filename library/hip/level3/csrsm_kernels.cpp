@@ -41,7 +41,7 @@ __global__ void sptrsm_updown_kernel(const int *__restrict__ row_ptr, const int 
       if (valid_dep) {
         // 等待依赖行完成
         while (__atomic_load_n(&is_solved[col * rhs + i], __ATOMIC_ACQUIRE) == 0) {
-          __builtin_amdgcn_s_sleep(1);
+          __builtin_amdgcn_s_sleep(1); // todo: amd only
         }
         sum -= val[off] * x[col * rhs + i];
       }

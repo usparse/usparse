@@ -48,7 +48,7 @@ set(USPARSER_CSRMV_SOURCE_FILES
         )
 
 # spgemm
-add_subdirectory(level3/)
+# add_subdirectory(level3/)
 
 set(USPARSE_HEADER_FILES ${USPARSE_HEADER_FILES}
         ${USPARSER_CSRMV_HEADER_FILES}
@@ -67,7 +67,7 @@ set(USPARSE_SOURCE_FILES ${USPARSE_SOURCE_FILES}
         level1/usparse_blas_level1.cpp
         level2/coomv_kernels/coomv_flat_kernel.cc
         level2/coomv_kernels/coomv_spmv_acc_wrappers.cc
-        level3/csrsm_kernels.cpp
+        # level3/csrsm_kernels.cpp
         level3/coomm_kernels/coomm_conversion_based.cc
         level3/csrmm_kernels/csrmm_kernel_rowsplit.cpp
         ../internal/usparse_internal_spmv.cc
@@ -78,7 +78,7 @@ add_subdirectory(solver/gmres)
 
 # build static lib
 set_source_files_properties_hip(${USPARSE_SOURCE_FILES})
-hip_add_library(${USPARSE_LIB_NAME} STATIC ${USPARSE_SOURCE_FILES} ${USPARSE_HEADER_FILES} HIPCC_OPTIONS ${USPARSE_HIPCC_OPTIONS})
+hip_add_library(${USPARSE_LIB_NAME} STATIC ${USPARSE_SOURCE_FILES} ${USPARSE_HEADER_FILES}) # HIPCC_OPTIONS ${USPARSE_HIPCC_OPTIONS})
 target_include_directories(
         ${USPARSE_LIB_NAME}
         PUBLIC
