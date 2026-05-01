@@ -18,7 +18,7 @@ else ()
     endif()
 endif()
 
-set_source_files_properties(${SP_LIB_SOURCE} PROPERTIES HIP_SOURCE_PROPERTY_FORMAT 1)
+set_source_files_properties_hip(${SP_LIB_SOURCE})
 hip_add_library(${SPMV_BENCHMARK_SPARSE_LIB} STATIC ${SP_LIB_HEADER} ${SP_LIB_SOURCE} HIPCC_OPTIONS ${CUB_HIPCC_OPTIONS})
 target_link_libraries(
         ${SPMV_BENCHMARK_SPARSE_LIB}

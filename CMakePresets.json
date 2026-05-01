@@ -44,7 +44,23 @@
                 "UPSARSE_WAVEFRONT_SIZE": "32",
                 "BENCHMARK_CUDA_ENABLE_FLAG": "ON",
                 // set cuda arch here.
-                "HIP_NVCC_FLAGS": "-arch=sm_89 -rdc=true -Xcompiler -fdiagnostics-color=always"
+                "HIP_NVCC_FLAGS": "-rdc=true -Xcompiler -fdiagnostics-color=always",
+                "CMAKE_CUDA_ARCHITECTURES": "89",
+                "HIP_NVCC_LINKER_FLAGS": "-rdc=true --generate-code=arch=compute_89,code=[compute_89,sm_89]"
+                // "CMAKE_CUDA_SEPARABLE_COMPILATION": "ON",
+                // "CMAKE_CUDA_RESOLVE_DEVICE_SYMBOLS": "ON"
+            }
+        },
+        {
+            "name": "use-nvcc-as-hipcc",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_CXX_EXTENSIONS": "OFF",
+                "CMAKE_C_COMPILER": "${sourceDir}/scripts/nvcc-as-hipcc.sh",
+                "CMAKE_CXX_COMPILER": "${sourceDir}/scripts/nvcc-as-hipcc.sh",
+                "CMAKE_CUDA_COMPILER": "${sourceDir}/scripts/nvcc-as-hipcc.sh",
+                "HIP_HIPCC_FLAGS": "",
+                "USPARSE_USE_EMBEDED_UPTK": "ON"
             }
         },
         {
@@ -126,6 +142,16 @@
             ]
         },
         {
+            "name": "cuda-nvcc-benchmark",
+            "displayName": "Build for CUDA platform using nvcc with benchmark enabled",
+            "inherits": [
+                "use-nvcc-as-hipcc",
+                "enable-benchmark",
+                "use-platform-cuda",
+                "default-build-dir"
+            ]
+        },
+        {
             "name": "cuda-hipcc-benchmark",
             "displayName": "Build for CUDA platform using hipcc with benchmark enabled",
             "inherits": [
@@ -157,6 +183,10 @@
         {
             "name": "rocm-hipcc-benchmark",
             "configurePreset": "rocm-hipcc-benchmark"
+        },
+        {
+            "name": "cuda-nvcc-benchmark",
+            "configurePreset": "cuda-nvcc-benchmark"
         },
         {
             "name": "cuda-hipcc-benchmark",

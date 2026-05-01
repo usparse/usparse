@@ -4,6 +4,7 @@ option(USPARSE_BUILD_BENCHMARK "build usparse benchmark" OFF)
 option(USPARSE_BUILD_DEP_BY_PKG "use pkg for package manager" OFF)
 option(UPSARSE_DEVICE_SIDE_VERIFY "Verify result of device side" OFF)
 option(UPSARSE_BUILD_FOR_ROCSPARSE "build lib for rocsparse" OFF)
+option(USPARSE_USE_EMBEDED_UPTK "use the embeded UPTK implementation in usparse for running usparse on CUDA env, instead of HIP." OFF)
 # threads number in a wavefront (which is usually 64 for AMD GPU and 32 for NVIDIA GPU)
 set(UPSARSE_WAVEFRONT_SIZE "64" CACHE STRING "threads number in a wavefront")
 
