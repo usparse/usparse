@@ -111,9 +111,9 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
   // std::cout << "d_sn =" << d_sn << std::endl;
   // std::cout << "d_vi =" << d_vi << std::endl;
 
-  USPARSE_HIP_API_CHECK(hipMalloc(&d_beta, sizeof(double)));
-  USPARSE_HIP_API_CHECK(hipMalloc(&d_b, N * sizeof(double)));
-  USPARSE_HIP_API_CHECK(hipMalloc(&d_temp_buffer, (N / 256 + (N % 256 == 0 ? 0 : 1)) * sizeof(double)));
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&d_beta, sizeof(double)));
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&d_b, N * sizeof(double)));
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&d_temp_buffer, (N / 256 + (N % 256 == 0 ? 0 : 1)) * sizeof(double)));
   USPARSE_HIP_API_CHECK(hipMemcpy(dev_x, x_d, N * sizeof(double), hipMemcpyHostToDevice));
   USPARSE_HIP_API_CHECK(hipMemcpy(d_b, _b, N * sizeof(double), hipMemcpyHostToDevice));
 
@@ -137,7 +137,7 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
     // copy x from host to device
 
     // compute y = AX
-    device_adaptive_spmv<int, double, BETA_Y_POLICY_ZERO>(0, 1.0, 0.0, d_csr_desc, dev_x, dev_y,
+    usparse::device_adaptive_spmv<int, double, BETA_Y_POLICY_ZERO>(0, 1.0, 0.0, d_csr_desc, dev_x, dev_y,
                                                           usparse::usparse_csrmv_algo_flat, &csrmv_info);
 
     usparse::device_daxpy(-1.0, d_b, dev_y, N);
@@ -285,7 +285,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   init_device_matrix_float(&d_V_f, &d_H_f, &d_vi_f, &d_sn_f, &d_cs_f, &d_r0_f, &d_A_val_f, &d_s_f, &d_b_f, N,
                            RESTART_TIMES, dev_A->nnz);
 
-  USPARSE_HIP_API_CHECK(hipMalloc(&d_b, N * sizeof(double)));
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&d_b, N * sizeof(double)));
   USPARSE_HIP_API_CHECK(hipMemcpy(dev_x, x_d, N * sizeof(double), hipMemcpyHostToDevice));
   USPARSE_HIP_API_CHECK(hipMemcpy(d_b, _b, N * sizeof(double), hipMemcpyHostToDevice));
 
@@ -301,13 +301,13 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   // 任何对稀疏矩阵的预处理操作，如稀疏矩阵压缩格式转换、非零元数组或向量的精度转换、稀疏矩阵的非零元特征计算等，均需放在计时范围内，相关内存申请和释放除外
 
   if (usparse::GMRES_ORTHO_USE == usparse::GMRES_OPT_USE_GS) {
-    USPARSE_HIP_API_CHECK(hipMalloc(&d_gs_buffer, RESTART_TIMES * (N / 256 + (N % 256 == 0 ? 0 : 1)) * sizeof(float)));
+    USPARSE_HIP_API_CHECK(hipMalloc((void **)&d_gs_buffer, RESTART_TIMES * (N / 256 + (N % 256 == 0 ? 0 : 1)) * sizeof(float)));
     // TODO: strategy selection.
   }
 
   // additional 1 float for d_beta_f.
   const int tmp_buf_len = N / 256 + (N % 256 == 0 ? 0 : 1);
-  USPARSE_HIP_API_CHECK(hipMalloc(&d_temp_buffer, (tmp_buf_len + 1) * sizeof(float)));
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&d_temp_buffer, (tmp_buf_len + 1) * sizeof(float)));
   d_beta_f = d_temp_buffer + tmp_buf_len;
 
   // force conversion precision form dev_A.val to d_A_val_f

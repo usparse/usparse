@@ -2,7 +2,22 @@
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
-find_package(rocSPARSE REQUIRED)
+if (BENCHMARK_CUDA_ENABLE_FLAG)
+    set(BENCHMARK_DEP_LIBS
+        ${BENCHMARK_DEP_LIBS}
+        cusparse
+        cublas
+        )
+else ()
+    set(BENCHMARK_DEP_LIBS
+        ${BENCHMARK_DEP_LIBS}
+        rocsparse
+        hipblas
+        hipsparse
+        )
+endif ()
+
+set_source_files_properties_hip(main.cpp init.cpp)
 
 add_executable(
     gmres-gpu-benchmark
@@ -12,10 +27,8 @@ add_executable(
     )
 
 target_link_libraries(gmres-gpu-benchmark PRIVATE
-    roc::rocsparse
+    ${BENCHMARK_DEP_LIBS}
     gmres-device
-    hipblas
-    hipsparse
     ${USPARSE_GMRES_KERNEL_LIB_NAME}
     ${USPARSE_LIB_NAME}
     )

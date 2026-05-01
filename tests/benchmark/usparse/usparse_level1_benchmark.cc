@@ -7,7 +7,10 @@
 #include <benchmark/benchmark.h>
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
+
+#ifdef __HIP_PLATFORM_HCC__
 #include <rocsparse/rocsparse.h>
+#endif
 
 #include "kernels/usparse_gmres.h"
 #include "level1/usparse_blas_level1.h"
@@ -23,13 +26,13 @@ BENCHMARK_TEMPLATE_METHOD_F(UsparseLevel1Fixture, CalcNorm)(benchmark::State &st
   // prepare data
   T *d_x = Base::dev_x;
   T *d_result = nullptr;
-  TEST_HIP_CHECK(hipMalloc(&d_result, 1 * sizeof(T)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_result, 1 * sizeof(T)));
   TEST_HIP_CHECK(hipMemset(d_result, 0, 1 * sizeof(T)));
 
   std::size_t buffer_size = 0;
   double *d_temp_buffer = nullptr;
   usparse::device_calculateNorm<uint, double>(nullptr, (uint)N, nullptr, d_temp_buffer, &buffer_size);
-  TEST_HIP_CHECK(hipMalloc(&d_temp_buffer, (N / 256 + (N % 256 == 0 ? 0 : 1)) * sizeof(double)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_temp_buffer, (N / 256 + (N % 256 == 0 ? 0 : 1)) * sizeof(double)));
 
   // benchmark
   for (auto _ : state) {
@@ -67,14 +70,14 @@ BENCHMARK_TEMPLATE_METHOD_F(UsparseLevel1Fixture, dotprod)(benchmark::State &sta
   T *d_y = Base::dev_y;
   // prepare another data
   T *d_result = nullptr;
-  TEST_HIP_CHECK(hipMalloc(&d_result, 1 * sizeof(T)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_result, 1 * sizeof(T)));
   TEST_HIP_CHECK(hipMemset(d_result, 0, 1 * sizeof(T)));
 
   // parepare data: temp buffer for reduction.
   std::size_t buffer_size = 0;
   double *d_temp_buffer = nullptr;
   usparse::device_dotProduct<uint, double>(nullptr, nullptr, (uint)N, nullptr, d_temp_buffer, &buffer_size);
-  TEST_HIP_CHECK(hipMalloc(&d_temp_buffer, buffer_size));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_temp_buffer, buffer_size));
 
   // benchmark
   for (auto _ : state) {

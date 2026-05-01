@@ -5,11 +5,24 @@ if(TARGET benchmark AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_compile_options(benchmark PRIVATE -Wno-return-type)
 endif()
 
-find_package(rocSPARSE REQUIRED)
+if (BENCHMARK_CUDA_ENABLE_FLAG)
+    set(BENCHMARK_DEP_LIBS
+        ${BENCHMARK_DEP_LIBS}
+        cusparse
+        )
+else ()
+    set(BENCHMARK_DEP_LIBS
+        ${BENCHMARK_DEP_LIBS}
+        rocsparse
+        )
+endif ()
 
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
+set_source_files_properties_hip(
+        usparse/usparse_level1_benchmark.cc
+        usparse/usparse_level1_dotprof_axpy_fusion.cc)
 add_executable(
         usparse_benchmark
         usparse/usparse_level1_benchmark.cc
@@ -26,11 +39,12 @@ target_link_libraries(
         usparse_benchmark
         PUBLIC
         benchmark::benchmark
-        roc::rocsparse
+        ${BENCHMARK_DEP_LIBS}
         ${USPARSE_GMRES_KERNEL_LIB_NAME}
         ${USPARSE_LIB_NAME}
 )
 
+set_source_files_properties_hip(usparse/usparse_level2_csrmv_benchmark.cc)
 add_executable(
         ustbSparse_spmv_benchmark
         usparse/usparse_level2_csrmv_benchmark.cc
@@ -45,7 +59,7 @@ target_link_libraries(
         ustbSparse_spmv_benchmark
         PUBLIC
         benchmark::benchmark
-        roc::rocsparse
+        ${BENCHMARK_DEP_LIBS}
         ${USPARSE_GMRES_KERNEL_LIB_NAME}
         ${USPARSE_LIB_NAME}
 )

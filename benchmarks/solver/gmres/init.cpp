@@ -45,6 +45,7 @@ void init_device_data(SpM<double> *h_A, double *h_x, SpM<double> *dev_A, double 
  */
 void init_matrix_info(SpM<double> *dev_A, rocsparse_handle *handle, rocsparse_mat_descr *descrA,
                       rocsparse_mat_info *info) {
+#ifdef __HIP_PLATFORM_HCC__
   rocsparse_create_handle(handle);
   // Matrix descriptor
   // rocsparse_mat_descr descrA;
@@ -55,6 +56,7 @@ void init_matrix_info(SpM<double> *dev_A, rocsparse_handle *handle, rocsparse_ma
   // Analyse CSR matrix
   rocsparse_dcsrmv_analysis(*handle, rocsparse_operation_none, dev_A->nrows, dev_A->ncols, dev_A->nnz, *descrA,
                             dev_A->vals, (int *)dev_A->rows, (int *)dev_A->cols, *info);
+#endif
 }
 
 void destory_device_data(SpM<double> *dev_A, double *d_y, double *d_x) {
@@ -77,9 +79,11 @@ void destory_device_matrix(double *d_r0, double *d_V, double *d_s, double *d_H, 
 }
 
 void destory_descr_info(rocsparse_mat_info info, rocsparse_handle handle, rocsparse_mat_descr descrA) {
+#ifdef __HIP_PLATFORM_HCC__
   rocsparse_destroy_mat_info(info);
   rocsparse_destroy_mat_descr(descrA);
   rocsparse_destroy_handle(handle);
+#endif
 }
 
 void init_device_matrix(double **d_r0, double **d_V, double **d_s, double **d_H, double **d_cs, double **d_sn,

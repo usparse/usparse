@@ -18,12 +18,28 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         endif()
 endif()
 
+if (BENCHMARK_CUDA_ENABLE_FLAG)
+    set(BENCHMARK_DEP_LIBS
+        ${BENCHMARK_DEP_LIBS}
+        cusparse
+        )
+else ()
+    set(BENCHMARK_DEP_LIBS
+        ${BENCHMARK_DEP_LIBS}
+        rocsparse
+        )
+endif ()
+
 enable_testing()
-find_package(rocSPARSE REQUIRED)
 
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
+set_source_files_properties_hip(
+        usparse/usparse_level1.cc
+        usparse/usparse_level1_dotprod_axpy_fusion.cc
+        usparse/usparse_level2_csrmv.cc
+)
 add_executable(
         usparse_test
         usparse/usparse_level1.cc
@@ -40,7 +56,7 @@ target_include_directories(
 target_link_libraries(
         usparse_test
         GTest::gtest_main
-        roc::rocsparse
+        ${BENCHMARK_DEP_LIBS}
         ${USPARSE_GMRES_KERNEL_LIB_NAME}
         ${USPARSE_LIB_NAME}
 )

@@ -93,7 +93,9 @@ if(USPARSE_AUTO_TUNER_ENABLE)
                 CXX_STANDARD_REQUIRED ON
                 CXX_EXTENSIONS OFF
         )
-        target_compile_options(${USPARSE_LIB_NAME} PRIVATE -fbracket-depth=1024) # clang only
+        if (CMAKE_CXX_COMPILER_ID MATCHES "Clang") # clang only
+            target_compile_options(${USPARSE_LIB_NAME} PRIVATE -fbracket-depth=1024)
+        endif()
 endif()
 
 ##########################

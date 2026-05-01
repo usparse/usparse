@@ -5,14 +5,15 @@
 #ifndef USPARSE_KERNELS_LEVEL2_USPARSE_CSRMV_H
 #define USPARSE_KERNELS_LEVEL2_USPARSE_CSRMV_H
 
-#include <hipsparse/hipsparse.h>
-#include <rocsparse/rocsparse.h>
-
 #include "level2/csrmv_kernels/flat/csrmv_flat.h"
 #include "level2/csrmv_kernels/line-enhance/csrmv_line_enhance.h"
 
-namespace usparse {
+#ifdef __HIP_PLATFORM_HCC__
 
+#include <hipsparse/hipsparse.h>
+#include <rocsparse/rocsparse.h>
+
+namespace usparse {
   struct hipsparse_spmv_info {
     hipsparseHandle_t handle;
     hipsparseMatDescr_t descrA;
@@ -23,7 +24,19 @@ namespace usparse {
     rocsparse_mat_descr descrA;
     rocsparse_mat_info info;
   };
+} // namespace usparse
 
+#endif
+
+#ifndef __HIP_PLATFORM_HCC__
+namespace usparse {
+  // empty struct to avoid compile error, since the struct is used in csrmv_mat_info.
+  struct hipsparse_spmv_info {};
+  struct hipsparse_csr_adaptive_info {};
+}
+#endif
+
+namespace usparse {
   struct csrmv_mat_info {
     void *flat_info; // with int as bp index
     hipsparse_spmv_info hipsparse_default_info;

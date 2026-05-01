@@ -59,12 +59,19 @@ inline hipError_t hipGetLastError() { return cudaGetLastError(); }
 // ============================================================================
 // Device Management APIs
 // ============================================================================
+using hipDeviceProp_t = cudaDeviceProp;
 
 inline hipError_t hipSetDevice(int deviceId) { return cudaSetDevice(deviceId); }
 
 inline hipError_t hipGetDevice(int *deviceId) { return cudaGetDevice(deviceId); }
 
 inline hipError_t hipDeviceSynchronize() { return cudaDeviceSynchronize(); }
+
+inline hipError_t hipGetDeviceCount(int *count) { return cudaGetDeviceCount(count); }
+
+inline hipError_t hipGetDeviceProperties(hipDeviceProp_t *prop, int device) {
+  return cudaGetDeviceProperties(prop, device);
+}
 
 // ============================================================================
 // Stream Management APIs

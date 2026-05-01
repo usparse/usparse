@@ -8,7 +8,10 @@
 #include <gtest/gtest.h>
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
+
+#ifdef __HIP_PLATFORM_HCC__
 #include <rocsparse/rocsparse.h>
+#endif
 
 #include "tests_utils.hpp"
 #include "kernels/usparse_gmres.h"
@@ -55,11 +58,11 @@ TEST(ustbSparseTest, spmv_vector_row) {
   double *d_x = nullptr;
   double *d_y = nullptr;
 
-  TEST_HIP_CHECK(hipMalloc(&d_row_ptr, (N + 1) * sizeof(int)));
-  TEST_HIP_CHECK(hipMalloc(&d_col_index, nnz * sizeof(int)));
-  TEST_HIP_CHECK(hipMalloc(&d_values, nnz * sizeof(double)));
-  TEST_HIP_CHECK(hipMalloc(&d_x, N * sizeof(double)));
-  TEST_HIP_CHECK(hipMalloc(&d_y, N * sizeof(double)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_row_ptr, (N + 1) * sizeof(int)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_col_index, nnz * sizeof(int)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_values, nnz * sizeof(double)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_x, N * sizeof(double)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_y, N * sizeof(double)));
 
   TEST_HIP_CHECK(hipMemcpy(d_row_ptr, h_row_ptr, (N + 1) * sizeof(int), hipMemcpyHostToDevice));
   TEST_HIP_CHECK(hipMemcpy(d_col_index, h_col_index, nnz * sizeof(int), hipMemcpyHostToDevice));
@@ -138,11 +141,11 @@ TEST(ustbSparseTest, spmv_line_enhance) {
   double *d_x = nullptr;
   double *d_y = nullptr;
 
-  TEST_HIP_CHECK(hipMalloc(&d_row_ptr, (N + 1) * sizeof(int)));
-  TEST_HIP_CHECK(hipMalloc(&d_col_index, nnz * sizeof(int)));
-  TEST_HIP_CHECK(hipMalloc(&d_values, nnz * sizeof(double)));
-  TEST_HIP_CHECK(hipMalloc(&d_x, N * sizeof(double)));
-  TEST_HIP_CHECK(hipMalloc(&d_y, N * sizeof(double)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_row_ptr, (N + 1) * sizeof(int)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_col_index, nnz * sizeof(int)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_values, nnz * sizeof(double)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_x, N * sizeof(double)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_y, N * sizeof(double)));
 
   TEST_HIP_CHECK(hipMemcpy(d_row_ptr, h_row_ptr, (N + 1) * sizeof(int), hipMemcpyHostToDevice));
   TEST_HIP_CHECK(hipMemcpy(d_col_index, h_col_index, nnz * sizeof(int), hipMemcpyHostToDevice));
@@ -222,11 +225,11 @@ TEST(ustbSparseTest, spmv_flat) {
   double *d_x = nullptr;
   double *d_y = nullptr;
 
-  TEST_HIP_CHECK(hipMalloc(&d_row_ptr, (N + 1) * sizeof(int)));
-  TEST_HIP_CHECK(hipMalloc(&d_col_index, nnz * sizeof(int)));
-  TEST_HIP_CHECK(hipMalloc(&d_values, nnz * sizeof(double)));
-  TEST_HIP_CHECK(hipMalloc(&d_x, N * sizeof(double)));
-  TEST_HIP_CHECK(hipMalloc(&d_y, N * sizeof(double)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_row_ptr, (N + 1) * sizeof(int)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_col_index, nnz * sizeof(int)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_values, nnz * sizeof(double)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_x, N * sizeof(double)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_y, N * sizeof(double)));
 
   TEST_HIP_CHECK(hipMemcpy(d_row_ptr, h_row_ptr, (N + 1) * sizeof(int), hipMemcpyHostToDevice));
   TEST_HIP_CHECK(hipMemcpy(d_col_index, h_col_index, nnz * sizeof(int), hipMemcpyHostToDevice));
