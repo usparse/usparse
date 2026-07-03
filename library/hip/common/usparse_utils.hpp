@@ -41,7 +41,7 @@ struct sync_handle {
     if (SYNC_POLICY == SYNC_POLICY_DEVICE_SYNC) {
       USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
     } else if (SYNC_POLICY == SYNC_POLICY_EVENT_SYNC) {
-      hipEventRecord(sync_kernel_event);
+      USPARSE_HIP_API_CHECK(hipEventRecord(sync_kernel_event));
       USPARSE_HIP_API_CHECK(hipEventSynchronize(sync_kernel_event));
     } else if (SYNC_POLICY == SYNC_POLICY_MEMCOPY_SYNC) {
       mem_copy();

@@ -59,7 +59,7 @@ void csr_adaptive_plus_sparse_spmv_kernel(int trans, const T alpha, const T beta
                                           csr_adaptive_plus_analyze_info<I> info) {
   VAR_FROM_CSR_DESC(T, d_csr_desc);
   // clean array y:
-  // hipMemset(y, 0, m * sizeof(double));
+  // USPARSE_HIP_API_CHECK(hipMemset(y, 0, m * sizeof(double)));
 
   constexpr I MAX_ROWS_PER_BLOCK = 0; // unused.
 
@@ -97,32 +97,32 @@ void csr_adaptive_plus_sparse_spmv_profile(SpMVAccHanele *handle, int trans, con
   constexpr int REDUCE_OPTION = VEC_SIZE == 1 ? LE_REDUCE_OPTION_DIRECT : LE_REDUCE_OPTION_VEC;
 
   hipEvent_t start, stop;
-  hipEventCreate(&start);
-  hipEventCreate(&stop);
+  USPARSE_HIP_API_CHECK(hipEventCreate(&start));
+  USPARSE_HIP_API_CHECK(hipEventCreate(&stop));
 
-  hipEventRecord(start, NULL);
+  USPARSE_HIP_API_CHECK(hipEventRecord(start, NULL));
   auto info =
       csr_adaptive_plus_sparse_spmv_analyze<I, T, R, THREADS_PER_BLOCK, MIN_NNZ_PER_BLOCK, REDUCE_OPTION, VEC_SIZE>(
           trans, alpha, beta, h_csr_desc, d_csr_desc, x, y);
-  hipEventRecord(stop, NULL);
-  hipEventSynchronize(stop);
+  USPARSE_HIP_API_CHECK(hipEventRecord(stop, NULL));
+  USPARSE_HIP_API_CHECK(hipEventSynchronize(stop));
   float pre_time = 0.0f;
-  hipEventElapsedTime(&pre_time, start, stop);
+  USPARSE_HIP_API_CHECK(hipEventElapsedTime(&pre_time, start, stop));
 
-  hipEventRecord(start, NULL);
+  USPARSE_HIP_API_CHECK(hipEventRecord(start, NULL));
   csr_adaptive_plus_sparse_spmv_kernel<I, T, R, THREADS_PER_BLOCK, MIN_NNZ_PER_BLOCK, REDUCE_OPTION, VEC_SIZE>(
       trans, alpha, beta, h_csr_desc, d_csr_desc, x, y, info);
-  hipEventRecord(stop, NULL);
-  hipEventSynchronize(stop);
+  USPARSE_HIP_API_CHECK(hipEventRecord(stop, NULL));
+  USPARSE_HIP_API_CHECK(hipEventSynchronize(stop));
   float kernel_time = 0.0f;
-  hipEventElapsedTime(&kernel_time, start, stop);
+  USPARSE_HIP_API_CHECK(hipEventElapsedTime(&kernel_time, start, stop));
 
-  hipEventRecord(start, NULL);
+  USPARSE_HIP_API_CHECK(hipEventRecord(start, NULL));
   csr_adaptive_plus_sparse_spmv_destroy<I>(info);
-  hipEventRecord(stop, NULL);
-  hipEventSynchronize(stop);
+  USPARSE_HIP_API_CHECK(hipEventRecord(stop, NULL));
+  USPARSE_HIP_API_CHECK(hipEventSynchronize(stop));
   float des_time = 0.0f;
-  hipEventElapsedTime(&des_time, start, stop);
+  USPARSE_HIP_API_CHECK(hipEventElapsedTime(&des_time, start, stop));
 
   handle->profile_analyze_time = 1000.0 * pre_time;
   handle->profile_kernel_time = 1000.0 * kernel_time;

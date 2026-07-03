@@ -9,6 +9,7 @@
 #include <hip/hip_runtime_api.h>
 
 #include "benchmark_utils_config.h"
+#include "common/usparse_utils.hpp"
 
 // another timer implementation using hip Event.
 namespace hip {
@@ -19,33 +20,33 @@ namespace hip {
         static constexpr bool use_event_sync = true;
 
         event_timer() {
-          hipEventCreate(&_start);
-          hipEventCreate(&_stop);
+          USPARSE_HIP_API_CHECK(hipEventCreate(&_start));
+          USPARSE_HIP_API_CHECK(hipEventCreate(&_stop));
         }
 
         ~event_timer() {
-          hipEventDestroy(_start);
-          hipEventDestroy(_stop);
+          USPARSE_HIP_API_CHECK(hipEventDestroy(_start));
+          USPARSE_HIP_API_CHECK(hipEventDestroy(_stop));
         }
 
         inline void start() {
-          hipEventRecord(_start, NULL);
+          USPARSE_HIP_API_CHECK(hipEventRecord(_start, NULL));
         }
 
         /// @brief lazy device sync will try to not sync device unless user the sync flag (from global config or local config) has been specificed.
         /// @param sync_flag the local sync flag.
         inline void stop(bool sync_flag = false) {
-          hipEventRecord(_stop, NULL);
+          USPARSE_HIP_API_CHECK(hipEventRecord(_stop, NULL));
           if(sync_flag || BENCHMARK_FORCE_KERNEL_SYNC) {
             if (use_event_sync) {
-              hipEventSynchronize(_stop);
+              USPARSE_HIP_API_CHECK(hipEventSynchronize(_stop));
             } else {
-              hipDeviceSynchronize();
+              USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
             }
           }
 
           float delta_t = 0.0f;
-          hipEventElapsedTime(&delta_t, _start, _stop);
+          USPARSE_HIP_API_CHECK(hipEventElapsedTime(&delta_t, _start, _stop));
           time_use = delta_t * 1000.0;
         }
       };

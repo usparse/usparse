@@ -17,6 +17,7 @@
 #include "sparseMatrix.hpp"
 #include "kernels/usparse_gmres.h"
 #include "level1/usparse_blas_level1.h"
+#include "common/usparse_utils.hpp"
 
 #include "../../benchmarks/solver/gmres/init.hpp"
 #include "../../benchmarks/solver/gmres/gmres_utils.hpp"
@@ -124,9 +125,9 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
   // auto start = std::chrono::high_resolution_clock::now(); // 禁止修改
   // =======如果已移植为DCU代码，请更换为下列计时==========
   hipEvent_t test_start_event, test_stop_event;
-  hipEventCreate(&test_start_event);
-  hipEventCreate(&test_stop_event);
-  hipEventRecord(test_start_event, 0);
+  USPARSE_HIP_API_CHECK(hipEventCreate(&test_start_event));
+  USPARSE_HIP_API_CHECK(hipEventCreate(&test_stop_event));
+  USPARSE_HIP_API_CHECK(hipEventRecord(test_start_event, 0));
 
   // 任何对稀疏矩阵的预处理操作，如稀疏矩阵压缩格式转换、非零元数组或向量的精度转换、稀疏矩阵的非零元特征计算等，均需放在计时范围内，相关内存申请和释放除外
 
@@ -210,10 +211,10 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
   // std::chrono::duration<float, std::milli> duration = stop - start; // 禁止修改
   // float test_time = duration.count();                               // 禁止修改
   // =======如果已移植为DCU代码，请更换为下列计时==========
-  hipEventRecord(test_stop_event, 0);                                 // 禁止修改
-  hipEventSynchronize(test_stop_event);                               // 禁止修改
+  USPARSE_HIP_API_CHECK(hipEventRecord(test_stop_event, 0));                                 // 禁止修改
+  USPARSE_HIP_API_CHECK(hipEventSynchronize(test_stop_event));                               // 禁止修改
   float test_time = 0.0;                                              // 禁止修改
-  hipEventElapsedTime(&test_time, test_start_event, test_stop_event); // 禁止修改
+  USPARSE_HIP_API_CHECK(hipEventElapsedTime(&test_time, test_start_event, test_stop_event)); // 禁止修改
 
   // destory data
   destory_device_matrix(d_r0, d_V, d_s, d_H, d_cs, d_sn, d_vi);
@@ -295,9 +296,9 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   // =======如果已移植为DCU代码，请更换为下列计时==========
   hipEvent_t test_start_event, test_stop_event;
   sync_handle h_sync;
-  hipEventCreate(&test_start_event);
-  hipEventCreate(&test_stop_event);
-  hipEventRecord(test_start_event, 0);
+  USPARSE_HIP_API_CHECK(hipEventCreate(&test_start_event));
+  USPARSE_HIP_API_CHECK(hipEventCreate(&test_stop_event));
+  USPARSE_HIP_API_CHECK(hipEventRecord(test_start_event, 0));
   // 任何对稀疏矩阵的预处理操作，如稀疏矩阵压缩格式转换、非零元数组或向量的精度转换、稀疏矩阵的非零元特征计算等，均需放在计时范围内，相关内存申请和释放除外
 
   if (usparse::GMRES_ORTHO_USE == usparse::GMRES_OPT_USE_GS) {
@@ -495,7 +496,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
                                            h_sync, N,
                                            NNZ); // todo: uint to int
         // h_sync.sync();
-        // hipMemcpy(&tmp_fp32, d_s_f + i + 1, sizeof(float), hipMemcpyDeviceToHost);
+        // USPARSE_HIP_API_CHECK(hipMemcpy(&tmp_fp32, d_s_f + i + 1, sizeof(float), hipMemcpyDeviceToHost));
         tmp = d_s_f[i + 1];
       }
 
@@ -544,10 +545,10 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   // std::chrono::duration<float, std::milli> duration = stop - start; // 禁止修改
   // float test_time = duration.count();                               // 禁止修改
   // =======如果已移植为DCU代码，请更换为下列计时==========
-  hipEventRecord(test_stop_event, 0);                                 // 禁止修改
-  hipEventSynchronize(test_stop_event);                               // 禁止修改
+  USPARSE_HIP_API_CHECK(hipEventRecord(test_stop_event, 0));                                 // 禁止修改
+  USPARSE_HIP_API_CHECK(hipEventSynchronize(test_stop_event));                               // 禁止修改
   float test_time = 0.0;                                              // 禁止修改
-  hipEventElapsedTime(&test_time, test_start_event, test_stop_event); // 禁止修改
+  USPARSE_HIP_API_CHECK(hipEventElapsedTime(&test_time, test_start_event, test_stop_event)); // 禁止修改
 
   if (usparse::GMRES_OPT_VERIFY_SWITCH) {
     double ver_nrom = Verification(dev_A, dev_x, d_b, d_r0, N);

@@ -5,6 +5,8 @@
 #ifndef SPMV_ACC_MEM_BANDWIDTH_H
 #define SPMV_ACC_MEM_BANDWIDTH_H
 
+#include "common/usparse_utils.hpp"
+
 void create_hip_event(hipEvent_t &start, hipEvent_t &stop) {
   hipEventCreate(&start);
   hipEventCreate(&stop);
@@ -21,15 +23,15 @@ inline int _bytes(const int nnz, const int rows, const int size_of_index, const 
     hipEvent_t start, stop;                                                                                            \
     create_hip_event(start, stop);                                                                                     \
                                                                                                                        \
-    hipEventRecord(start, NULL);
+    USPARSE_HIP_API_CHECK(hipEventRecord(start, NULL));
 
 #define WITH_MEM_BANDWIDTH_END(nnz, rows, size_of_index, size_of_value)                                                \
-  hipEventRecord(stop, NULL);                                                                                          \
-  hipEventSynchronize(stop);                                                                                           \
+  USPARSE_HIP_API_CHECK(hipEventRecord(stop, NULL));                                                                   \
+  USPARSE_HIP_API_CHECK(hipEventSynchronize(stop));                                                                    \
                                                                                                                        \
   float event_ms = 0.0f;                                                                                               \
   /* Time is computed in ms, with a resolution of approximately 1 us. */                                               \
-  hipEventElapsedTime(&event_ms, start, stop);                                                                         \
+  USPARSE_HIP_API_CHECK(hipEventElapsedTime(&event_ms, start, stop));                                                  \
                                                                                                                        \
   printf("elapsed time:%f (us)\n", event_ms * 1000);                                                                   \
   int bytes = _bytes(nnz, rows, size_of_index, size_of_value);                                                         \
