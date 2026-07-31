@@ -117,12 +117,12 @@ template <typename INDEX_TYPE, typename DATA_TYPE> struct CooSpMV {
 #include "benchmark_usaprse_coomv.hpp"
 
 // rocm
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef __USPARSE_BUILD_BACKEND_ROCM__
 #include "benchmark_rocsparse_coomv.hpp"
 #endif
 
 // cuda
-#ifndef __HIP_PLATFORM_HCC__
+#ifdef __USPARSE_BUILD_BACKEND_CUDA__
 // TODO:
 #endif
 

@@ -9,6 +9,7 @@
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
 
+#include "building_config.h"
 #include "rocsparse/rocsparse-complex-types.h"
 
 __device__ __forceinline__ usparse::usparse_fpc32 __shfl_down(usparse::usparse_fpc32 var, unsigned int lane_delta, int width) {
@@ -23,6 +24,7 @@ __device__ __forceinline__ usparse::usparse_fpc64 __shfl_down(usparse::usparse_f
   return usparse::usparse_fpc64{r, i};
 }
 
+#ifdef __USPARSE_BUILD_BACKEND_CUDA__
 __device__ __forceinline__ usparse::usparse_fpc32 __shfl_down(usparse::usparse_fpc32 var, int lane_delta, int width) {
   return __shfl_down(var, (unsigned int)lane_delta, width);
 }
@@ -30,5 +32,6 @@ __device__ __forceinline__ usparse::usparse_fpc32 __shfl_down(usparse::usparse_f
 __device__ __forceinline__ usparse::usparse_fpc64 __shfl_down(usparse::usparse_fpc64 var, int lane_delta, int width) {
   return __shfl_down(var, (unsigned int)lane_delta, width);
 }
+#endif
 
 #endif // USPARSE_KERNELS_USPARSE_PRIMITIVES_WAVEFRONT_SHLF_UTILS_HPP

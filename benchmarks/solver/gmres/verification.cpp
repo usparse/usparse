@@ -3,7 +3,7 @@
 #include <iostream>
 #include <vector>
 
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef __USPARSE_BUILD_BACKEND_ROCM__
 
 #include <hipblas.h>
 #include <hipsparse.h>
@@ -55,7 +55,7 @@ double Verification(SpM<double> *d_A, double *x, double *b, double *r0, int N) {
 }
 #endif
 
-#ifndef __HIP_PLATFORM_HCC__
+#ifndef __USPARSE_BUILD_BACKEND_ROCM__
 double Verification(SpM<double> *d_A, double *x, double *b, double *r0, int N) {
   return 0.0;
 }

@@ -78,7 +78,7 @@ void test_spmv(std::string mtx_path, csr_mtx<INDEX_TYPE, DATA_TYPE> h_csr, host_
   SPMV_BENCHMARK(SpMVAccFlatSegSum, "spmv-acc-flat-seg-sum", ENABLE_SPMV_ACC_FLAT_SEG_SUM);
   SPMV_BENCHMARK(SpMVAccFlatSegSumV2, "spmv-acc-flat-seg-sum-v2", ENABLE_SPMV_ACC_FLAT_SEG_SUM_V2);
 
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef __USPARSE_BUILD_BACKEND_ROCM__
   // rocsparse
   SPMV_BENCHMARK(RocSparseVecRow, "rocSparse-vector-row", ENABLE_ROC_VECTOR_ROW);
   SPMV_BENCHMARK(RocSparseAdaptive, "rocSparse-adaptive", ENABLE_ROC_ADAPTIVE);
@@ -88,7 +88,7 @@ void test_spmv(std::string mtx_path, csr_mtx<INDEX_TYPE, DATA_TYPE> h_csr, host_
 #endif
 #endif
 
-#ifndef __HIP_PLATFORM_HCC__
+#ifdef __USPARSE_BUILD_BACKEND_CUDA__
   // cusparse
   SPMV_BENCHMARK(CuSparseGeneral, "cuSparse", ENABLE_CU_SPARSE);
   // cub

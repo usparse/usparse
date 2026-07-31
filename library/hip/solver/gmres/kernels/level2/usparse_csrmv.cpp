@@ -12,7 +12,7 @@
 
 #include "usparse_csrmv.h"
 
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef __USPARSE_BUILD_BACKEND_ROCM__
 #define HIPSPARSE_CHECK(stat)                                                                                          \
   {                                                                                                                    \
     if (stat != HIPSPARSE_STATUS_SUCCESS) {                                                                            \
@@ -36,7 +36,7 @@ void usparse::device_adaptive_analysis(int trans, const VALUE_TYPE alpha, const 
   } else if (algo == usparse::usparse_csrmv_algo_vector) {
     return;
   } else if (algo == usparse::usparse_csrmv_algo_hipsparse_default) {
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef __USPARSE_BUILD_BACKEND_ROCM__
     hipsparseHandle_t handle;
     hipsparseMatDescr_t descrA;
     hipsparseCreate(&handle);
@@ -46,7 +46,7 @@ void usparse::device_adaptive_analysis(int trans, const VALUE_TYPE alpha, const 
 #endif
   } else if (algo == usparse::usparse_csrmv_algo_hipsparse_csr_adaptive ||
              algo == usparse::usparse_csrmv_algo_hipsparse_csr_vector) {
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef __USPARSE_BUILD_BACKEND_ROCM__
     rocsparse_handle handle;
     rocsparse_create_handle(&handle);
     // Matrix descriptor
@@ -86,7 +86,7 @@ void usparse::device_adaptive_spmv(int trans, const VALUE_TYPE alpha, const VALU
   } else if (algo == usparse::usparse_csrmv_algo_vector) {
     vec_row_sparse_spmv(trans, alpha, beta, d_csr_desc, dx, dy);
   } else if (algo == usparse::usparse_csrmv_algo_hipsparse_default) {
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef __USPARSE_BUILD_BACKEND_ROCM__
     const int m = d_csr_desc.rows;
     const int n = d_csr_desc.cols;
     const int nnz = d_csr_desc.nnz;
@@ -111,7 +111,7 @@ void usparse::device_adaptive_spmv(int trans, const VALUE_TYPE alpha, const VALU
 #endif
   } else if (algo == usparse::usparse_csrmv_algo_hipsparse_csr_adaptive ||
              algo == usparse::usparse_csrmv_algo_hipsparse_csr_vector) {
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef __USPARSE_BUILD_BACKEND_ROCM__
     VALUE_TYPE hip_alpha = alpha;
     VALUE_TYPE hip_beta = beta;
     if constexpr (std::is_same<VALUE_TYPE, double>::value) {

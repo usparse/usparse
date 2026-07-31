@@ -8,15 +8,15 @@
 #include <hip/hip_runtime.h>
 
 #include "building_config.h"
-#ifdef __HIP_PLATFORM_NVCC__
+#ifdef __USPARSE_BUILD_BACKEND_CUDA_
 #include "platforms/cuda/cuda_utils.hpp"
 #endif
 
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef __USPARSE_BUILD_BACKEND_ROCM__
 #include "common/platforms/rocm/dpp_reduce.h"
 #endif
 
-#ifndef __HIP_PLATFORM_HCC__
+#ifndef __USPARSE_BUILD_BACKEND_ROCM__
 template <typename T> __forceinline__ __device__ T __builtin_nontemporal_load(const T *addr) { return *addr; }
 
 template <typename T> __forceinline__ __device__ void __builtin_nontemporal_store(const T &val, T *ptr) { *ptr = val; }
@@ -27,16 +27,16 @@ template <typename T> __forceinline__ __device__ void __builtin_nontemporal_stor
 #define device_fma(p, q, r) fma(p, q, r)
 #define device_fmaf(p, q, r) fmaf(p, q, r)
 
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef __USPARSE_BUILD_BACKEND_ROCM__
 //#define asm_v_fma_f64(p, q, r) asm volatile("v_fma_f64 %0, %1, %2, %3" : "=v"(r) : "v"(p), "v"(q), "v"(r));
 #define asm_v_fma_f64(p, q, r) (r = device_fma(p, q, r));
 #define asm_v_fma_f32(p, q, r) (r = device_fmaf(p, q, r));
-#endif // __HIP_PLATFORM_HCC__
+#endif // __USPARSE_BUILD_BACKEND_ROCM__
 
-#ifndef __HIP_PLATFORM_HCC__
+#ifndef __USPARSE_BUILD_BACKEND_ROCM__
 #define asm_v_fma_f64(p, q, r) (r = device_fma(p, q, r));
 #define asm_v_fma_f32(p, q, r) (r = device_fmaf(p, q, r));
-#endif // __HIP_PLATFORM_HCC__
+#endif // __USPARSE_BUILD_BACKEND_ROCM__
 
 // register and __shfl_down based wavefront reduction
 #define SHFL_DOWN_WF_REDUCE(total_sum, local_sum)                                                                      \
@@ -63,11 +63,11 @@ template <typename T> __forceinline__ __device__ void __builtin_nontemporal_stor
   }
 
 template <unsigned int WFSIZE> __device__ __forceinline__ double wfreduce_sum(double sum) {
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef __USPARSE_BUILD_BACKEND_ROCM__
   return dpp_wf_reduce_sum<WFSIZE>(sum);
 #endif
 
-#ifndef __HIP_PLATFORM_HCC__
+#ifndef __USPARSE_BUILD_BACKEND_ROCM__
   // fallback to shfl_down reduction.
   double total_sum = static_cast<double>(0);
   SHFL_DOWN_WF_REDUCE(total_sum, sum);

@@ -5,13 +5,13 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 if (BENCHMARK_CUDA_ENABLE_FLAG)
     set(BENCHMARK_DEP_LIBS
         ${BENCHMARK_DEP_LIBS}
-        cusparse
+        ${USPARSE_GPU_BACKEND_SPARSE_LIB}
         cublas
         )
 else ()
     set(BENCHMARK_DEP_LIBS
         ${BENCHMARK_DEP_LIBS}
-        rocsparse
+        ${USPARSE_GPU_BACKEND_SPARSE_LIB}
         hipblas
         hipsparse
         )

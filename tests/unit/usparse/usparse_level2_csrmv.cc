@@ -9,7 +9,7 @@
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
 
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef __USPARSE_BUILD_BACKEND_ROCM__
 #include <rocsparse/rocsparse.h>
 #endif
 

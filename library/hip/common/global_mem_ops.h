@@ -5,11 +5,11 @@
 #ifndef SPMV_ACC_GLOBAL_MEM_OPS_H
 #define SPMV_ACC_GLOBAL_MEM_OPS_H
 
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef __USPARSE_BUILD_BACKEND_ROCM__
 #include "platforms/rocm/rocm_global_mem_ops.hpp"
-#endif // __HIP_PLATFORM_HCC__
+#endif // __USPARSE_BUILD_BACKEND_ROCM__
 
-#ifndef __HIP_PLATFORM_HCC__
+#ifndef __USPARSE_BUILD_BACKEND_ROCM__
 // fallback to normal implementation.
 
 typedef struct {

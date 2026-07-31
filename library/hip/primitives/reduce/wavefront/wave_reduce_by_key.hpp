@@ -3,9 +3,10 @@
  *
  */
 
+#include "building_config.h"
 #include "common/platforms/cuda/cuda_utils.hpp"
 
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef __USPARSE_BUILD_BACKEND_ROCM__
 #define __ballot_sync(mask, pred) __ballot(pred)
 #define __any_sync(mask, pred) __any(pred)
 #endif
