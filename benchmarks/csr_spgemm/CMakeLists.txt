@@ -34,5 +34,5 @@ target_link_libraries(
         PUBLIC
         ${ACC_LIBS}
         ${SPMV_CLI_LIB}
-        rocsparse # todo: use rocsparse.
+        ${USPARSE_GPU_BACKEND_SPARSE_LIB}
 )

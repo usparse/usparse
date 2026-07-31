@@ -4,7 +4,8 @@ option(USPARSE_BUILD_BENCHMARK "build usparse benchmark" OFF)
 option(USPARSE_BUILD_DEP_BY_PKG "use pkg for package manager" OFF)
 option(UPSARSE_DEVICE_SIDE_VERIFY "Verify result of device side" OFF)
 option(UPSARSE_BUILD_FOR_ROCSPARSE "build lib for rocsparse" OFF)
-option(USPARSE_USE_EMBEDED_UPTK "use the embeded UPTK implementation in usparse for running usparse on CUDA env, instead of HIP." OFF)
+set(USPARSE_GPU_BACKEND "ROCM" CACHE STRING "the gpu backend, can be rocm/cuda/musa.")
+
 # threads number in a wavefront (which is usually 64 for AMD GPU and 32 for NVIDIA GPU)
 set(UPSARSE_WAVEFRONT_SIZE "64" CACHE STRING "threads number in a wavefront")
 set(USPARSE_LIB_COMPILE_OPTIONS "-std=c++14" CACHE STRING "the CXX flags for building usparse lib targets")
@@ -21,6 +22,7 @@ set(USPARSE_TUNER_LIB_NAME "usparse_tuning")
 # gmres-gpu end
 
 set(USPARSE_LIB_NAME usparse)
+set(USPARSE_GPU_BACKEND_SPARSE_LIB "" CACHE STRING "the sparse lib in backend for performance benchmarking.")
 
 ## variable from spmv-acc
 set(SPMV_ACC_CLI_LIB sparse_cli)
@@ -101,7 +103,3 @@ set(SPGEMM_BENCHMARK_NAME spgemm-benchmark)
 set(SPGEMM_KERNEL_LIB_NAME spgemm-kernels)
 set(ACC_LIBS ${ACC_LIBS}) # ${SPGEMM_KERNEL_LIB_NAME})
 
-# add lib rocsparse if using device verification.
-if (DEVICE_SIDE_VERIFY_FLAG AND UPSARSE_BUILD_FOR_ROCSPARSE)
-    set(ACC_LIBS ${ACC_LIBS} rocsparse)
-endif()

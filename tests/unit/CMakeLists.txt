@@ -18,17 +18,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         endif()
 endif()
 
-if (BENCHMARK_CUDA_ENABLE_FLAG)
-    set(BENCHMARK_DEP_LIBS
-        ${BENCHMARK_DEP_LIBS}
-        cusparse
-        )
-else ()
-    set(BENCHMARK_DEP_LIBS
-        ${BENCHMARK_DEP_LIBS}
-        rocsparse
-        )
-endif ()
+set(BENCHMARK_DEP_LIBS ${BENCHMARK_DEP_LIBS} ${USPARSE_GPU_BACKEND_SPARSE_LIB})
 
 enable_testing()
 

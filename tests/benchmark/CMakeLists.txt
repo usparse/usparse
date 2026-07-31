@@ -5,17 +5,7 @@ if(TARGET benchmark AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_compile_options(benchmark PRIVATE -Wno-return-type)
 endif()
 
-if (BENCHMARK_CUDA_ENABLE_FLAG)
-    set(BENCHMARK_DEP_LIBS
-        ${BENCHMARK_DEP_LIBS}
-        cusparse
-        )
-else ()
-    set(BENCHMARK_DEP_LIBS
-        ${BENCHMARK_DEP_LIBS}
-        rocsparse
-        )
-endif ()
+set(BENCHMARK_DEP_LIBS ${BENCHMARK_DEP_LIBS} ${USPARSE_GPU_BACKEND_SPARSE_LIB})
 
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)

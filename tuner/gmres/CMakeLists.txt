@@ -21,17 +21,7 @@ set_target_properties(usparse_kernel_auto_tuner PROPERTIES
         CXX_EXTENSIONS OFF
 )
 
-if (BENCHMARK_CUDA_ENABLE_FLAG)
-    set(BENCHMARK_DEP_LIBS
-        ${BENCHMARK_DEP_LIBS}
-        cusparse
-        )
-else ()
-    set(BENCHMARK_DEP_LIBS
-        ${BENCHMARK_DEP_LIBS}
-        rocsparse
-        )
-endif ()
+set(BENCHMARK_DEP_LIBS ${BENCHMARK_DEP_LIBS} ${USPARSE_GPU_BACKEND_SPARSE_LIB})
 
 target_link_libraries(
         usparse_kernel_auto_tuner
