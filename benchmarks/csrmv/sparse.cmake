@@ -19,7 +19,7 @@ else ()
 endif()
 
 set_source_files_properties_hip(${SP_LIB_SOURCE})
-hip_add_library(${SPMV_BENCHMARK_SPARSE_LIB} STATIC ${SP_LIB_HEADER} ${SP_LIB_SOURCE}) # HIPCC_OPTIONS ${CUB_HIPCC_OPTIONS})
+hip_add_library(${SPMV_BENCHMARK_SPARSE_LIB} STATIC ${SP_LIB_HEADER} ${SP_LIB_SOURCE} HIPCC_OPTIONS ${USPARSE_LIB_COMPILE_OPTIONS})
 target_link_libraries(
         ${SPMV_BENCHMARK_SPARSE_LIB}
         PUBLIC

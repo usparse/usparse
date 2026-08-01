@@ -44,10 +44,11 @@ endif ()
 function(set_source_files_properties_hip)
     set(SOURCES ${ARGN})
     if(NOT USPARSE_USE_EMBEDED_UPTK)
-        set_source_files_properties(${SOURCES} PROPERTIES
-            LANGUAGE HIP
-            HIP_SOURCE_PROPERTY_FORMAT 1
-        )
+        # set_source_files_properties(${SOURCES} PROPERTIES
+        #     LANGUAGE HIP
+        #     HIP_SOURCE_PROPERTY_FORMAT 1
+        # )
+        set_source_files_properties(${SOURCES} PROPERTIES HIP_SOURCE_PROPERTY_FORMAT 1)
     elseif(USPARSE_USE_EMBEDED_UPTK)
         set_source_files_properties(${SOURCES} PROPERTIES LANGUAGE CUDA)
     else()

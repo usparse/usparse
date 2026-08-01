@@ -78,7 +78,7 @@ add_subdirectory(solver/gmres)
 
 # build static lib
 set_source_files_properties_hip(${USPARSE_SOURCE_FILES})
-hip_add_library(${USPARSE_LIB_NAME} STATIC ${USPARSE_SOURCE_FILES} ${USPARSE_HEADER_FILES}) # HIPCC_OPTIONS ${USPARSE_HIPCC_OPTIONS})
+hip_add_library(${USPARSE_LIB_NAME} STATIC ${USPARSE_SOURCE_FILES} ${USPARSE_HEADER_FILES} HIPCC_OPTIONS ${USPARSE_LIB_COMPILE_OPTIONS})
 target_include_directories(
         ${USPARSE_LIB_NAME}
         PUBLIC

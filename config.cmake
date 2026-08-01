@@ -7,6 +7,7 @@ option(UPSARSE_BUILD_FOR_ROCSPARSE "build lib for rocsparse" OFF)
 option(USPARSE_USE_EMBEDED_UPTK "use the embeded UPTK implementation in usparse for running usparse on CUDA env, instead of HIP." OFF)
 # threads number in a wavefront (which is usually 64 for AMD GPU and 32 for NVIDIA GPU)
 set(UPSARSE_WAVEFRONT_SIZE "64" CACHE STRING "threads number in a wavefront")
+set(USPARSE_LIB_COMPILE_OPTIONS "-std=c++14" CACHE STRING "the CXX flags for building usparse lib targets")
 
 # gmres-gpu start
 option(USPARSE_UNIT_TEST_ENABLE "Enable unit tests" ON)
