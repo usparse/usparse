@@ -35,4 +35,5 @@ target_link_libraries(
         ${ACC_LIBS}
         ${SPMV_CLI_LIB}
         ${USPARSE_GPU_BACKEND_SPARSE_LIB}
+        ${SPGEMM_KERNEL_LIB_NAME}
 )
