@@ -6,6 +6,11 @@
 #include "building_config.h"
 #include "common/macros.h"
 
+#include "opt_double_buffer.hpp"
+#include "vector_row.inl"
+#include "vector_row_adaptive.hpp"
+#include "vector_row_native.hpp"
+
 template <typename DATA_TYPE>
 void vec_row_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
                          const csr_desc<int, DATA_TYPE> d_csr_desc, const DATA_TYPE *x, DATA_TYPE *y) {

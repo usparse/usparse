@@ -19,8 +19,8 @@
 #include "level1/usparse_blas_level1.h"
 
 #include "../../benchmarks/solver/gmres/init.hpp"
-#include "../../benchmarks/solver/gmres/gmres_utils.hpp"
 #include "../../benchmarks/solver/gmres/verification.hpp"
+#include "kernels/gmres_utils.h"
 
 using namespace std;
 
@@ -118,7 +118,7 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
   USPARSE_HIP_API_CHECK(hipMemcpy(d_b, _b, N * sizeof(double), hipMemcpyHostToDevice));
 
   usparse::csrmv_mat_info csrmv_info;
-  usparse::device_adaptive_analysis(0, 1.0, 0.0, d_csr_desc, usparse::usparse_csrmv_algo_flat, &csrmv_info);
+  usparse::device_adaptive_analysis<int, double>(0, 1.0, 0.0, d_csr_desc, usparse::usparse_csrmv_algo_flat, &csrmv_info);
   utils::warmup();
 
   // auto start = std::chrono::high_resolution_clock::now(); // 禁止修改
@@ -140,7 +140,7 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
     usparse::device_adaptive_spmv<int, double, BETA_Y_POLICY_ZERO>(0, 1.0, 0.0, d_csr_desc, dev_x, dev_y,
                                                           usparse::usparse_csrmv_algo_flat, &csrmv_info);
 
-    usparse::device_daxpy(-1.0, d_b, dev_y, N);
+    usparse::device_daxpy<uint, double, double>(-1.0, d_b, dev_y, N);
 
     usparse::device_calculateNorm(dev_y, N, d_beta, d_temp_buffer, 0);
     hipDeviceSynchronize();
@@ -319,7 +319,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
                                         d_csr_desc.col_index, d_A_val_f);
   usparse::csrmv_mat_info csrmv_info;
   const usparse::usparse_csrmv_algo csrmv_algo = select_csrmv_algo(d_csr_desc);
-  usparse::device_adaptive_analysis(0, 1.0, 0.0, d_csr_desc, csrmv_algo, &csrmv_info);
+  usparse::device_adaptive_analysis<int, double>(0, 1.0, 0.0, d_csr_desc, csrmv_algo, &csrmv_info);
 
 
   const float f_density = static_cast<float>(dev_A->nnz) / (dev_A->nrows * dev_A->ncols);

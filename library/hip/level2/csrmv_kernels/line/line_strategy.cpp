@@ -7,6 +7,10 @@
 #include "common/macros.h"
 #include "line_strategy.h"
 
+#include "line_adaptive_one_pass.inl"
+#include "line_imp_one_pass.inl"
+#include "line_kernel_imp.inl"
+
 template <typename INDEX_TYPE, typename DATA_TYPE>
 void line_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
                       const csr_desc<INDEX_TYPE, DATA_TYPE> d_csr_desc, const DATA_TYPE *x, DATA_TYPE *y) {

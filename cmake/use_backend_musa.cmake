@@ -29,6 +29,7 @@ function(hip_add_library_for_musa target_name)
     if(ARG_HIPCC_OPTIONS)
         set(MUSA_MCC_FLAGS ${ARG_HIPCC_OPTIONS})
     endif()
+    set(MUSA_LINK_LIBRARIES_KEYWORD INTERFACE)
     musa_add_library(${target_name} ${lib_type} ${source_files})
 endfunction()
 

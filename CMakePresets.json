@@ -58,7 +58,7 @@
                 "UPSARSE_WAVEFRONT_SIZE": "32",
                 "BENCHMARK_CUDA_ENABLE_FLAG": "OFF",
                 "USPARSE_GPU_BACKEND": "MUSA",
-                "USPARSE_LIB_COMPILE_OPTIONS": "-std=c++14 --offload-arch=mp_31"
+                "USPARSE_LIB_COMPILE_OPTIONS": "-D__HIPCC__ -std=c++14 --offload-arch=mp_31"
             }
         },
         {

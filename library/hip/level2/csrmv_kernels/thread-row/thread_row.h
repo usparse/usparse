@@ -10,37 +10,8 @@
 
 #include "usparse_matrix.h"
 
-template <typename I, typename T>
-__global__ void native_thread_row(int trans, const T alpha, const T beta, I m, I n, const I *rowptr, const I *colindex,
-                                  const T *value, const T *x, T *y);
-
-template <int N, int MAX_ROW_NNZ, int WF_SIZE, int THREADS, typename I, typename T>
-__global__ void kernel_thread_row(const T alpha, const T beta, const I m, const I *__restrict__ row_ptr,
-                                  const I *__restrict__ csr_col_inx, const T *__restrict__ csr_val,
-                                  const T *__restrict__ x, T *__restrict__ y_in, T *__restrict__ y_out);
-
-template <int N, int MAX_ROW_NNZ, int WF_SIZE, int THREADS, typename I, typename T>
-__global__ void kernel_thread_row_block_level(const T alpha, const T beta, const I m, const I *__restrict__ row_ptr,
-                                              const I *__restrict__ csr_col_inx, const T *__restrict__ csr_val,
-                                              const T *__restrict__ x, T *__restrict__ y);
-
-template <int N, int MAX_ROW_NNZ, int WF_SIZE, int THREADS, typename I, typename T>
-__global__ void kernel_thread_row_v2(const T alpha, const T beta, const I m, const I *__restrict__ row_ptr,
-                                     const I *__restrict__ csr_col_inx, const T *__restrict__ csr_val,
-                                     const T *__restrict__ x, T *__restrict__ y);
-
-template <int N, int MAX_ROW_NNZ, int WF_SIZE, int THREADS, typename I, typename T>
-__global__ void kernel_thread_row_block_v2(const T alpha, const T beta, const I m, const I *__restrict__ row_ptr,
-                                           const I *__restrict__ csr_col_inx, const T *__restrict__ csr_val,
-                                           const T *__restrict__ x, T *__restrict__ y);
-
 template <typename INDEX_TYPE, typename DATA_TYPE>
 void thread_row_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
                             const csr_desc<INDEX_TYPE, DATA_TYPE> d_csr_desc, const DATA_TYPE *d_x, DATA_TYPE *d_y);
-
-#include "thread_row.inl"
-#include "thread_row_block.hpp"
-#include "thread_row_x_remap.inl"
-#include "thread_row_block_x_remap.hpp"
 
 #endif // SPMV_ACC_THREAD_ROW_H

@@ -8,6 +8,15 @@
 #include "thread_row.h"
 #include "thread_row_config.h"
 
+#include "thread_row.inl"
+#include "thread_row_block.hpp"
+#include "thread_row_x_remap.inl"
+#include "thread_row_block_x_remap.hpp"
+
+template <typename I, typename T>
+__global__ void native_thread_row(int trans, const T alpha, const T beta, I m, I n, const I *rowptr, const I *colindex,
+                                  const T *value, const T *x, T *y);
+
 template <typename INDEX_TYPE, typename DATA_TYPE>
 void thread_row_sparse_spmv(int trans, const DATA_TYPE alpha, const DATA_TYPE beta,
                             const csr_desc<INDEX_TYPE, DATA_TYPE> d_csr_desc, const DATA_TYPE *d_x, DATA_TYPE *d_y) {

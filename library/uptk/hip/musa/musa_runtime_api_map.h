@@ -1,8 +1,8 @@
 /**
  * Created by genshen on 2026/07/31.
  */
-#ifndef USPARSE_HIP_RUNTIME_API_MUSA_H
-#define USPARSE_HIP_RUNTIME_API_MUSA_H
+#ifndef USPARSE_HIP_RUNTIME_API_MUSA_AMP_H
+#define USPARSE_HIP_RUNTIME_API_MUSA_AMP_H
 
 #include <musa_runtime.h>
 #include <musa_runtime_api.h>
@@ -167,4 +167,4 @@ inline hipError_t hipEventElapsedTime(float *ms, hipEvent_t start, hipEvent_t st
 }
 #endif
 
-#endif // USPARSE_HIP_RUNTIME_API_MUSA_H
+#endif // USPARSE_HIP_RUNTIME_API_MUSA_AMP_H

@@ -12,6 +12,7 @@
 #include "building_config.h"
 #include "common/macros.h"
 #include "common/usparse_utils.hpp"
+#include "spmv_hip_acc_imp.inl"
 
 #define LIGHT_KERNEL_CALLER(N)                                                                                         \
   ((spmv_light_kernel<N, __WF_SIZE__, DATA_TYPE>)<<<256, 256>>> (m, alpha, beta, hip_row_counter, rowptr, colindex, value, x, y))

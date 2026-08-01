@@ -28,7 +28,7 @@ namespace usparse {
     }
 
     template <typename I, typename T>
-    inline void big_fusion_outter_itl_v0_wrapper(const T *d_b, T *d_V, T *d_s, const T beta, const I N, const I S_LEN) {
+    void big_fusion_outter_itl_v0_wrapper(const T *d_b, T *d_V, T *d_s, const T beta, const I N, const I S_LEN) {
       constexpr int THREADS = 512;
       const int BLOCKS = N / THREADS + (N % THREADS == 0 ? 0 : 1);
       (big_fusion_outter_itl_v0<I, T>)<<<BLOCKS, THREADS>>>(d_b, d_V, d_s, beta, N, S_LEN);
@@ -105,8 +105,8 @@ namespace usparse {
     }
 
     template <typename I, typename T1, typename T2>
-    inline void big_fusion_outter_itl_v1(T1 *dev_y, T2 *d_r0, const T2 *d_b, T2 *d_V, T2 *d_s, T2 *d_temp_buffer,
-                                         T2 *d_beta, const I N, const I S_LEN) {
+    void big_fusion_outter_itl_v1(T1 *dev_y, T2 *d_r0, const T2 *d_b, T2 *d_V, T2 *d_s, T2 *d_temp_buffer, T2 *d_beta,
+                                  const I N, const I S_LEN) {
       constexpr int THREADS = 512;
       const int BLOCKS = N / THREADS + (N % THREADS == 0 ? 0 : 1);
       // convert data type and perform norm (reduce inside block)
@@ -148,8 +148,7 @@ namespace usparse {
     }
 
     template <typename I, typename ST, typename VT, typename XT>
-    inline void big_fusion_v2_batched_axpy(const ST *d_s_f, const VT *d_V_f, XT *dev_x, const I ii, const I N,
-                                           const I VN) {
+    void big_fusion_v2_batched_axpy(const ST *d_s_f, const VT *d_V_f, XT *dev_x, const I ii, const I N, const I VN) {
       constexpr int THREADS = 512;
       const int BLOCKS = N / THREADS + (N % THREADS == 0 ? 0 : 1);
 
@@ -187,4 +186,17 @@ namespace usparse {
   } // namespace gmres
 } // namespace usparse
 
+template void usparse::gmres::big_fusion_outter_itl_v0_wrapper<uint, float>(const float *d_b, float *d_V, float *d_s,
+                                                                            const float beta, const uint N,
+                                                                            const uint S_LEN);
+
+template void usparse::gmres::big_fusion_outter_itl_v1<uint, double, float>(double *dev_y, float *d_r0,
+                                                                            const float *d_b, float *d_V, float *d_s,
+                                                                            float *d_temp_buffer, float *d_beta,
+                                                                            const uint N, const uint S_LEN);
+
+template void usparse::gmres::big_fusion_v2_batched_axpy<uint, float, float, double>(const float *d_s_f,
+                                                                                     const float *d_V_f, double *dev_x,
+                                                                                     const uint ii, const uint N,
+                                                                                     const uint VN);
 #endif // USPARSE_KERNELS__GMRES_BIG_FUSION_HPP
