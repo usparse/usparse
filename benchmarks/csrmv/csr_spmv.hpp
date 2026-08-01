@@ -124,4 +124,9 @@ template <typename INDEX_TYPE, typename DATA_TYPE> struct CsrSpMV {
 #include "benchmark_merge_path.hpp"
 #endif
 
+// musa
+#ifdef __USPARSE_BUILD_BACKEND_MUSA__
+#include "benchmark_musparse.hpp"
+#endif
+
 #endif
