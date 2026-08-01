@@ -7,9 +7,11 @@
 
 #include <usparse_tuner.h>
 
+#ifdef __HIP_PLATFORM_HCC__
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
 #include <rocsparse/rocsparse.h>
+#endif
 
 #include "kernels/usparse_gmres.h"
 
@@ -48,9 +50,9 @@ USPARSE_TUNER_BENCH(dotProdAxpyFusion_Tuner) {
     T *d_r0 = nullptr;
     T *d_V = nullptr;
     T *d_H = nullptr;
-    USPARSE_HIP_API_CHECK(hipMalloc(&d_r0, N * sizeof(T)));
-    USPARSE_HIP_API_CHECK(hipMalloc(&d_V, N * (RESTART_TIMES + 1) * sizeof(T)));
-    USPARSE_HIP_API_CHECK(hipMalloc(&d_H, (RESTART_TIMES + 1) * RESTART_TIMES * sizeof(T)));
+    USPARSE_HIP_API_CHECK(hipMalloc((void **)&d_r0, N * sizeof(T)));
+    USPARSE_HIP_API_CHECK(hipMalloc((void **)&d_V, N * (RESTART_TIMES + 1) * sizeof(T)));
+    USPARSE_HIP_API_CHECK(hipMalloc((void **)&d_H, (RESTART_TIMES + 1) * RESTART_TIMES * sizeof(T)));
     USPARSE_HIP_API_CHECK(hipMemcpy(d_r0, h_r0.data(), N * sizeof(T), hipMemcpyHostToDevice));
     USPARSE_HIP_API_CHECK(hipMemcpy(d_V, h_V.data(), N * (RESTART_TIMES + 1) * sizeof(T), hipMemcpyHostToDevice));
     USPARSE_HIP_API_CHECK(
@@ -61,7 +63,7 @@ USPARSE_TUNER_BENCH(dotProdAxpyFusion_Tuner) {
     auto VN = usparse::get_r0_v_mem_len(N);
     usparse::dotprod_axpy_fusion<uint, T, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
         nullptr, nullptr, nullptr, d_temp_buffer, (uint)N, (uint)VN, (uint)m, (uint)i, &buffer_size, f_density);
-    USPARSE_HIP_API_CHECK(hipMalloc(&d_temp_buffer, buffer_size));
+    USPARSE_HIP_API_CHECK(hipMalloc((void **)&d_temp_buffer, buffer_size));
 
     for (auto _ : states) {
       usparse::dotprod_axpy_fusion_internal_imp<uint, T, THREADS, ELES_PER_THREAD, STRIDES,

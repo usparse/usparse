@@ -56,8 +56,8 @@ private:
 
 private:
   void mem_malloc() {
-    USPARSE_HIP_API_CHECK(hipHostMalloc((int **)&host_data, 1 * sizeof(int)));
-    USPARSE_HIP_API_CHECK(hipMalloc((int **)&dev_data, 1 * sizeof(int)));
+    USPARSE_HIP_API_CHECK(hipHostMalloc((void **)&host_data, 1 * sizeof(int)));
+    USPARSE_HIP_API_CHECK(hipMalloc((void **)&dev_data, 1 * sizeof(int)));
   }
 
   void mem_copy() {

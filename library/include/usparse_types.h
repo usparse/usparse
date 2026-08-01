@@ -5,6 +5,8 @@
 #ifndef USPARSE_HIP_USPARSE_TYPES_H
 #define USPARSE_HIP_USPARSE_TYPES_H
 
+#include <cstdint>
+
 #include "hip/rocsparse/rocsparse-complex-types.h"
 
 namespace usparse {
@@ -18,7 +20,7 @@ namespace usparse {
   };
 
   using usparse_int = int;
-  using usparse_uint = uint;
+  using usparse_uint = std::uint32_t;
   using usparse_fp32 = float;
   using usparse_fp64 = double;
 

@@ -281,23 +281,6 @@ void flat_matrix_clear_segmented(hipStream_t stream, csrmv_flat_mtx_info<BP_DATA
   return;
 }
 
-void flat_matrix_clear(hipStream_t stream, void *info) {
-  // todo: usparse_default_flat_mtx_info is not elegant.
-  usparse_default_flat_mtx_info *info_ptr = reinterpret_cast<usparse_default_flat_mtx_info *>(info);
-  USPARSE_HIP_API_CHECK(hipFree(info_ptr->break_points));
-  USPARSE_HIP_API_CHECK(hipFree(info_ptr->key_val));
-}
-
-void flat_matrix_clear_atomic(hipStream_t stream, void *info) {
-  // todo: usparse_default_flat_mtx_info is not elegant.
-  flat_matrix_clear_atomic(stream, reinterpret_cast<usparse_default_flat_mtx_info *>(info));
-}
-
-void flat_matrix_clear_segmented(hipStream_t stream, void *info) {
-  // todo: usparse_default_flat_mtx_info is not elegant.
-  flat_matrix_clear_segmented(stream, reinterpret_cast<usparse_default_flat_mtx_info *>(info));
-}
-
 /**
  * note: sugment-sum does not support FLAT_STORE_Y_POLICY_SEGMENTED_SUM mode currently.
  */

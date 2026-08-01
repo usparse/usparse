@@ -1,7 +1,7 @@
-find_package(rocSPARSE REQUIRED)
-
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/utuner/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/utuner/lib)
+
+set_source_files_properties_hip(fusion/dotprod_axpy_fusion_kernel_tuner.cc)
 
 add_executable(
         usparse_kernel_auto_tuner
@@ -21,9 +21,22 @@ set_target_properties(usparse_kernel_auto_tuner PROPERTIES
         CXX_EXTENSIONS OFF
 )
 
+if (BENCHMARK_CUDA_ENABLE_FLAG)
+    set(BENCHMARK_DEP_LIBS
+        ${BENCHMARK_DEP_LIBS}
+        cusparse
+        )
+else ()
+    set(BENCHMARK_DEP_LIBS
+        ${BENCHMARK_DEP_LIBS}
+        rocsparse
+        )
+endif ()
+
 target_link_libraries(
         usparse_kernel_auto_tuner
-        roc::rocsparse
+        ${BENCHMARK_DEP_LIBS}
+        ${USPARSE_LIB_NAME}
         ${USPARSE_GMRES_KERNEL_LIB_NAME}
         ${USPARSE_TUNER_LIB_NAME}
 )

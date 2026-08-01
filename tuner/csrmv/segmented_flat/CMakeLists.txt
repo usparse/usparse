@@ -1,6 +1,11 @@
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/utuner/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/utuner/lib)
 
+set_source_files_properties_hip(
+        segmented_flat_tuner.cc
+        ../common/csrmv_tuner_main.cc
+        )
+
 add_executable(
         usparse_tuner_csrmv_segmented_flat
         segmented_flat_tuner.cc

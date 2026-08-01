@@ -8,7 +8,10 @@
 #include <gtest/gtest.h>
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
+
+#ifdef __HIP_PLATFORM_HCC__
 #include <rocsparse/rocsparse.h>
+#endif
 
 #include "tests_utils.hpp"
 #include "kernels/usparse_gmres.h"
@@ -108,9 +111,9 @@ TEST(Level1Test, dotProdAxpyFusion) {
   double *d_V = nullptr;
   double *d_H = nullptr;
   // double *d_result = nullptr;
-  TEST_HIP_CHECK(hipMalloc(&d_r0, N * sizeof(double)));
-  TEST_HIP_CHECK(hipMalloc(&d_V, N * (RESTART_TIMES + 1) * sizeof(double)));
-  TEST_HIP_CHECK(hipMalloc(&d_H, (RESTART_TIMES + 1) * RESTART_TIMES * sizeof(double)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_r0, N * sizeof(double)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_V, N * (RESTART_TIMES + 1) * sizeof(double)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_H, (RESTART_TIMES + 1) * RESTART_TIMES * sizeof(double)));
   TEST_HIP_CHECK(hipMemcpy(d_r0, h_r0.data(), N * sizeof(double), hipMemcpyHostToDevice));
   TEST_HIP_CHECK(hipMemcpy(d_V, h_V.data(), N * (RESTART_TIMES + 1) * sizeof(double), hipMemcpyHostToDevice));
   TEST_HIP_CHECK(
@@ -121,7 +124,7 @@ TEST(Level1Test, dotProdAxpyFusion) {
   auto VN = usparse::get_r0_v_mem_len(N);
   usparse::dotprod_axpy_fusion<uint, double, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
       nullptr, nullptr, nullptr, d_temp_buffer, (uint)N, (uint)VN, (uint)m, (uint)i, &buffer_size, f_density);
-  TEST_HIP_CHECK(hipMalloc(&d_temp_buffer, buffer_size));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_temp_buffer, buffer_size));
 
   usparse::dotprod_axpy_fusion<uint, double, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
       d_r0, d_V, d_H, d_temp_buffer, (uint)N, (uint)VN, (uint)m, (uint)i, 0, f_density);

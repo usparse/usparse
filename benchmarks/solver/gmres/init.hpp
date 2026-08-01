@@ -4,9 +4,17 @@
 #include <cassert>
 #include <cmath>
 #include <iostream>
-#include <rocsparse/rocsparse.h>
 #include <string.h>
 #include <vector>
+
+#ifdef __HIP_PLATFORM_HCC__
+#include <rocsparse/rocsparse.h>
+#endif
+#ifndef __HIP_PLATFORM_HCC__
+struct rocsparse_mat_info {}; // for passing compilation, will be defined in rocsparse.h
+struct rocsparse_handle{};
+struct rocsparse_mat_descr{};
+#endif
 
 #include <hip/hip_runtime.h>
 // #include "hip/hip_runtime_api.h"

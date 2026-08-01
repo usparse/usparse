@@ -5,6 +5,8 @@
 #ifndef CSRMV_TUNER_LINE_ENHAHCE_CSRMV_TUNER_INPUT
 #define CSRMV_TUNER_LINE_ENHAHCE_CSRMV_TUNER_INPUT
 
+#include <string>
+
 #include "usparse.h"
 
 namespace utuner {

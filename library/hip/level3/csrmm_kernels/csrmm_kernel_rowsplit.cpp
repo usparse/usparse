@@ -84,7 +84,7 @@ namespace usparse {
 
             // const unsigned long non_zero_bits = __ballot(VEC_SIZE, predicate);
             const unsigned long non_zero_bits =
-                __ballot(predicate); // VECTOR_SIZE must be 64 here. Because it does not support mask.
+                __ballot_sync(0xffffffff, predicate); // VECTOR_SIZE must be 64 here. Because it does not support mask.
             const unsigned int num_non_zeros_in_vector = __popcll(non_zero_bits);
 
             if (BALLOT_SUPPORTED) { // currently, it only supppr B_Row_Order and C_Row_Order

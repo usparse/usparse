@@ -27,7 +27,7 @@ namespace common {
 
       const int idx_per_block = input_size / global_block_num + (input_size % global_block_num == 0 ? 0 : 1);
       const int block_idx_begin = blockIdx.x * idx_per_block;
-      const int block_idx_end = min(input_size, block_idx_begin + idx_per_block);
+      const int block_idx_end = min(static_cast<int>(input_size), static_cast<int>(block_idx_begin + idx_per_block));
 
       __shared__ T shared_block_sum;
       if (block_thread_id == 0) {
@@ -67,7 +67,7 @@ namespace common {
 
       const int idx_per_block = input_size / global_block_num + (input_size % global_block_num == 0 ? 0 : 1);
       const int block_idx_begin = blockIdx.x * idx_per_block;
-      const int block_idx_end = min(input_size, block_idx_begin + idx_per_block);
+      const int block_idx_end = min(static_cast<int>(input_size), static_cast<int>(block_idx_begin + idx_per_block));
 
       __shared__ T shared_vector_reduce[THREADS / VEC_SIZE];
       __shared__ T shared_base_sum;

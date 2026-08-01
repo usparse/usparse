@@ -33,6 +33,7 @@ set(SOURCE_FILES
         main.cpp
         utils/statistics_logger.cpp
         )
+set_source_files_properties_hip(main.cpp)
 
 set(SPMV_BENCHMARK_NAME csrmv-gpu-benchmark)
 
@@ -60,6 +61,7 @@ target_link_libraries(
         PUBLIC
         ${BENCHMARK_DEP_LIBS}
 )
+target_link_options(${SPMV_BENCHMARK_NAME} PUBLIC ${HIP_NVCC_LINKER_FLAGS})
 
 # See https://cliutils.gitlab.io/modern-cmake/chapters/packages/OpenMP.html
 if (SPMV_OMP_ENABLED_FLAG)

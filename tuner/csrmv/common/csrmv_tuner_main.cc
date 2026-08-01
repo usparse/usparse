@@ -6,7 +6,6 @@
 #include <cstdlib>
 #include <ctime>
 #include <hip/hip_runtime.h>
-#include <hip/hip_runtime_api.h>
 #include <iostream>
 #include <string>
 #include <type_traits>

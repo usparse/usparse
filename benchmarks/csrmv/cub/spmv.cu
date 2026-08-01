@@ -5,18 +5,19 @@
 #include <cub/util_debug.cuh>
 
 #include "../utils/benchmark_time.h"
-#include "usparse_matrix.h"
-#include "timer.h"
+#include "../utils/timer_utils.h"
 #include "benchmark_config.h"
-#include "utils/timer_utils.h"
+#include "timer/timer.h"
+#include "usparse_matrix.h"
 
-void spmv(int trans, const csr_desc<int, double> h_csr_desc, const csr_desc<int, double> d_csr_desc, const double *x,
-          double *y, BenchmarkTime *bmt) {
-  double *d_values = const_cast<double *>(d_csr_desc.values);
+template <typename DATA_TYPE>
+void spmv(int trans, const csr_desc<int, DATA_TYPE> h_csr_desc, const csr_desc<int, DATA_TYPE> d_csr_desc,
+          const DATA_TYPE *x, DATA_TYPE *y, BenchmarkTime *bmt) {
+  DATA_TYPE *d_values = const_cast<DATA_TYPE *>(d_csr_desc.values);
   int *d_row_ptr = const_cast<int *>(d_csr_desc.row_ptr);
   int *d_col_index = const_cast<int *>(d_csr_desc.col_index);
-  double *d_x = const_cast<double *>(x);
-  double *d_y = const_cast<double *>(y);
+  DATA_TYPE *d_x = const_cast<DATA_TYPE *>(x);
+  DATA_TYPE *d_y = const_cast<DATA_TYPE *>(y);
   int rows = h_csr_desc.rows;
   int cols = h_csr_desc.cols;
   int nnz = h_csr_desc.nnz;
@@ -27,15 +28,15 @@ void spmv(int trans, const csr_desc<int, double> h_csr_desc, const csr_desc<int,
   void *d_buffer = NULL;
   size_t d_buffer_size = 0;
   // Get buffer size
-  CubDebugExit(cub::DeviceSpmv::CsrMV<double>(d_buffer, d_buffer_size, d_values, d_row_ptr, d_col_index, d_x, d_y, rows,
-                                              cols, nnz, (cudaStream_t)0, false));
+  CubDebugExit(cub::DeviceSpmv::CsrMV<DATA_TYPE>(d_buffer, d_buffer_size, d_values, d_row_ptr, d_col_index, d_x, d_y,
+                                                 rows, cols, nnz, (cudaStream_t)0, false));
   // Allocate an external buffer
   cudaMalloc(&d_buffer, d_buffer_size);
   pre_timer.stop();
   calc_timer.start();
   // Execute SpMV
-  CubDebugExit(cub::DeviceSpmv::CsrMV<double>(d_buffer, d_buffer_size, d_values, d_row_ptr, d_col_index, d_x, d_y, rows,
-                                              cols, nnz, (cudaStream_t)0, false));
+  CubDebugExit(cub::DeviceSpmv::CsrMV<DATA_TYPE>(d_buffer, d_buffer_size, d_values, d_row_ptr, d_col_index, d_x, d_y,
+                                                 rows, cols, nnz, (cudaStream_t)0, false));
   calc_timer.stop(true);
   destroy_timer.start();
   cudaFree(d_buffer);
@@ -44,3 +45,9 @@ void spmv(int trans, const csr_desc<int, double> h_csr_desc, const csr_desc<int,
     bmt->set_time(pre_timer.time_use, calc_timer.time_use, 0.0, destroy_timer.time_use);
   }
 }
+
+template void spmv<float>(int trans, const csr_desc<int, float> h_csr_desc, const csr_desc<int, float> d_csr_desc,
+                          const float *x, float *y, BenchmarkTime *bmt);
+
+template void spmv<double>(int trans, const csr_desc<int, double> h_csr_desc, const csr_desc<int, double> d_csr_desc,
+                           const double *x, double *y, BenchmarkTime *bmt);

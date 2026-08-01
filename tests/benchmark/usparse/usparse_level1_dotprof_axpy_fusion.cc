@@ -8,7 +8,10 @@
 #include <benchmark/benchmark.h>
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
+
+#ifdef __HIP_PLATFORM_HCC__
 #include <rocsparse/rocsparse.h>
+#endif
 
 #include "../../unit/tests_utils.hpp"
 #include "kernels/usparse_gmres.h"
@@ -48,9 +51,9 @@ template <typename T> static void Usparse_dotprod_axpy_fusion(benchmark::State &
   T *d_r0 = nullptr;
   T *d_V = nullptr;
   T *d_H = nullptr;
-  TEST_HIP_CHECK(hipMalloc(&d_r0, N * sizeof(T)));
-  TEST_HIP_CHECK(hipMalloc(&d_V, N * (RESTART_TIMES + 1) * sizeof(T)));
-  TEST_HIP_CHECK(hipMalloc(&d_H, (RESTART_TIMES + 1) * RESTART_TIMES * sizeof(T)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_r0, N * sizeof(T)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_V, N * (RESTART_TIMES + 1) * sizeof(T)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_H, (RESTART_TIMES + 1) * RESTART_TIMES * sizeof(T)));
   TEST_HIP_CHECK(hipMemcpy(d_r0, h_r0.data(), N * sizeof(T), hipMemcpyHostToDevice));
   TEST_HIP_CHECK(hipMemcpy(d_V, h_V.data(), N * (RESTART_TIMES + 1) * sizeof(T), hipMemcpyHostToDevice));
   TEST_HIP_CHECK(hipMemcpy(d_H, h_H.data(), (RESTART_TIMES) * (RESTART_TIMES + 1) * sizeof(T), hipMemcpyHostToDevice));
@@ -60,7 +63,7 @@ template <typename T> static void Usparse_dotprod_axpy_fusion(benchmark::State &
   auto VN = usparse::get_r0_v_mem_len(N);
   usparse::dotprod_axpy_fusion<uint, T, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
       nullptr, nullptr, nullptr, d_temp_buffer, (uint)N, (uint)VN, (uint)m, (uint)i, &buffer_size, f_density);
-  TEST_HIP_CHECK(hipMalloc(&d_temp_buffer, buffer_size));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_temp_buffer, buffer_size));
 
   for (auto _ : state) {
     usparse::dotprod_axpy_fusion<uint, T, usparse::GMRES_OPT_USE_INNER_LOOP_KERNEL_FUSION_LEVEL_2>(
@@ -121,16 +124,16 @@ template <typename T> static void Usparse_dotprod_axpy_normal(benchmark::State &
   T *d_r0 = nullptr;
   T *d_V = nullptr;
   T *d_H = nullptr;
-  TEST_HIP_CHECK(hipMalloc(&d_r0, N * sizeof(T)));
-  TEST_HIP_CHECK(hipMalloc(&d_V, N * (RESTART_TIMES + 1) * sizeof(T)));
-  TEST_HIP_CHECK(hipMalloc(&d_H, (RESTART_TIMES + 1) * RESTART_TIMES * sizeof(T)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_r0, N * sizeof(T)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_V, N * (RESTART_TIMES + 1) * sizeof(T)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_H, (RESTART_TIMES + 1) * RESTART_TIMES * sizeof(T)));
   TEST_HIP_CHECK(hipMemcpy(d_r0, h_r0.data(), N * sizeof(T), hipMemcpyHostToDevice));
   TEST_HIP_CHECK(hipMemcpy(d_V, h_V.data(), N * (RESTART_TIMES + 1) * sizeof(T), hipMemcpyHostToDevice));
   TEST_HIP_CHECK(hipMemcpy(d_H, h_H.data(), (RESTART_TIMES) * (RESTART_TIMES + 1) * sizeof(T), hipMemcpyHostToDevice));
 
   std::size_t buffer_size = N; // too large N.
   T *d_temp_buffer = nullptr;
-  TEST_HIP_CHECK(hipMalloc(&d_temp_buffer, buffer_size));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_temp_buffer, buffer_size));
 
   for (auto _ : state) {
     for (int k = 0; k <= i; k++) {
@@ -177,14 +180,14 @@ BENCHMARK_TEMPLATE_METHOD_F(UsparseLevel1Fixture, dotDaxpyFusion)(benchmark::Sta
   T *d_y = Base::dev_y;
   // prepare another data
   T *d_result = nullptr;
-  TEST_HIP_CHECK(hipMalloc(&d_result, N * sizeof(T)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_result, N * sizeof(T)));
   TEST_HIP_CHECK(hipMemset(d_result, 0, N * sizeof(T)));
 
   // parepare data: temp buffer for reduction.
   std::size_t buffer_size = 0;
   double *d_temp_buffer = nullptr;
   usparse::dot_daxpy_fusion<uint, double>(nullptr, nullptr, nullptr, d_temp_buffer, N, m, i, &buffer_size);
-  TEST_HIP_CHECK(hipMalloc(&d_temp_buffer, buffer_size));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_temp_buffer, buffer_size));
 
   // benchmark
   for (auto _ : state) {

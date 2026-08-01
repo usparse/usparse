@@ -9,9 +9,9 @@
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
 
+#include "../utils/benchmark_time.h"
 #include "acsr/ACSR.h"
 #include "utils.hpp"
-#include "utils/benchmark_time.h"
 
 template <typename I, typename T> struct ACSRSpMV : CsrSpMV<I, T> {
   void csr_spmv_impl(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,

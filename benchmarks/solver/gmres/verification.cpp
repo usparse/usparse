@@ -1,9 +1,12 @@
 #include "sparseMatrix.hpp"
 #include <hip/hip_runtime.h>
-#include <hipblas.h>
-#include <hipsparse.h>
 #include <iostream>
 #include <vector>
+
+#ifdef __HIP_PLATFORM_HCC__
+
+#include <hipblas.h>
+#include <hipsparse.h>
 
 double Verification(SpM<double> *d_A, double *x, double *b, double *r0, int N) {
   hipsparseHandle_t spHandle;
@@ -50,3 +53,10 @@ double Verification(SpM<double> *d_A, double *x, double *b, double *r0, int N) {
 
   return num / den;
 }
+#endif
+
+#ifndef __HIP_PLATFORM_HCC__
+double Verification(SpM<double> *d_A, double *x, double *b, double *r0, int N) {
+  return 0.0;
+}
+#endif

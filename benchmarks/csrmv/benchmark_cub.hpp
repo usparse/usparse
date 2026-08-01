@@ -13,9 +13,9 @@
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
 
+#include "../utils/benchmark_time.h"
 #include "cub/spmv.h"
 #include "utils.hpp"
-#include "utils/benchmark_time.h"
 
 template <typename I, typename T> struct CubDeviceSpMV : CsrSpMV<I, T> {
   void csr_spmv_impl(int trans, const T alpha, const T beta, const csr_desc<I, T> h_csr_desc,

@@ -76,7 +76,7 @@ template <unsigned int WFSIZE> __device__ __forceinline__ double wfreduce_sum(do
 }
 
 template <typename IndexType, typename ValueType, size_t THREADS>
-__device__ void block_segment_sum(const IndexType *idx, ValueType *val) {
+__device__ __forceinline__ void block_segment_sum(const IndexType *idx, ValueType *val) {
   ValueType left = 0;
   if (threadIdx.x >= 1 && idx[threadIdx.x] == idx[threadIdx.x - 1]) {
     left = val[threadIdx.x - 1];

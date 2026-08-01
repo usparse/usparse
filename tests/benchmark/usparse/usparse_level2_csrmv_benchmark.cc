@@ -7,7 +7,10 @@
 #include <benchmark/benchmark.h>
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
+
+#ifdef __HIP_PLATFORM_HCC__
 #include <rocsparse/rocsparse.h>
+#endif
 
 #include "../../../library/hip/solver/gmres/sparseMatrix.hpp"
 #include "../../unit/tests_utils.hpp"

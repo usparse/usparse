@@ -4,6 +4,7 @@ option(USPARSE_BUILD_BENCHMARK "build usparse benchmark" OFF)
 option(USPARSE_BUILD_DEP_BY_PKG "use pkg for package manager" OFF)
 option(UPSARSE_DEVICE_SIDE_VERIFY "Verify result of device side" OFF)
 option(UPSARSE_BUILD_FOR_ROCSPARSE "build lib for rocsparse" OFF)
+option(USPARSE_USE_EMBEDED_UPTK "use the embeded UPTK implementation in usparse for running usparse on CUDA env, instead of HIP." OFF)
 # threads number in a wavefront (which is usually 64 for AMD GPU and 32 for NVIDIA GPU)
 set(UPSARSE_WAVEFRONT_SIZE "64" CACHE STRING "threads number in a wavefront")
 
@@ -80,10 +81,6 @@ if (USPARSE_ENABLE_HIP)
 else ()
 endif ()
 
-# add lib rocsparse if using device verification.
-if (DEVICE_SIDE_VERIFY_FLAG)
-    set(ACC_LIBS ${ACC_LIBS} rocsparse)
-endif ()
 
 if (DEVICE_SIDE_VERIFY_FLAG AND (NOT USPARSE_ENABLE_HIP))
     message(FATAL_ERROR "To perform device side verification, we must enable `USPARSE_ENABLE_HIP`")
@@ -101,8 +98,9 @@ set(KERNEL_STRATEGY "DEFAULT" CACHE STRING "SpGEMM strategy")
 set(SPGEMM_BIN_NAME spgemm-hip)
 set(SPGEMM_BENCHMARK_NAME spgemm-benchmark)
 set(SPGEMM_KERNEL_LIB_NAME spgemm-kernels)
-set(ACC_LIBS ${ACC_LIBS} ${SPGEMM_KERNEL_LIB_NAME})
+set(ACC_LIBS ${ACC_LIBS}) # ${SPGEMM_KERNEL_LIB_NAME})
 
-if (DEVICE_SIDE_VERIFY_FLAG)
+# add lib rocsparse if using device verification.
+if (DEVICE_SIDE_VERIFY_FLAG AND UPSARSE_BUILD_FOR_ROCSPARSE)
     set(ACC_LIBS ${ACC_LIBS} rocsparse)
 endif()

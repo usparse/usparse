@@ -78,9 +78,12 @@ flat_reduce_in_vector(const ROW_TYPE n_reduce_rows_num, const int tid_in_block, 
 
   ROW_TYPE reduce_row_id = reduce_start_row_id + vec_id;
   if (reduce_row_id < reduce_end_row_id) {
-    const SHARE_MEM_INDEX_TYPE reduce_start_inx = max(0, row_offset[reduce_row_id] - bp_index * NNZ_PER_BLOCK);
+    const SHARE_MEM_INDEX_TYPE reduce_start_inx =
+        max(static_cast<SHARE_MEM_INDEX_TYPE>(0),
+            static_cast<SHARE_MEM_INDEX_TYPE>(row_offset[reduce_row_id] - bp_index * NNZ_PER_BLOCK));
     const SHARE_MEM_INDEX_TYPE reduce_end_inx =
-        min(NNZ_PER_BLOCK, row_offset[reduce_row_id + 1] - bp_index * NNZ_PER_BLOCK);
+        min(static_cast<SHARE_MEM_INDEX_TYPE>(NNZ_PER_BLOCK),
+            static_cast<SHARE_MEM_INDEX_TYPE>(row_offset[reduce_row_id + 1] - bp_index * NNZ_PER_BLOCK));
     // reduce LDS via vectors.
     COMPUTE_TYPE sum = static_cast<COMPUTE_TYPE>(0);
     for (SHARE_MEM_INDEX_TYPE i = reduce_start_inx + tid_in_vec; i < reduce_end_inx; i += vec_size) {
@@ -99,9 +102,12 @@ flat_reduce_in_vector(const ROW_TYPE n_reduce_rows_num, const int tid_in_block, 
 
   reduce_row_id += vec_num;
   for (; reduce_row_id < reduce_end_row_id; reduce_row_id += vec_num) {
-    const SHARE_MEM_INDEX_TYPE reduce_start_inx = max(0, row_offset[reduce_row_id] - bp_index * NNZ_PER_BLOCK);
+    const SHARE_MEM_INDEX_TYPE reduce_start_inx =
+        max(static_cast<SHARE_MEM_INDEX_TYPE>(0),
+            static_cast<SHARE_MEM_INDEX_TYPE>(row_offset[reduce_row_id] - bp_index * NNZ_PER_BLOCK));
     const SHARE_MEM_INDEX_TYPE reduce_end_inx =
-        min(NNZ_PER_BLOCK, row_offset[reduce_row_id + 1] - bp_index * NNZ_PER_BLOCK);
+        min(static_cast<SHARE_MEM_INDEX_TYPE>(NNZ_PER_BLOCK),
+            static_cast<SHARE_MEM_INDEX_TYPE>(row_offset[reduce_row_id + 1] - bp_index * NNZ_PER_BLOCK));
     // reduce LDS via vectors.
     COMPUTE_TYPE sum = static_cast<COMPUTE_TYPE>(0);
     for (SHARE_MEM_INDEX_TYPE i = reduce_start_inx + tid_in_vec; i < reduce_end_inx; i += vec_size) {
@@ -131,9 +137,12 @@ __device__ __forceinline__ void flat_reduce_direct(const int tid_in_block, const
   if (reduce_row_id < reduce_end_row_id) {
     COMPUTE_TYPE sum = static_cast<COMPUTE_TYPE>(0);
     // what if it has a very long row? which means `reduce_start_row_id == reduce_end_row_id`.
-    const SHARE_MEM_INDEX_TYPE reduce_start_inx = max(0, row_offset[reduce_row_id] - bp_index * NNZ_PER_BLOCK);
+    const SHARE_MEM_INDEX_TYPE reduce_start_inx =
+        max(static_cast<SHARE_MEM_INDEX_TYPE>(0),
+            static_cast<SHARE_MEM_INDEX_TYPE>(row_offset[reduce_row_id] - bp_index * NNZ_PER_BLOCK));
     const SHARE_MEM_INDEX_TYPE reduce_end_inx =
-        min(NNZ_PER_BLOCK, row_offset[reduce_row_id + 1] - bp_index * NNZ_PER_BLOCK);
+        min(static_cast<SHARE_MEM_INDEX_TYPE>(NNZ_PER_BLOCK),
+            static_cast<SHARE_MEM_INDEX_TYPE>(row_offset[reduce_row_id + 1] - bp_index * NNZ_PER_BLOCK));
     for (SHARE_MEM_INDEX_TYPE i = reduce_start_inx; i < reduce_end_inx; i++) {
       sum += _lds_shared_data[i];
     }
@@ -143,9 +152,12 @@ __device__ __forceinline__ void flat_reduce_direct(const int tid_in_block, const
   reduce_row_id += THREADS;
   for (; reduce_row_id < reduce_end_row_id; reduce_row_id += THREADS) {
     COMPUTE_TYPE sum = static_cast<COMPUTE_TYPE>(0);
-    const SHARE_MEM_INDEX_TYPE reduce_start_inx = max(0, row_offset[reduce_row_id] - bp_index * NNZ_PER_BLOCK);
+    const SHARE_MEM_INDEX_TYPE reduce_start_inx =
+        max(static_cast<SHARE_MEM_INDEX_TYPE>(0),
+            static_cast<SHARE_MEM_INDEX_TYPE>(row_offset[reduce_row_id] - bp_index * NNZ_PER_BLOCK));
     const SHARE_MEM_INDEX_TYPE reduce_end_inx =
-        min(NNZ_PER_BLOCK, row_offset[reduce_row_id + 1] - bp_index * NNZ_PER_BLOCK);
+        min(static_cast<SHARE_MEM_INDEX_TYPE>(NNZ_PER_BLOCK),
+            static_cast<SHARE_MEM_INDEX_TYPE>(row_offset[reduce_row_id + 1] - bp_index * NNZ_PER_BLOCK));
     for (SHARE_MEM_INDEX_TYPE i = reduce_start_inx; i < reduce_end_inx; i++) {
       sum += _lds_shared_data[i];
     }
@@ -173,9 +185,12 @@ __device__ __forceinline__ void flat_reduce_in_vector_with_mem_coalescing(
   ROW_TYPE reduce_row_id = reduce_start_row_id + vec_id;
   ROW_TYPE thread_reduce_row_id = reduce_start_row_id + tid_in_block;
   if (reduce_row_id < reduce_end_row_id) {
-    const SHARE_MEM_INDEX_TYPE reduce_start_inx = max(0, row_offset[reduce_row_id] - bp_index * NNZ_PER_BLOCK);
+    const SHARE_MEM_INDEX_TYPE reduce_start_inx =
+        max(static_cast<SHARE_MEM_INDEX_TYPE>(0),
+            static_cast<SHARE_MEM_INDEX_TYPE>(row_offset[reduce_row_id] - bp_index * NNZ_PER_BLOCK));
     const SHARE_MEM_INDEX_TYPE reduce_end_inx =
-        min(NNZ_PER_BLOCK, row_offset[reduce_row_id + 1] - bp_index * NNZ_PER_BLOCK);
+        min(static_cast<SHARE_MEM_INDEX_TYPE>(NNZ_PER_BLOCK),
+            static_cast<SHARE_MEM_INDEX_TYPE>(row_offset[reduce_row_id + 1] - bp_index * NNZ_PER_BLOCK));
     // reduce LDS via vectors.
     COMPUTE_TYPE sum = static_cast<COMPUTE_TYPE>(0);
     for (SHARE_MEM_INDEX_TYPE i = reduce_start_inx + tid_in_vec; i < reduce_end_inx; i += vec_size) {
@@ -206,9 +221,12 @@ __device__ __forceinline__ void flat_reduce_in_vector_with_mem_coalescing(
   const ROW_TYPE n_loop = (n_reduce_rows_num / vec_num) + (n_reduce_rows_num % vec_num == 0 ? 0 : 1) - 1;
   for (ROW_TYPE k = 0; k < n_loop; k++) {
     if (reduce_row_id < reduce_end_row_id) {
-      const SHARE_MEM_INDEX_TYPE reduce_start_inx = max(0, row_offset[reduce_row_id] - bp_index * NNZ_PER_BLOCK);
+      const SHARE_MEM_INDEX_TYPE reduce_start_inx =
+          max(static_cast<SHARE_MEM_INDEX_TYPE>(0),
+              static_cast<SHARE_MEM_INDEX_TYPE>(row_offset[reduce_row_id] - bp_index * NNZ_PER_BLOCK));
       const SHARE_MEM_INDEX_TYPE reduce_end_inx =
-          min(NNZ_PER_BLOCK, row_offset[reduce_row_id + 1] - bp_index * NNZ_PER_BLOCK);
+          min(static_cast<SHARE_MEM_INDEX_TYPE>(NNZ_PER_BLOCK),
+              static_cast<SHARE_MEM_INDEX_TYPE>(row_offset[reduce_row_id + 1] - bp_index * NNZ_PER_BLOCK));
       // reduce LDS via vectors.
       COMPUTE_TYPE sum = static_cast<COMPUTE_TYPE>(0);
       for (SHARE_MEM_INDEX_TYPE i = reduce_start_inx + tid_in_vec; i < reduce_end_inx; i += vec_size) {
@@ -257,9 +275,12 @@ flat_segment_reduce_in_vector(const ROW_TYPE n_reduce_rows_num, const int tid_in
   ROW_TYPE reduce_row_id = reduce_start_row_id + vec_id;
   COMPUTE_TYPE carry_out_part_sum;
   if (reduce_row_id < reduce_end_row_id) {
-    const SHARE_MEM_INDEX_TYPE reduce_start_inx = max(0, row_offset[reduce_row_id] - bp_index * NNZ_PER_BLOCK);
+    const SHARE_MEM_INDEX_TYPE reduce_start_inx =
+        max(static_cast<SHARE_MEM_INDEX_TYPE>(0),
+            static_cast<SHARE_MEM_INDEX_TYPE>(row_offset[reduce_row_id] - bp_index * NNZ_PER_BLOCK));
     const SHARE_MEM_INDEX_TYPE reduce_end_inx =
-        min(NNZ_PER_BLOCK, row_offset[reduce_row_id + 1] - bp_index * NNZ_PER_BLOCK);
+        min(static_cast<SHARE_MEM_INDEX_TYPE>(NNZ_PER_BLOCK),
+            static_cast<SHARE_MEM_INDEX_TYPE>(row_offset[reduce_row_id + 1] - bp_index * NNZ_PER_BLOCK));
     // reduce LDS via vectors.
     COMPUTE_TYPE sum = static_cast<COMPUTE_TYPE>(0);
     for (SHARE_MEM_INDEX_TYPE i = reduce_start_inx + tid_in_vec; i < reduce_end_inx; i += vec_size) {
@@ -281,9 +302,12 @@ flat_segment_reduce_in_vector(const ROW_TYPE n_reduce_rows_num, const int tid_in
 
   reduce_row_id += vec_num;
   for (; reduce_row_id < reduce_end_row_id; reduce_row_id += vec_num) {
-    const SHARE_MEM_INDEX_TYPE reduce_start_inx = max(0, row_offset[reduce_row_id] - bp_index * NNZ_PER_BLOCK);
+    const SHARE_MEM_INDEX_TYPE reduce_start_inx =
+        max(static_cast<SHARE_MEM_INDEX_TYPE>(0),
+            static_cast<SHARE_MEM_INDEX_TYPE>(row_offset[reduce_row_id] - bp_index * NNZ_PER_BLOCK));
     const SHARE_MEM_INDEX_TYPE reduce_end_inx =
-        min(NNZ_PER_BLOCK, row_offset[reduce_row_id + 1] - bp_index * NNZ_PER_BLOCK);
+        min(static_cast<SHARE_MEM_INDEX_TYPE>(NNZ_PER_BLOCK),
+            static_cast<SHARE_MEM_INDEX_TYPE>(row_offset[reduce_row_id + 1] - bp_index * NNZ_PER_BLOCK));
     // reduce LDS via vectors.
     COMPUTE_TYPE sum = static_cast<COMPUTE_TYPE>(0);
     for (SHARE_MEM_INDEX_TYPE i = reduce_start_inx + tid_in_vec; i < reduce_end_inx; i += vec_size) {
@@ -328,9 +352,12 @@ flat_segment_reduce_direct(const int tid_in_block, const BP_INDEX_TYPE bp_index,
   if (reduce_row_id < reduce_end_row_id) {
     COMPUTE_TYPE sum = static_cast<COMPUTE_TYPE>(0);
     // what if it has a very long row? which means `reduce_start_row_id == reduce_end_row_id`.
-    const SHARE_MEM_INDEX_TYPE reduce_start_inx = max(0, row_offset[reduce_row_id] - bp_index * NNZ_PER_BLOCK);
+    const SHARE_MEM_INDEX_TYPE reduce_start_inx =
+        max(static_cast<SHARE_MEM_INDEX_TYPE>(0),
+            static_cast<SHARE_MEM_INDEX_TYPE>(row_offset[reduce_row_id] - bp_index * NNZ_PER_BLOCK));
     const SHARE_MEM_INDEX_TYPE reduce_end_inx =
-        min(NNZ_PER_BLOCK, row_offset[reduce_row_id + 1] - bp_index * NNZ_PER_BLOCK);
+        min(static_cast<SHARE_MEM_INDEX_TYPE>(NNZ_PER_BLOCK),
+            static_cast<SHARE_MEM_INDEX_TYPE>(row_offset[reduce_row_id + 1] - bp_index * NNZ_PER_BLOCK));
     for (SHARE_MEM_INDEX_TYPE i = reduce_start_inx; i < reduce_end_inx; i++) {
       sum += _lds_shared_data[i];
     }
@@ -344,9 +371,12 @@ flat_segment_reduce_direct(const int tid_in_block, const BP_INDEX_TYPE bp_index,
   reduce_row_id += THREADS;
   for (; reduce_row_id < reduce_end_row_id; reduce_row_id += THREADS) {
     COMPUTE_TYPE sum = static_cast<COMPUTE_TYPE>(0);
-    const SHARE_MEM_INDEX_TYPE reduce_start_inx = max(0, row_offset[reduce_row_id] - bp_index * NNZ_PER_BLOCK);
+    const SHARE_MEM_INDEX_TYPE reduce_start_inx =
+        max(static_cast<SHARE_MEM_INDEX_TYPE>(0),
+            static_cast<SHARE_MEM_INDEX_TYPE>(row_offset[reduce_row_id] - bp_index * NNZ_PER_BLOCK));
     const SHARE_MEM_INDEX_TYPE reduce_end_inx =
-        min(NNZ_PER_BLOCK, row_offset[reduce_row_id + 1] - bp_index * NNZ_PER_BLOCK);
+        min(static_cast<SHARE_MEM_INDEX_TYPE>(NNZ_PER_BLOCK),
+            static_cast<SHARE_MEM_INDEX_TYPE>(row_offset[reduce_row_id + 1] - bp_index * NNZ_PER_BLOCK));
     for (SHARE_MEM_INDEX_TYPE i = reduce_start_inx; i < reduce_end_inx; i++) {
       sum += _lds_shared_data[i];
     }

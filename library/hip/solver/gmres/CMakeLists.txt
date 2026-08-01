@@ -2,9 +2,20 @@
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
-# set binary path and lib storage path for compiled files.
-set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
-set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
+if (BENCHMARK_CUDA_ENABLE_FLAG)
+    set(BENCHMARK_DEP_LIBS
+        ${BENCHMARK_DEP_LIBS}
+        cusparse
+        cublas
+        )
+else ()
+    set(BENCHMARK_DEP_LIBS
+        ${BENCHMARK_DEP_LIBS}
+        rocsparse
+        hipblas
+        hipsparse
+        )
+endif ()
 
 # build static lib
 set(USPARSE_GMRES_HEADER_FILES ${USPARSE_GMRES_HEADER_FILES}
@@ -23,8 +34,8 @@ set(USPARSE_GMRES_SOURCE_FILES ${USPARSE_GMRES_SOURCE_FILES}
         kernels/level2/usparse_solver_tri.cpp
 )
 
-set_source_files_properties(${USPARSE_GMRES_SOURCE_FILES} PROPERTIES HIP_SOURCE_PROPERTY_FORMAT 1)
-hip_add_library(${USPARSE_GMRES_KERNEL_LIB_NAME} STATIC ${USPARSE_GMRES_SOURCE_FILES} ${USPARSE_GMRES_HEADER_FILES} HIPCC_OPTIONS ${USPARSE_HIPCC_OPTIONS})
+set_source_files_properties_hip(${USPARSE_GMRES_SOURCE_FILES})
+hip_add_library(${USPARSE_GMRES_KERNEL_LIB_NAME} STATIC ${USPARSE_GMRES_SOURCE_FILES} ${USPARSE_GMRES_HEADER_FILES}) # HIPCC_OPTIONS ${USPARSE_HIPCC_OPTIONS})
 
 message(STATUS ${USPARSE_GMRES_KERNEL_LIB_NAME})
 
@@ -35,8 +46,7 @@ target_include_directories(
         $<INSTALL_INTERFACE:include>
 )
 
-find_package(rocSPARSE REQUIRED)
-
+set_source_files_properties_hip(precision_patch.cpp gmres.cpp)
 add_library(
     gmres-device
     precision_patch.cpp
@@ -44,9 +54,7 @@ add_library(
     )
 
 target_link_libraries(gmres-device PRIVATE
-    roc::rocsparse
-    hipblas
-    hipsparse
+    ${BENCHMARK_DEP_LIBS}
     ${USPARSE_GMRES_KERNEL_LIB_NAME}
     )
 

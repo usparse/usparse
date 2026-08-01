@@ -21,3 +21,11 @@ __global__ void native_thread_row(int trans, const T alpha, const T beta, I m, I
     y[i] = alpha * y0 + beta * y[i];
   }
 }
+
+template __global__ void native_thread_row<int, float>(int trans, const float alpha, const float beta, int m, int n,
+                                                       const int *rowptr, const int *colindex, const float *value,
+                                                       const float *x, float *y);
+
+template __global__ void native_thread_row<int, double>(int trans, const double alpha, const double beta, int m, int n,
+                                                        const int *rowptr, const int *colindex, const double *value,
+                                                        const double *x, double *y);

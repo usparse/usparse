@@ -8,7 +8,10 @@
 #include <gtest/gtest.h>
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
+
+#ifdef __HIP_PLATFORM_HCC__
 #include <rocsparse/rocsparse.h>
+#endif
 
 #include "tests_utils.hpp"
 #include "kernels/usparse_gmres.h"
@@ -31,9 +34,9 @@ TEST(Level1Test, dotProduction) {
   double *d_x = nullptr;
   double *d_y = nullptr;
   double *d_result = nullptr;
-  TEST_HIP_CHECK(hipMalloc(&d_x, N * sizeof(double)));
-  TEST_HIP_CHECK(hipMalloc(&d_y, N * sizeof(double)));
-  TEST_HIP_CHECK(hipMalloc(&d_result, 1 * sizeof(double)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_x, N * sizeof(double)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_y, N * sizeof(double)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_result, 1 * sizeof(double)));
   TEST_HIP_CHECK(hipMemset(d_result, 0, 1 * sizeof(double)));
   TEST_HIP_CHECK(hipMemcpy(d_x, h_x, N * sizeof(double), hipMemcpyHostToDevice));
   TEST_HIP_CHECK(hipMemcpy(d_y, h_y, N * sizeof(double), hipMemcpyHostToDevice));
@@ -41,7 +44,7 @@ TEST(Level1Test, dotProduction) {
   std::size_t buffer_size = 0;
   double *d_temp_buffer = nullptr;
   usparse::device_dotProduct<uint, double>(nullptr, nullptr, (uint)N, nullptr, d_temp_buffer, &buffer_size);
-  TEST_HIP_CHECK(hipMalloc(&d_temp_buffer, buffer_size));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_temp_buffer, buffer_size));
 
   usparse::device_dotProduct<uint, double>(d_x, d_y, (uint)N, d_result, d_temp_buffer, 0);
   TEST_HIP_CHECK(hipDeviceSynchronize());
@@ -79,15 +82,15 @@ TEST(Level1Test, vecNorm) {
 
   double *d_vec = nullptr;
   double *d_result = nullptr;
-  TEST_HIP_CHECK(hipMalloc(&d_vec, N * sizeof(double)));
-  TEST_HIP_CHECK(hipMalloc(&d_result, 1 * sizeof(double)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_vec, N * sizeof(double)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_result, 1 * sizeof(double)));
   TEST_HIP_CHECK(hipMemset(d_result, 0, 1 * sizeof(double)));
   TEST_HIP_CHECK(hipMemcpy(d_vec, h_vec, N * sizeof(double), hipMemcpyHostToDevice));
 
   std::size_t buffer_size = 0;
   double *d_temp_buffer = nullptr;
   usparse::device_calculateNorm<uint, double>(nullptr, (uint)N, nullptr, d_temp_buffer, &buffer_size);
-  TEST_HIP_CHECK(hipMalloc(&d_temp_buffer, (N / 256 + (N % 256 == 0 ? 0 : 1)) * sizeof(double)));
+  TEST_HIP_CHECK(hipMalloc((void **)&d_temp_buffer, (N / 256 + (N % 256 == 0 ? 0 : 1)) * sizeof(double)));
 
   usparse::device_calculateNorm<uint, double>(d_vec, (uint)N, d_result, d_temp_buffer, 0);
   TEST_HIP_CHECK(hipDeviceSynchronize());

@@ -5,9 +5,6 @@
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
 
-#include <hipsparse/hipsparse.h>
-#include <rocsparse/rocsparse.h>
-
 #include "level2/csrmv_kernels/flat/csrmv_flat.h"
 #include "level2/csrmv_kernels/line-enhance/csrmv_line_enhance.h"
 #include "level2/csrmv_kernels/vector-row/vector_row.h"
@@ -15,13 +12,14 @@
 
 #include "usparse_csrmv.h"
 
-
+#ifdef __HIP_PLATFORM_HCC__
 #define HIPSPARSE_CHECK(stat)                                                                                          \
   {                                                                                                                    \
     if (stat != HIPSPARSE_STATUS_SUCCESS) {                                                                            \
       fprintf(stderr, "Error: hipsparse error in line %d", __LINE__);                                                  \
     }                                                                                                                  \
   }
+#endif
 
 template <typename INDEX_TYPE, typename VALUE_TYPE>
 void usparse::device_adaptive_analysis(int trans, const VALUE_TYPE alpha, const VALUE_TYPE beta,
@@ -38,14 +36,17 @@ void usparse::device_adaptive_analysis(int trans, const VALUE_TYPE alpha, const 
   } else if (algo == usparse::usparse_csrmv_algo_vector) {
     return;
   } else if (algo == usparse::usparse_csrmv_algo_hipsparse_default) {
+#ifdef __HIP_PLATFORM_HCC__
     hipsparseHandle_t handle;
     hipsparseMatDescr_t descrA;
     hipsparseCreate(&handle);
     hipsparseCreateMatDescr(&descrA);
     info->hipsparse_default_info.handle = handle;
     info->hipsparse_default_info.descrA = descrA;
+#endif
   } else if (algo == usparse::usparse_csrmv_algo_hipsparse_csr_adaptive ||
              algo == usparse::usparse_csrmv_algo_hipsparse_csr_vector) {
+#ifdef __HIP_PLATFORM_HCC__
     rocsparse_handle handle;
     rocsparse_create_handle(&handle);
     // Matrix descriptor
@@ -63,6 +64,7 @@ void usparse::device_adaptive_analysis(int trans, const VALUE_TYPE alpha, const 
     info->hipsparse_csr_adaptive_info.handle = handle;
     info->hipsparse_csr_adaptive_info.descrA = descrA;
     info->hipsparse_csr_adaptive_info.info = mat_info;
+#endif
   }
 }
 
@@ -84,6 +86,7 @@ void usparse::device_adaptive_spmv(int trans, const VALUE_TYPE alpha, const VALU
   } else if (algo == usparse::usparse_csrmv_algo_vector) {
     vec_row_sparse_spmv(trans, alpha, beta, d_csr_desc, dx, dy);
   } else if (algo == usparse::usparse_csrmv_algo_hipsparse_default) {
+#ifdef __HIP_PLATFORM_HCC__
     const int m = d_csr_desc.rows;
     const int n = d_csr_desc.cols;
     const int nnz = d_csr_desc.nnz;
@@ -105,8 +108,10 @@ void usparse::device_adaptive_spmv(int trans, const VALUE_TYPE alpha, const VALU
                                       &halpha, info->hipsparse_default_info.descrA, dAval, dAptr, dAcol, dx, &hbeta,
                                       dy));
     }
+#endif
   } else if (algo == usparse::usparse_csrmv_algo_hipsparse_csr_adaptive ||
              algo == usparse::usparse_csrmv_algo_hipsparse_csr_vector) {
+#ifdef __HIP_PLATFORM_HCC__
     VALUE_TYPE hip_alpha = alpha;
     VALUE_TYPE hip_beta = beta;
     if constexpr (std::is_same<VALUE_TYPE, double>::value) {
@@ -120,6 +125,7 @@ void usparse::device_adaptive_spmv(int trans, const VALUE_TYPE alpha, const VALU
                        d_csr_desc.values, d_csr_desc.row_ptr, d_csr_desc.col_index,
                        info->hipsparse_csr_adaptive_info.info, dx, &hip_beta, dy);
     }
+#endif
   }
 }
 

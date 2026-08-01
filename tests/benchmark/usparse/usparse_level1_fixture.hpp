@@ -43,7 +43,7 @@ private:
       host_vec[i] = i;
     }
 
-    TEST_HIP_CHECK(hipMalloc(&dev_vec, N * sizeof(T)));
+    TEST_HIP_CHECK(hipMalloc((void **)&dev_vec, N * sizeof(T)));
     TEST_HIP_CHECK(hipMemcpy(dev_vec, host_vec, N * sizeof(T), hipMemcpyHostToDevice));
   }
 
