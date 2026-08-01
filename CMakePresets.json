@@ -59,7 +59,7 @@
                 "CMAKE_C_COMPILER": "${sourceDir}/scripts/nvcc-as-hipcc.sh",
                 "CMAKE_CXX_COMPILER": "${sourceDir}/scripts/nvcc-as-hipcc.sh",
                 "CMAKE_CUDA_COMPILER": "${sourceDir}/scripts/nvcc-as-hipcc.sh",
-                "HIP_HIPCC_FLAGS": "",
+                "USPARSE_LIB_COMPILE_OPTIONS": "-std=c++14",
                 "USPARSE_USE_EMBEDED_UPTK": "ON"
             }
         },
@@ -70,7 +70,7 @@
                 "CMAKE_CXX_EXTENSIONS": "OFF",
                 "CMAKE_C_COMPILER": "${sourceDir}/scripts/hipcc-nv-wrapper.sh",
                 "CMAKE_CXX_COMPILER": "${sourceDir}/scripts/hipcc-nv-wrapper.sh",
-                "HIP_HIPCC_FLAGS": "-std=c++14"
+                "USPARSE_LIB_COMPILE_OPTIONS": "-std=c++14"
             }
         },
         {
@@ -79,7 +79,7 @@
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "hipcc",
                 "CMAKE_CXX_COMPILER": "hipcc",
-                "HIP_HIPCC_FLAGS": "-std=c++14"
+                "USPARSE_LIB_COMPILE_OPTIONS": "-std=c++14"
             }
         },
         {
@@ -90,7 +90,7 @@
                 "CMAKE_CXX_COMPILER": "dcc",
                 "CMAKE_C_FLAGS": "-Wno-return-type",
                 "CMAKE_CXX_FLAGS": "-Wno-return-type",
-                "HIP_HIPCC_FLAGS": "-std=c++14 -Wno-return-type"
+                "USPARSE_LIB_COMPILE_OPTIONS": "-std=c++14 -Wno-return-type"
             }
         },
 

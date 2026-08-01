@@ -20,6 +20,29 @@ if (USPARSE_ENABLE_HIP AND (NOT USPARSE_USE_EMBEDED_UPTK))
     set(USPARSE_HIPCC_OPTIONS) # set hipcc arguments
 endif ()
 
+function(hip_add_library_for_cuda target_name)
+    set(options STATIC SHARED)
+    set(oneValueArgs)
+    set(multiValueArgs HIPCC_OPTIONS)
+    cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    if(ARG_STATIC)
+        set(lib_type STATIC)
+    elseif(ARG_SHARED)
+        set(lib_type SHARED)
+    else()
+        message(FATAL_ERROR "hip_add_library: can only be STATIC or SHARED")
+    endif()
+
+    set(source_files ${ARG_UNPARSED_ARGUMENTS})
+
+    add_library(${target_name} ${lib_type} ${source_files})
+
+    if(ARG_HIPCC_OPTIONS)
+        target_compile_options(${target_name} PRIVATE ${ARG_HIPCC_OPTIONS})
+    endif()
+endfunction()
+
 # set UPTK path: use CUDA env and use uptk to support HIP.
 if (USPARSE_ENABLE_HIP AND USPARSE_USE_EMBEDED_UPTK)
     enable_language(CUDA)
@@ -37,17 +60,18 @@ if (USPARSE_ENABLE_HIP AND USPARSE_USE_EMBEDED_UPTK)
 
     # hip_add_library
     macro(hip_add_library name)
-        add_library(${name} ${ARGN})
+        hip_add_library_for_cuda(${name} ${ARGN})
     endmacro()
 endif ()
 
 function(set_source_files_properties_hip)
     set(SOURCES ${ARGN})
     if(NOT USPARSE_USE_EMBEDED_UPTK)
-        set_source_files_properties(${SOURCES} PROPERTIES
-            LANGUAGE HIP
-            HIP_SOURCE_PROPERTY_FORMAT 1
-        )
+        # set_source_files_properties(${SOURCES} PROPERTIES
+        #     LANGUAGE HIP
+        #     HIP_SOURCE_PROPERTY_FORMAT 1
+        # )
+        set_source_files_properties(${SOURCES} PROPERTIES HIP_SOURCE_PROPERTY_FORMAT 1)
     elseif(USPARSE_USE_EMBEDED_UPTK)
         set_source_files_properties(${SOURCES} PROPERTIES LANGUAGE CUDA)
     else()
