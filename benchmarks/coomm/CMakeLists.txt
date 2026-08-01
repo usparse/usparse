@@ -4,14 +4,10 @@ if (BENCHMARK_CUDA_ENABLE_FLAG)
     set(BENCHMARK_DEP_LIBS
             ${BENCHMARK_DEP_LIBS}
             cudart
-            cusparse
-            )
-else ()
-    set(BENCHMARK_DEP_LIBS
-            ${BENCHMARK_DEP_LIBS}
-            rocsparse
             )
 endif ()
+
+set(BENCHMARK_DEP_LIBS ${BENCHMARK_DEP_LIBS} ${USPARSE_GPU_BACKEND_SPARSE_LIB})
 
 set(HEADER_FILES
         coomm_statistics_logger.hpp

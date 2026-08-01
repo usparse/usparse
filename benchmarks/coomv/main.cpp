@@ -67,7 +67,7 @@ void test_spmv(std::string mtx_path, coo_mtx<INDEX_TYPE, DATA_TYPE> h_coo, host_
   COOMV_BENCHMARK(UsparseCoomvFlat, "usparse-flat", true);
   COOMV_BENCHMARK(UsparseCoomvLine_Enhance, "usparse-line-enhance", true);
 
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef __USPARSE_BUILD_BACKEND_ROCM__
   // rocsparse
   COOMV_BENCHMARK(RocSparseCooMV, "rocSparse-coomv", true);
 #endif // todo: destroy device data.

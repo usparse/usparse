@@ -7,10 +7,12 @@
 #include <string.h>
 #include <vector>
 
-#ifdef __HIP_PLATFORM_HCC__
+#include "building_config.h"
+
+#ifdef __USPARSE_BUILD_BACKEND_ROCM__
 #include <rocsparse/rocsparse.h>
 #endif
-#ifndef __HIP_PLATFORM_HCC__
+#ifndef __USPARSE_BUILD_BACKEND_ROCM__
 struct rocsparse_mat_info {}; // for passing compilation, will be defined in rocsparse.h
 struct rocsparse_handle{};
 struct rocsparse_mat_descr{};

@@ -9,7 +9,7 @@
 #include "include/usparse_matrix.h"
 #include "include/usparse_types.h"
 
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef __USPARSE_BUILD_BACKEND_ROCM__
 #define __ballot_sync(mask, pred) __ballot(pred)
 #endif
 

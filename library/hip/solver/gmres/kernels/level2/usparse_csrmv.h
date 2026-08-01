@@ -8,7 +8,7 @@
 #include "level2/csrmv_kernels/flat/csrmv_flat.h"
 #include "level2/csrmv_kernels/line-enhance/csrmv_line_enhance.h"
 
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef __USPARSE_BUILD_BACKEND_ROCM__
 
 #include <hipsparse/hipsparse.h>
 #include <rocsparse/rocsparse.h>
@@ -28,7 +28,7 @@ namespace usparse {
 
 #endif
 
-#ifndef __HIP_PLATFORM_HCC__
+#ifndef __USPARSE_BUILD_BACKEND_ROCM__
 namespace usparse {
   // empty struct to avoid compile error, since the struct is used in csrmv_mat_info.
   struct hipsparse_spmv_info {};

@@ -45,7 +45,7 @@ void init_device_data(SpM<double> *h_A, double *h_x, SpM<double> *dev_A, double 
  */
 void init_matrix_info(SpM<double> *dev_A, rocsparse_handle *handle, rocsparse_mat_descr *descrA,
                       rocsparse_mat_info *info) {
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef __USPARSE_BUILD_BACKEND_ROCM__
   rocsparse_create_handle(handle);
   // Matrix descriptor
   // rocsparse_mat_descr descrA;
@@ -79,7 +79,7 @@ void destory_device_matrix(double *d_r0, double *d_V, double *d_s, double *d_H, 
 }
 
 void destory_descr_info(rocsparse_mat_info info, rocsparse_handle handle, rocsparse_mat_descr descrA) {
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef __USPARSE_BUILD_BACKEND_ROCM__
   rocsparse_destroy_mat_info(info);
   rocsparse_destroy_mat_descr(descrA);
   rocsparse_destroy_handle(handle);

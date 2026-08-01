@@ -63,7 +63,7 @@ void test_csr_spmm(std::string &mtx_path, csr_mtx<type_sparse_default_index, PRE
            dev_B, dev_C, host_B, host_C, C_host_check.data());
   USPARSE_HIP_API_CHECK(hipDeviceSynchronize());
 
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef __USPARSE_BUILD_BACKEND_ROCM__
   RocSparseCsrMM<type_sparse_default_index, PRECISION> roc;
   roc.test(mtx_path, "rocSparse", usparse::usparse_operation::operation_none, alpha, beta, h_csr, dev_csr, M, K, N,
            dev_B, dev_C, host_B, host_C, C_host_check.data());

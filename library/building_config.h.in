@@ -21,6 +21,12 @@ constexpr int __WRAP_SIZE__ = __WF_SIZE__;
 #cmakedefine WF_REDUCE_LDS
 #cmakedefine WF_REDUCE_REG
 
+// backend
+#cmakedefine __USPARSE_BUILD_BACKEND_ROCM__
+#cmakedefine __USPARSE_BUILD_BACKEND_CUDA__
+#cmakedefine __USPARSE_BUILD_BACKEND_NOT_CUDA__
+
+
 #cmakedefine KERNEL_STRATEGY @KERNEL_STRATEGY@
 #cmakedefine KERNEL_STRATEGY_DEFAULT
 #cmakedefine KERNEL_STRATEGY_ADAPTIVE

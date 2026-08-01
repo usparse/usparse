@@ -106,7 +106,7 @@ template <typename INDEX_TYPE, typename DATA_TYPE> struct CsrSpMV {
 #include "benchmark_spmv_acc.hpp"
 
 // rocm
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef __USPARSE_BUILD_BACKEND_ROCM__
 #ifdef UBENCH_CONFIG_ENABLE_HOLA_ALGO
 #include "benchmark_hola_hip.hpp"
 #endif // UBENCH_CONFIG_ENABLE_HOLA_ALGO
@@ -114,7 +114,7 @@ template <typename INDEX_TYPE, typename DATA_TYPE> struct CsrSpMV {
 #endif
 
 // cuda
-#ifndef __HIP_PLATFORM_HCC__
+#ifdef __USPARSE_BUILD_BACKEND_CUDA__
 #include "benchmark_cub.hpp"
 #include "benchmark_cusparse.hpp"
 #ifdef UBENCH_CONFIG_ENABLE_HOLA_ALGO

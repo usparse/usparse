@@ -20,7 +20,7 @@ __device__ __forceinline__ double mv_to_front_lanes_f64(const double sum, const 
   dbl_b32_t recv_sum;
   vec_sum.val = sum;
 
-#ifdef __HIP_PLATFORM_HCC__
+#ifdef __USPARSE_BUILD_BACKEND_ROCM__
   int src_tid = tid_in_wf * VECTOR_SIZE + wf_id * WF_SIZE; // each vector's thread-0 in current wavefront
   // or: remove if and else-if, just keep inner sentences of if.
   if (tid_in_wf < WF_VECTORS) { // load each vector's sum to the first WF_VECTORS threads in a wavefront
@@ -34,7 +34,7 @@ __device__ __forceinline__ double mv_to_front_lanes_f64(const double sum, const 
   __syncthreads();
 #endif
 
-#ifndef __HIP_PLATFORM_HCC__                            /* fallback to normal implementation.*/
+#ifndef __USPARSE_BUILD_BACKEND_ROCM__                  /* fallback to normal implementation.*/
   int src_offset = tid_in_wf * VECTOR_SIZE - tid_in_wf; // each vector's thread-0 in current wavefront
   recv_sum.val = __shfl_down(sum, src_offset);
 #endif
