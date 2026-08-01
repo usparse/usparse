@@ -23,4 +23,12 @@ __device__ __forceinline__ usparse::usparse_fpc64 __shfl_down(usparse::usparse_f
   return usparse::usparse_fpc64{r, i};
 }
 
+__device__ __forceinline__ usparse::usparse_fpc32 __shfl_down(usparse::usparse_fpc32 var, int lane_delta, int width) {
+  return __shfl_down(var, (unsigned int)lane_delta, width);
+}
+
+__device__ __forceinline__ usparse::usparse_fpc64 __shfl_down(usparse::usparse_fpc64 var, int lane_delta, int width) {
+  return __shfl_down(var, (unsigned int)lane_delta, width);
+}
+
 #endif // USPARSE_KERNELS_USPARSE_PRIMITIVES_WAVEFRONT_SHLF_UTILS_HPP
