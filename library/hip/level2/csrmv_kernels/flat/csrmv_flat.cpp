@@ -89,8 +89,11 @@ void flat_matrix_analyse_imp(hipStream_t stream,
   constexpr int TOTAL_ROUNDS = 1;
   const NNZ_TYPE break_points_len = static_cast<NNZ_TYPE>(TOTAL_ROUNDS * HIP_BLOCKS + 1);
 
-  USPARSE_HIP_API_CHECK(
-      hipMallocAsync((void **)(&(info->break_points)), break_points_len * sizeof(BP_DATA_TYPE), stream));
+  // USPARSE_HIP_API_CHECK(
+  //     hipMallocAsync((void **)(&(info->break_points)), break_points_len * sizeof(BP_DATA_TYPE), stream));
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)(&(info->break_points)), break_points_len * sizeof(BP_DATA_TYPE)));
+  // USPARSE_HIP_API_CHECK(hipStreamSynchronize(stream)); // only for MUSA
+  // printf("PTR: %p %d\n", info->break_points, info->break_points);
   USPARSE_HIP_API_CHECK(hipMemsetAsync(info->break_points, 0, break_points_len * sizeof(BP_DATA_TYPE), stream));
   (pre_calc_break_point<ROW_TYPE, NNZ_TYPE, BP_DATA_TYPE, R * THREADS_PER_BLOCK>)<<<1024, 512, 0, stream>>>(
       d_csr_desc.row_ptr, m, info->break_points, break_points_len);
@@ -99,7 +102,8 @@ void flat_matrix_analyse_imp(hipStream_t stream,
   if (FLAT_STORE_Y_POLICY == FLAT_STORE_Y_POLICY_SEGMENTED_SUM && CREAT_PART_SUM_TEMP_BUFFER) {
     // size: 2 * (HIP_BLOCKS + 1). Note: 2x is used for reduction-by-key recursively.
     USPARSE_HIP_API_CHECK(
-        hipMallocAsync((void **)(&(info->key_val)), 2 * (HIP_BLOCKS + 1) * sizeof(KV<ROW_TYPE, Y_TYPE>), stream));
+        hipMalloc((void **)(&(info->key_val)), 2 * (HIP_BLOCKS + 1) * sizeof(KV<ROW_TYPE, Y_TYPE>)));
+    // USPARSE_HIP_API_CHECK(hipStreamSynchronize(stream)); // only for MUSA
     USPARSE_HIP_API_CHECK(
         hipMemsetAsync(info->key_val, 0, 2 * (HIP_BLOCKS + 1) * sizeof(KV<ROW_TYPE, Y_TYPE>), stream));
   }

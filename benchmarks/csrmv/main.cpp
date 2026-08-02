@@ -63,20 +63,20 @@ void test_spmv(std::string mtx_path, csr_mtx<INDEX_TYPE, DATA_TYPE> h_csr, host_
 
   // spmv-acc
   // SPMV_BENCHMARK(SpMVAccDefault, "spmv-acc-default", ENABLE_SPMV_ACC_DEFAULT);
-  SPMV_BENCHMARK(SpMVAccAdaptive, "spmv-acc-adaptive", ENABLE_SPMV_ACC_ADAPTIVE);
-  SPMV_BENCHMARK(SpMVAccFlat, "spmv-acc-flat", ENABLE_SPMV_ACC_FLAT);
-  SPMV_BENCHMARK(SpMVAccFlatV2, "spmv-acc-flat-v2", ENABLE_SPMV_ACC_FLAT);
-  SPMV_BENCHMARK(SpMVAccLight, "spmv-acc-light", ENABLE_SPMV_ACC_LIGHT);
+  SPMV_BENCHMARK(SpMVAccAdaptive, "uptk-sparse-adaptive", ENABLE_SPMV_ACC_ADAPTIVE);
+  SPMV_BENCHMARK(SpMVAccFlat, "uptk-sparse-flat", ENABLE_SPMV_ACC_FLAT);
+  SPMV_BENCHMARK(SpMVAccFlatV2, "uptk-sparse-flat-v2", ENABLE_SPMV_ACC_FLAT);
+  // SPMV_BENCHMARK(SpMVAccLight, "uptk-sparse-light", ENABLE_SPMV_ACC_LIGHT);
   if constexpr (std::is_same<DATA_TYPE, usparse::usparse_fp32>::value) {
     // line and thread_row only support fp32 now
-    SPMV_BENCHMARK(SpMVAccLine, "spmv-acc-line", ENABLE_SPMV_ACC_LINE);
-    SPMV_BENCHMARK(SpMVAccThreadRow, "spmv-acc-thread-row", ENABLE_SPMV_ACC_THREAD_ROW);
+    SPMV_BENCHMARK(SpMVAccLine, "uptk-sparse-line", ENABLE_SPMV_ACC_LINE);
+    SPMV_BENCHMARK(SpMVAccThreadRow, "uptk-sparse-thread-row", ENABLE_SPMV_ACC_THREAD_ROW);
   }
-  SPMV_BENCHMARK(SpMVAccVecRow, "spmv-acc-vector-row", ENABLE_SPMV_ACC_VECTOR_ROW);
-  SPMV_BENCHMARK(SpMVAccLineEnhance, "spmv-acc-line-enhance", ENABLE_SPMV_ACC_LE_ROW);
-  SPMV_BENCHMARK(SpMVAccAdaptivePlus, "spmv-acc-adaptive-plus", ENABLE_SPMV_ACC_ADAPTIVE_PLUS);
-  SPMV_BENCHMARK(SpMVAccFlatSegSum, "spmv-acc-flat-seg-sum", ENABLE_SPMV_ACC_FLAT_SEG_SUM);
-  SPMV_BENCHMARK(SpMVAccFlatSegSumV2, "spmv-acc-flat-seg-sum-v2", ENABLE_SPMV_ACC_FLAT_SEG_SUM_V2);
+  SPMV_BENCHMARK(SpMVAccVecRow, "uptk-sparse-vector-row", ENABLE_SPMV_ACC_VECTOR_ROW);
+  SPMV_BENCHMARK(SpMVAccLineEnhance, "uptk-sparse-line-enhance", ENABLE_SPMV_ACC_LE_ROW);
+  SPMV_BENCHMARK(SpMVAccAdaptivePlus, "uptk-sparse-adaptive-plus", ENABLE_SPMV_ACC_ADAPTIVE_PLUS);
+  // SPMV_BENCHMARK(SpMVAccFlatSegSum, "uptk-sparse-flat-seg-sum", ENABLE_SPMV_ACC_FLAT_SEG_SUM);
+  SPMV_BENCHMARK(SpMVAccFlatSegSumV2, "uptk-sparse-flat-seg-sum-v2", ENABLE_SPMV_ACC_FLAT_SEG_SUM_V2);
 
 #ifdef __USPARSE_BUILD_BACKEND_ROCM__
   // rocsparse

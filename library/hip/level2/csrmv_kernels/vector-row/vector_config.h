@@ -9,7 +9,7 @@
 
 // #define ASYNC_LOAD // asynchronously load data from device memory.
 
-#define MEMORY_ACCESS_Y_COALESCING
+// #define MEMORY_ACCESS_Y_COALESCING // fixme: it has bugs for MUSA. kernel will hangs due to `__syncthreads()`
 
 // memory coalescing for adaptive vector row (with data block dividing), default is disabled.
 //#define ADAPTIVE_Y_MEMORY_COALESCING
