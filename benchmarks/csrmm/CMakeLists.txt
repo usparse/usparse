@@ -22,7 +22,7 @@ set(SOURCE_FILES
         ../utils/ubench_vector_utils.cpp
         )
 # set rocsparse benchmark if it is on ROCm
-if (NOT BENCHMARK_CUDA_ENABLE_FLAG)
+if (${USPARSE_GPU_BACKEND_ROCM})
         set(SOURCE_FILES ${SOURCE_FILES} benchmark_rocsparse_csrmm.cc)
 endif()
 

@@ -104,5 +104,9 @@ void test_spmv(std::string mtx_path, csr_mtx<INDEX_TYPE, DATA_TYPE> h_csr, host_
   SPMV_BENCHMARK(ACSRSpMV, "acsr", ENABLE_ACSR);
 #endif
 
+#ifdef __USPARSE_BUILD_BACKEND_MUSA__
+  SPMV_BENCHMARK(MuSparse, "musparse", ENABLE_MUSPARSE);
+#endif
+
   destroy_device_data(d_csr, dev_x, dev_y);
 }

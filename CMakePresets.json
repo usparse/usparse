@@ -49,8 +49,16 @@
                 "HIP_NVCC_FLAGS": "-rdc=true -Xcompiler -fdiagnostics-color=always",
                 "CMAKE_CUDA_ARCHITECTURES": "89",
                 "HIP_NVCC_LINKER_FLAGS": "-rdc=true --generate-code=arch=compute_89,code=[compute_89,sm_89]"
-                // "CMAKE_CUDA_SEPARABLE_COMPILATION": "ON",
-                // "CMAKE_CUDA_RESOLVE_DEVICE_SYMBOLS": "ON"
+            }
+        },
+        {
+            "name": "use-platform-musa",
+            "hidden": true,
+            "cacheVariables": {
+                "UPSARSE_WAVEFRONT_SIZE": "32",
+                "BENCHMARK_CUDA_ENABLE_FLAG": "OFF",
+                "USPARSE_GPU_BACKEND": "MUSA",
+                "USPARSE_LIB_COMPILE_OPTIONS": "-D__HIPCC__ -std=c++14 --offload-arch=mp_31"
             }
         },
         {
@@ -72,6 +80,14 @@
                 "CMAKE_C_COMPILER": "${sourceDir}/scripts/hipcc-nv-wrapper.sh",
                 "CMAKE_CXX_COMPILER": "${sourceDir}/scripts/hipcc-nv-wrapper.sh",
                 "USPARSE_LIB_COMPILE_OPTIONS": "-std=c++14"
+            }
+        },
+        {
+            "name": "use-clang",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++"
             }
         },
         {
@@ -123,6 +139,15 @@
             ]
         },
         {
+            "name": "musa-clang",
+            "displayName": "Build for MUSA platform using clang without benchmark",
+            "inherits": [
+                "use-clang",
+                "use-platform-musa",
+                "default-build-dir"
+            ]
+        },
+        {
             "name": "rocm-dcc-benchmark",
             "displayName": "Build for ROCm platform using dcc with benchmark enabled",
             "inherits": [
@@ -161,6 +186,16 @@
                 "use-platform-cuda",
                 "default-build-dir"
             ]
+        },
+        {
+            "name": "musa-clang-benchmark",
+            "displayName": "Build for MUSA platform using clang with benchmark enabled",
+            "inherits": [
+                "use-clang",
+                "enable-benchmark",
+                "use-platform-musa",
+                "default-build-dir"
+            ]
         }
     ],
     "buildPresets": [
@@ -175,6 +210,10 @@
         {
             "name": "cuda-hipcc",
             "configurePreset": "cuda-hipcc"
+        },
+        {
+            "name": "musa-clang",
+            "configurePreset": "musa-clang"
         },
 
         {
@@ -192,6 +231,10 @@
         {
             "name": "cuda-hipcc-benchmark",
             "configurePreset": "cuda-hipcc-benchmark"
+        },
+        {
+            "name": "musa-clang-benchmark",
+            "configurePreset": "musa-clang-benchmark"
         }
     ]
 }

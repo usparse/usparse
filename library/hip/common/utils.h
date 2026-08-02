@@ -16,7 +16,7 @@
 #include "common/platforms/rocm/dpp_reduce.h"
 #endif
 
-#ifndef __USPARSE_BUILD_BACKEND_ROCM__
+#if !defined(__USPARSE_BUILD_BACKEND_ROCM__) && !defined(__USPARSE_BUILD_BACKEND_MUSA__)
 template <typename T> __forceinline__ __device__ T __builtin_nontemporal_load(const T *addr) { return *addr; }
 
 template <typename T> __forceinline__ __device__ void __builtin_nontemporal_store(const T &val, T *ptr) { *ptr = val; }

@@ -2,16 +2,18 @@
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
-if (BENCHMARK_CUDA_ENABLE_FLAG)
+if (USPARSE_GPU_BACKEND_CUDA)
     set(BENCHMARK_DEP_LIBS
         ${BENCHMARK_DEP_LIBS}
-        cusparse
+        ${USPARSE_GPU_BACKEND_SPARSE_LIB}
         cublas
         )
-else ()
+endif()
+
+if (USPARSE_GPU_BACKEND_ROCM)
     set(BENCHMARK_DEP_LIBS
         ${BENCHMARK_DEP_LIBS}
-        rocsparse
+        ${USPARSE_GPU_BACKEND_SPARSE_LIB}
         hipblas
         hipsparse
         )
