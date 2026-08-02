@@ -24,7 +24,7 @@ jobs:
           cd docs/
           pnpm install
           pnpm build
-      - uses: amondnet/vercel-action@v25 # deploy
+      - uses: amondnet/vercel-action@v42 # deploy
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }} # Required
           # github-token: ${{ secrets.GITHUB_TOKEN }} # Optional
