@@ -76,19 +76,6 @@ __device__ __forceinline__ T line_enhance_vec_reduce(const J reduce_row_id, cons
   return local_sum;
 }
 
-// local shift can reduce data inside a vector to the first thread in the vector.
-template <typename I, typename T, int VECTOR_SIZE, typename J=I>
-__device__ __forceinline__ void line_enhance_vec_local_shift(T &data) {
-  // reduce from lanes in a vector
-  if (VECTOR_SIZE > 1) { // in fact, this branch is unnecessary.
-#pragma unroll
-    for (int i = VECTOR_SIZE >> 1; i > 0; i >>= 1) {
-      data += __shfl_down(data, i, VECTOR_SIZE);
-      // or use: __shfl_down_sync(0xffffffff, i, VECTOR_SIZE);
-    }
-  }
-}
-
 // global shift moves data from the first thread inside vectors to the front threads inside a block.
 // It can make y storing memory-coalescing in vector-based reduction step.
 // note: please make sure: 1. the shared_val array is large enough (large then vector number in block).

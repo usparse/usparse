@@ -31,8 +31,8 @@ namespace usparse {
       }
     }
 
-    usparse::device::reduce_using_cooperative_groups<INDEX_TYPE, DATA_TYPE, THREADS>(grid, thread_local_sum,
-                                                                                     d_temp_buffer, result);
+    usparse::primitives::reduce::device::reduce_using_cooperative_groups<INDEX_TYPE, DATA_TYPE, THREADS>(
+        grid, thread_local_sum, d_temp_buffer, result);
   }
 
   template <typename INDEX_TYPE, typename DATA_TYPE, int THREADS, int ELES_PER_THREAD, int STRIDES>
@@ -49,8 +49,8 @@ namespace usparse {
       }
     }
 
-    usparse::device::reduce_using_cooperative_groups<INDEX_TYPE, DATA_TYPE, THREADS>(grid, thread_local_sum,
-                                                                                     d_temp_buffer, result);
+    usparse::primitives::reduce::device::reduce_using_cooperative_groups<INDEX_TYPE, DATA_TYPE, THREADS>(
+        grid, thread_local_sum, d_temp_buffer, result);
 
     // calculate norm
     if (grid.thread_rank() == 0) {

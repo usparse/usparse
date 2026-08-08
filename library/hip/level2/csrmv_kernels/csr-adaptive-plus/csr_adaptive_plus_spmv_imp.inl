@@ -8,6 +8,7 @@
 #include "common/utils.h"
 #include "../line-enhance/line_enhance_kernels_imp_reduce.hpp"
 #include "building_config.h"
+#include "primitives/reduce/device/usparse_reduce.hpp"
 
 template <int REDUCE_OPTION, int WF_SIZE, int VEC_SIZE, int MAX_ROWS_PER_BLOCK, int R, int THREADS, typename I,
           typename T>
@@ -89,7 +90,7 @@ line_enhance_plus_shared_block(const I m, const T alpha, const T beta, const I *
 
   // performance reduce inside a block
   // 1: recuce inside  wavefront first.
-  line_enhance_vec_local_shift<I, T, WF_SIZE>(sum);
+  usparse::primitives::reduce::wavefront::vector_reduce<I, T, WF_SIZE>(sum);
 
   // 2: reduce among wavefronts inside a block.
   constexpr int wavefronts_num = THREADS / WF_SIZE;
@@ -106,7 +107,7 @@ line_enhance_plus_shared_block(const I m, const T alpha, const T beta, const I *
     reduced_sum = shared_val[tid_in_wf];
   }
   // number of `wavefronts_num` threads as a vector for reduction.
-  line_enhance_vec_local_shift<I, T, wavefronts_num>(reduced_sum);
+  usparse::primitives::reduce::wavefront::vector_reduce<I, T, wavefronts_num>(reduced_sum);
   if (tid_in_block == 0) {
     reduced_sum = alpha * reduced_sum; // alpha * Ax
     if (is_last_row_bolck) {
@@ -188,14 +189,14 @@ __device__ __forceinline__ void line_enhance_plus(const I m, const I bp[], const
     }
   }
   if (REDUCE_OPTION == LE_REDUCE_OPTION_VEC) {
-    line_enhance_vec_local_shift<I, T, VEC_SIZE>(sum);
+    usparse::primitives::reduce::wavefront::vector_reduce<I, T, VEC_SIZE>(sum);
     if (reduce_row_id < block_row_end && tid_in_vec == 0) {
       y[reduce_row_id] = alpha * sum + y[reduce_row_id]; // todo: beta
     }
   }
   if (REDUCE_OPTION == LE_REDUCE_OPTION_VEC_MEM_COALESCING) {
     const I thread_reduce_row_id = block_row_begin + tid_in_block;
-    line_enhance_vec_local_shift<I, T, VEC_SIZE>(sum);
+    usparse::primitives::reduce::wavefront::vector_reduce<I, T, VEC_SIZE>(sum);
     sum = line_enhance_vec_global_shift<I, T, THREADS / VEC_SIZE>(tid_in_block, vec_id_in_block, tid_in_vec, shared_val,
                                                                   sum);
     if (thread_reduce_row_id < block_row_end) {

@@ -47,8 +47,8 @@ namespace usparse {
     // reduce value in a block into the first thread of the block.
     const int tid_in_block = threadIdx.x;
     const DATA_TYPE block_sum =
-        usparse::line_enhance_block_reduce<int, DATA_TYPE, THREADS, usparse::USPARSE_WAVEFRONT_SIZE>(local_sum,
-                                                                                                     tid_in_block);
+        usparse::primitives::reduce::block::block_reduce<int, DATA_TYPE, THREADS, usparse::USPARSE_WAVEFRONT_SIZE>(
+            local_sum, tid_in_block);
 
     if (tid_in_block == 0) {
       d_temp_buffer[blockIdx.x] = block_sum;
@@ -73,8 +73,8 @@ namespace usparse {
     // reduce value in a block into the first thread of the block.
     const int tid_in_block = threadIdx.x;
     const DATA_TYPE block_sum =
-        usparse::line_enhance_block_reduce<int, DATA_TYPE, THREADS, usparse::USPARSE_WAVEFRONT_SIZE>(local_sum,
-                                                                                                     tid_in_block);
+        usparse::primitives::reduce::block::block_reduce<int, DATA_TYPE, THREADS, usparse::USPARSE_WAVEFRONT_SIZE>(
+            local_sum, tid_in_block);
 
     if (tid_in_block == 0) {
       d_temp_buffer[blockIdx.x] = block_sum;
@@ -97,8 +97,8 @@ namespace usparse {
     // reduce value in a block into the first thread of the block.
     const int tid_in_block = threadIdx.x;
     const DATA_TYPE block_sum =
-        usparse::line_enhance_block_reduce<int, DATA_TYPE, THREADS, usparse::USPARSE_WAVEFRONT_SIZE>(local_sum,
-                                                                                                     tid_in_block);
+        usparse::primitives::reduce::block::block_reduce<int, DATA_TYPE, THREADS, usparse::USPARSE_WAVEFRONT_SIZE>(
+            local_sum, tid_in_block);
 
     if (tid_in_block == 0) {
       d_temp_buffer[blockIdx.x] = block_sum;

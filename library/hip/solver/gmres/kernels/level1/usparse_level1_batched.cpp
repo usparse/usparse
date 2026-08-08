@@ -44,8 +44,8 @@ namespace usparse {
 
     const int tid_in_block = threadIdx.x;
     const DATA_TYPE block_sum =
-        usparse::line_enhance_block_reduce<int, DATA_TYPE, THREADS, usparse::USPARSE_WAVEFRONT_SIZE>(local_sum,
-                                                                                                     tid_in_block);
+        usparse::primitives::reduce::block::block_reduce<int, DATA_TYPE, THREADS, usparse::USPARSE_WAVEFRONT_SIZE>(
+            local_sum, tid_in_block);
 
     if (tid_in_block == 0) {
       const int temp_buffer_index = k * gridDim.x + blockIdx.x;
