@@ -14,6 +14,7 @@
 #include "flat_kernels_imp_one_pass.hpp"
 #include "flat_kernels_imp_pre_calc.hpp"
 #include "csrmv_flat.h"
+#include "primitives/reduce_by_key/reduce_by_key.hpp"
 
 /**
  * note: multi pass does not support FLAT_STORE_Y_POLICY_SEGMENTED_SUM mode currently.
@@ -71,8 +72,9 @@ inline void flat_one_pass_sparse_spmv(hipStream_t stream, int trans, const SCALE
     }
     // reduce by key. value: y_part_sum, key: y_part_indices, result: y.
     constexpr int CARRY_OUT_THREADS_PER_BLOCK = THREADS_PER_BLOCK;
-    flat_reduce_carry_out<ROW_TYPE, Y_TYPE, HIP_BLOCK_NUM_TYPE, CARRY_OUT_THREADS_PER_BLOCK>(stream, y, key_val,
-                                                                                             HIP_BLOCKS);
+    usparse::primitives::reduce_by_key::device::flat_reduce_carry_out<ROW_TYPE, Y_TYPE, HIP_BLOCK_NUM_TYPE,
+                                                                      CARRY_OUT_THREADS_PER_BLOCK>(stream, y, key_val,
+                                                                                                   HIP_BLOCKS);
   }
   return;
 }

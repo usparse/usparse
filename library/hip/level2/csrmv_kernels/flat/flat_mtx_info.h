@@ -6,10 +6,10 @@
 #define USPARSE_HIP_USPARSE_FLAT_MTX_INFO_H
 
 #include "usparse_types.h"
-template <typename INDEX_TYPE, typename Y_TYPE> struct KV {
-  INDEX_TYPE key;
-  Y_TYPE value;
-};
+#include "primitives/reduce_by_key/reduce_by_key.hpp"
+
+template <typename INDEX_TYPE, typename Y_TYPE>
+using KV = usparse::primitives::reduce_by_key::KV<INDEX_TYPE, Y_TYPE>;
 
 template <typename INDEX_TYPE, typename Y_TYPE> struct csrmv_flat_mtx_info {
   INDEX_TYPE *break_points = nullptr;
