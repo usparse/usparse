@@ -7,6 +7,7 @@
 
 #include "building_config.h"
 #include "line_enhance_kernels_imp_reduce.hpp"
+#include "primitives/reduce/device/usparse_reduce.hpp"
 
 template <bool BETA_IS_ZERO, int REDUCE_OPTION, int WF_SIZE, int VEC_SIZE, int ROWS_PER_BLOCK, int R, int THREADS,
           typename T, typename I, typename J, typename A, typename X, typename Y>
@@ -83,7 +84,7 @@ __global__ void line_enhance_kernel(J m, const T alpha, const T beta, const I *_
     }
   }
   if (REDUCE_OPTION == LE_REDUCE_OPTION_VEC) {
-    line_enhance_vec_local_shift<I, T, VEC_SIZE, J>(sum);
+    usparse::primitives::reduce::wavefront::vector_reduce<I, T, VEC_SIZE>(sum);
     if (reduce_row_id < block_row_end && tid_in_vec == 0) {
       if (BETA_IS_ZERO) {
         y[reduce_row_id] = alpha * sum;
@@ -94,7 +95,7 @@ __global__ void line_enhance_kernel(J m, const T alpha, const T beta, const I *_
   }
   if (REDUCE_OPTION == LE_REDUCE_OPTION_VEC_MEM_COALESCING) {
     const J thread_reduce_row_id = block_row_begin + tid_in_block;
-    line_enhance_vec_local_shift<I, T, VEC_SIZE, J>(sum);
+    usparse::primitives::reduce::wavefront::vector_reduce<I, T, VEC_SIZE>(sum);
     sum = line_enhance_vec_global_shift<I, T, THREADS / VEC_SIZE, J>(tid_in_block, vec_id_in_block, tid_in_vec,
                                                                      shared_val, sum);
     if (thread_reduce_row_id < block_row_end) {

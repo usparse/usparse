@@ -52,8 +52,9 @@ namespace usparse {
         d_s[gid] = static_cast<T2>(0);
       }
       // reduce part1: reduce in each block
-      const T2 block_sum = usparse::line_enhance_block_reduce<int, T2, THREADS, usparse::USPARSE_WAVEFRONT_SIZE>(
-          local_sum, tid_in_block);
+      const T2 block_sum =
+          usparse::primitives::reduce::block::block_reduce<int, T2, THREADS, usparse::USPARSE_WAVEFRONT_SIZE>(
+              local_sum, tid_in_block);
       if (tid_in_block == 0) {
         d_temp_buffer[blockIdx.x] = block_sum;
       }
@@ -74,8 +75,9 @@ namespace usparse {
             local_sum = d_temp_buffer[tid_in_block];
           }
 
-          T final_sum = usparse::line_enhance_block_reduce<int, T, THREADS, usparse::USPARSE_WAVEFRONT_SIZE>(
-              local_sum, tid_in_block);
+          T final_sum =
+              usparse::primitives::reduce::block::block_reduce<int, T, THREADS, usparse::USPARSE_WAVEFRONT_SIZE>(
+                  local_sum, tid_in_block);
           if (tid_in_block == 0) {
             dev_result[0] = sqrt(final_sum);
           }
@@ -85,8 +87,9 @@ namespace usparse {
         if (gid < data_len) {
           local_sum = d_temp_buffer[gid];
         }
-        const T block_sum = usparse::line_enhance_block_reduce<int, T, THREADS, usparse::USPARSE_WAVEFRONT_SIZE>(
-            local_sum, tid_in_block);
+        const T block_sum =
+            usparse::primitives::reduce::block::block_reduce<int, T, THREADS, usparse::USPARSE_WAVEFRONT_SIZE>(
+                local_sum, tid_in_block);
         if (tid_in_block == 0) {
           d_temp_buffer[blockIdx.x] = block_sum;
         }

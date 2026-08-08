@@ -40,7 +40,7 @@ namespace usparse {
     }
 #pragma unroll
     for (int k = 0; k <= 1; k++) {
-      usparse::device::reduce_using_cooperative_groups<INDEX_TYPE, DATA_TYPE, THREADS>(
+      usparse::primitives::reduce::device::reduce_using_cooperative_groups<INDEX_TYPE, DATA_TYPE, THREADS>(
           grid, thread_local_sums[k], d_temp_buffer + k * gridDim.x,
           &(result[k * RESTART_TIMES + h_index])); // k * RESTART_TIMES + i
     }
