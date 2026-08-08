@@ -26,12 +26,14 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
 set_source_files_properties_hip(
+        usparse/prim/reduce_by_key_test.cc
         usparse/usparse_level1.cc
         usparse/usparse_level1_dotprod_axpy_fusion.cc
         usparse/usparse_level2_csrmv.cc
 )
 add_executable(
         usparse_test
+        usparse/prim/reduce_by_key_test.cc
         usparse/usparse_level1.cc
         usparse/usparse_level1_dotprod_axpy_fusion.cc
         usparse/usparse_level2_csrmv.cc
