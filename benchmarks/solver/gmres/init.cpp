@@ -153,3 +153,34 @@ void initDCU(int device_id) {
   USPARSE_HIP_API_CHECK(hipGetDeviceProperties(&props, device_id));
   std::cout << "Using device " << device_id << ": " << props.name << std::endl;
 }
+
+void spmv(const uint *rowPtr, const uint *colInd, const double *values, const double *x, double *y, uint numRows) {
+  for (uint i = 0; i < numRows; ++i) {
+    double sum = 0.0;
+    for (uint j = rowPtr[i]; j < rowPtr[i + 1]; ++j) {
+      sum += values[j] * x[colInd[j]];
+    }
+    y[i] = sum;
+  }
+}
+
+double calculateNorm(const double *vec, uint N);
+
+// 此函数禁止修改
+void initialize(SpM<double> *A, double *x, double *b) {
+  int N = A->nrows;
+
+  for (int i = 0; i < N; i++) {
+    x[i] = sin(i);
+  }
+
+  double beta = calculateNorm(x, N);
+  for (uint i = 0; i < N; i++) {
+    x[i] /= beta;
+  }
+
+  spmv(A->rows, A->cols, A->vals, x, b, N);
+
+  for (uint i = 0; i < N; i++)
+    x[i] = 0.0;
+}

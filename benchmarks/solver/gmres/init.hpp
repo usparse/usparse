@@ -49,4 +49,6 @@ void destory_device_float(float *d_V_f, float *d_H_f, float *d_vi_f, float *d_sn
 
 void initDCU(int device_id = 0);
 
+void initialize(SpM<double> *A, double *x, double *b);
+
 #endif

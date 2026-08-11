@@ -11,39 +11,37 @@
 #include "sparseMatrix.hpp"
 #include "solver/gmres/kernels/usparse_gmres.h"
 
-using RESULT = std::tuple<int, float, double>;
 
-void loadBinToCSR(SpM<double> &A, std::string mtx_path) {
-  std::ifstream binFile(mtx_path, std::ios::in | std::ios::binary);
+#include "../../utils/benchmark_main.hpp"
 
-  if (!binFile.is_open()) {
-    std::cerr << "can not open output file!" << std::endl;
-    return;
+UBENCH_MAIN(ubench::BENCH_FORMAT_CSR);
+
+void bench_gmres(const std::string mtx_path, csr_mtx<type_sparse_default_index, usparse::usparse_fp64> h_csr);
+
+template <typename PRECISION>
+int run_csr_benchmark(std::string mtx_path, csr_mtx<type_sparse_default_index, PRECISION> h_csr) {
+  // if precision is double, run gmres_double, else return with error:
+  if constexpr (std::is_same<PRECISION, double>::value) {
+    bench_gmres(mtx_path, h_csr);
+  } else {
+    std::cerr << "error: unsupported precision type. Only double is supported." << std::endl;
+    return -1;
   }
-  binFile.read(reinterpret_cast<char *>(&A.nrows), sizeof(A.nrows));
-  binFile.read(reinterpret_cast<char *>(&A.ncols), sizeof(A.ncols));
-  binFile.read(reinterpret_cast<char *>(&A.nnz), sizeof(A.nnz));
-
-  A.rows = (uint *)malloc((A.nrows + 1) * sizeof(uint));
-  A.cols = (uint *)malloc(A.nnz * sizeof(uint));
-  A.vals = (double *)malloc(A.nnz * sizeof(double));
-
-  binFile.read(reinterpret_cast<char *>(A.rows), (A.nrows + 1) * sizeof(uint));
-  binFile.read(reinterpret_cast<char *>(A.cols), A.nnz * sizeof(uint));
-  binFile.read(reinterpret_cast<char *>(A.vals), A.nnz * sizeof(double));
-  binFile.close();
+  return 0;
 }
 
-int main(int argc, char *argv[]) {
-  // ==============禁止修改下列代码==============
-  string mtx_name = argv[1];
-  mtx_name.erase(mtx_name.begin(), mtx_name.begin() + mtx_name.rfind('/') + 1);
-  mtx_name.erase(mtx_name.begin() + mtx_name.find('.'), mtx_name.end());
+using RESULT = std::tuple<int, float, double>;
 
+void bench_gmres(const std::string mtx_path, csr_mtx<type_sparse_default_index, usparse::usparse_fp64> h_csr) {
   SpM<double> A_double;
-  loadBinToCSR(A_double, argv[1]);
+  A_double.nrows = h_csr.rows;
+  A_double.ncols = h_csr.cols;
+  A_double.nnz = h_csr.nnz;
+  A_double.rows = reinterpret_cast<uint *>(h_csr.row_ptr); // int * -> unint * // todo:
+  A_double.cols = reinterpret_cast<uint *>(h_csr.col_index); // int * -> unint * // todo:
+  A_double.vals = h_csr.values;
 
-  std::cout << mtx_name << ": M = " << A_double.nrows << ", N = " << A_double.ncols << std::endl;
+  std::cout << mtx_path << ": M = " << A_double.nrows << ", N = " << A_double.ncols << std::endl;
 
   std::vector<double> x_double(A_double.nrows, 0);
   std::vector<double> b_double(A_double.nrows, 1);
@@ -83,10 +81,9 @@ int main(int argc, char *argv[]) {
   std::ofstream outfile("gmres_time.txt", std::ios::app);
   if (!outfile.is_open()) {
     std::cerr << "can not open output file!" << std::endl;
-    return 1;
+    return;
   }
-  outfile << mtx_name << " " << std::get<0>(res) << " " << std::get<1>(res) << " " << std::get<2>(res) << "\n";
+  outfile << mtx_path << " " << std::get<0>(res) << " " << std::get<1>(res) << " " << std::get<2>(res) << "\n";
   outfile.close();
   // ==============禁止修改上列结果输出==============
-  return 0;
 }

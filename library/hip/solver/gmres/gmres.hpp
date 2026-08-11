@@ -12,7 +12,6 @@
 
 using RESULT = std::tuple<int, float, double>;
 
-void initialize(SpM<double> *A, double *x, double *b);
 void sovlerTri(int Am, int i, double *H, double *s);
 void rotation2(uint Am, double *H, double *cs, double *sn, double *s, uint i);
 void rotation3(uint Am, double *H, double *cs, double *sn, double *s, uint i);

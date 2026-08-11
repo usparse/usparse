@@ -36,16 +36,6 @@ double calculateNorm(const double *vec, uint N) {
   return std::sqrt(sum);
 }
 
-void spmv(const uint *rowPtr, const uint *colInd, const double *values, const double *x, double *y, uint numRows) {
-  for (uint i = 0; i < numRows; ++i) {
-    double sum = 0.0;
-    for (uint j = rowPtr[i]; j < rowPtr[i + 1]; ++j) {
-      sum += values[j] * x[colInd[j]];
-    }
-    y[i] = sum;
-  }
-}
-
 template <typename T> usparse::usparse_csrmv_algo select_csrmv_algo(const csr_desc<int, T> d_csr_desc) {
   const float avg_nnz_per_row = static_cast<float>(d_csr_desc.nnz) / d_csr_desc.rows;
   const bool is_very_sparse = (avg_nnz_per_row < 7.0f);
@@ -567,23 +557,4 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   USPARSE_HIP_API_CHECK(hipFree(d_b));
   USPARSE_HIP_API_CHECK(hipFree(d_temp_buffer));
   return make_tuple(iteration, test_time, resid / init_res); // 禁止修改
-}
-
-// 此函数禁止修改
-void initialize(SpM<double> *A, double *x, double *b) {
-  int N = A->nrows;
-
-  for (int i = 0; i < N; i++) {
-    x[i] = sin(i);
-  }
-
-  double beta = calculateNorm(x, N);
-  for (uint i = 0; i < N; i++) {
-    x[i] /= beta;
-  }
-
-  spmv(A->rows, A->cols, A->vals, x, b, N);
-
-  for (uint i = 0; i < N; i++)
-    x[i] = 0.0;
 }
