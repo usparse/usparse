@@ -23,7 +23,7 @@
 
 template <typename INDEX_TYPE, typename VALUE_TYPE>
 void usparse::device_adaptive_analysis(int trans, const VALUE_TYPE alpha, const VALUE_TYPE beta,
-                                       const csr_desc<INDEX_TYPE, VALUE_TYPE> d_csr_desc,
+                                       const usparse::csr_mat_descr<VALUE_TYPE, INDEX_TYPE> d_csr_desc,
                                        const usparse::usparse_csrmv_algo algo, usparse::csrmv_mat_info *info) {
   if (algo == usparse::usparse_csrmv_algo_flat) {
     auto d_csr_mat_descr = usparse::csr_mat_descr<VALUE_TYPE, INDEX_TYPE, INDEX_TYPE, INDEX_TYPE>(d_csr_desc);
@@ -71,8 +71,8 @@ void usparse::device_adaptive_analysis(int trans, const VALUE_TYPE alpha, const 
 
 template <typename INDEX_TYPE, typename VALUE_TYPE, int BETA_Y_POLICY>
 void usparse::device_adaptive_spmv(int trans, const VALUE_TYPE alpha, const VALUE_TYPE beta,
-                                   const csr_desc<INDEX_TYPE, VALUE_TYPE> d_csr_desc, const VALUE_TYPE *dx,
-                                   VALUE_TYPE *dy, const usparse::usparse_csrmv_algo algo,
+                                   const usparse::csr_mat_descr<VALUE_TYPE, INDEX_TYPE> d_csr_desc,
+                                   const VALUE_TYPE *dx, VALUE_TYPE *dy, const usparse::usparse_csrmv_algo algo,
                                    usparse::csrmv_mat_info *info) {
   if (algo == usparse::usparse_csrmv_algo_flat && d_csr_desc.nnz > 0) {
     csrmv_flat_mtx_info<INDEX_TYPE, VALUE_TYPE> *flat_info =
@@ -132,34 +132,34 @@ void usparse::device_adaptive_spmv(int trans, const VALUE_TYPE alpha, const VALU
 
 // todo: the parameter passed to spmv kernel api must int. there is a conversion from uint to int.
 template void usparse::device_adaptive_analysis<int, double>(int trans, const double alpha, const double beta,
-                                                             const csr_desc<int, double> d_csr_desc,
+                                                             const usparse::csr_mat_descr<double, int> d_csr_desc,
                                                              const usparse::usparse_csrmv_algo algo,
                                                              usparse::csrmv_mat_info *info);
 
 template void usparse::device_adaptive_spmv<int, double, BETA_Y_POLICY_AUTO>(
-    int trans, const double alpha, const double beta, const csr_desc<int, double> d_csr_desc, const double *dx,
-    double *dy, const usparse::usparse_csrmv_algo algo, usparse::csrmv_mat_info *info);
+    int trans, const double alpha, const double beta, const usparse::csr_mat_descr<double, int> d_csr_desc,
+    const double *dx, double *dy, const usparse::usparse_csrmv_algo algo, usparse::csrmv_mat_info *info);
 
 template void usparse::device_adaptive_spmv<int, double, BETA_Y_POLICY_ZERO>(
-    int trans, const double alpha, const double beta, const csr_desc<int, double> d_csr_desc, const double *dx,
-    double *dy, const usparse::usparse_csrmv_algo algo, usparse::csrmv_mat_info *info);
+    int trans, const double alpha, const double beta, const usparse::csr_mat_descr<double, int> d_csr_desc,
+    const double *dx, double *dy, const usparse::usparse_csrmv_algo algo, usparse::csrmv_mat_info *info);
 
 template void usparse::device_adaptive_spmv<int, double, BETA_Y_POLICY_ONE>(
-    int trans, const double alpha, const double beta, const csr_desc<int, double> d_csr_desc, const double *dx,
-    double *dy, const usparse::usparse_csrmv_algo algo, usparse::csrmv_mat_info *info);
+    int trans, const double alpha, const double beta, const usparse::csr_mat_descr<double, int> d_csr_desc,
+    const double *dx, double *dy, const usparse::usparse_csrmv_algo algo, usparse::csrmv_mat_info *info);
 
 template void usparse::device_adaptive_analysis<int, float>(int trans, const float alpha, const float beta,
-                                                            const csr_desc<int, float> d_csr_desc,
+                                                            const usparse::csr_mat_descr<float, int> d_csr_desc,
                                                             const usparse::usparse_csrmv_algo algo,
                                                             usparse::csrmv_mat_info *info);
 
 template void usparse::device_adaptive_spmv<int, float, BETA_Y_POLICY_AUTO>(
-    int trans, const float alpha, const float beta, const csr_desc<int, float> d_csr_desc, const float *dx, float *dy,
-    const usparse::usparse_csrmv_algo algo, usparse::csrmv_mat_info *info);
+    int trans, const float alpha, const float beta, const usparse::csr_mat_descr<float, int> d_csr_desc,
+    const float *dx, float *dy, const usparse::usparse_csrmv_algo algo, usparse::csrmv_mat_info *info);
 
 template void usparse::device_adaptive_spmv<int, float, BETA_Y_POLICY_ZERO>(
-    int trans, const float alpha, const float beta, const csr_desc<int, float> d_csr_desc, const float *dx, float *dy,
-    const usparse::usparse_csrmv_algo algo, usparse::csrmv_mat_info *info);
+    int trans, const float alpha, const float beta, const usparse::csr_mat_descr<float, int> d_csr_desc,
+    const float *dx, float *dy, const usparse::usparse_csrmv_algo algo, usparse::csrmv_mat_info *info);
 template void usparse::device_adaptive_spmv<int, float, BETA_Y_POLICY_ONE>(
-    int trans, const float alpha, const float beta, const csr_desc<int, float> d_csr_desc, const float *dx, float *dy,
-    const usparse::usparse_csrmv_algo algo, usparse::csrmv_mat_info *info);
+    int trans, const float alpha, const float beta, const usparse::csr_mat_descr<float, int> d_csr_desc,
+    const float *dx, float *dy, const usparse::usparse_csrmv_algo algo, usparse::csrmv_mat_info *info);

@@ -36,7 +36,7 @@ double calculateNorm(const double *vec, uint N) {
   return std::sqrt(sum);
 }
 
-template <typename T> usparse::usparse_csrmv_algo select_csrmv_algo(const csr_desc<int, T> d_csr_desc) {
+template <typename T> usparse::usparse_csrmv_algo select_csrmv_algo(const usparse::csr_mat_descr<T, int> d_csr_desc) {
   const float avg_nnz_per_row = static_cast<float>(d_csr_desc.nnz) / d_csr_desc.rows;
   const bool is_very_sparse = (avg_nnz_per_row < 7.0f);
   const bool is_medium_density = (avg_nnz_per_row >= 7.0f && avg_nnz_per_row < 25.0f);
@@ -53,7 +53,7 @@ template <typename T> usparse::usparse_csrmv_algo select_csrmv_algo(const csr_de
 }
 
 RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, double *dev_x, double *dev_y,
-             csr_desc<int, double> d_csr_desc) {
+             usparse::csr_mat_descr<double, int> d_csr_desc) {
   // 稀疏矩阵A_d需默认以CSR格式压缩存储，使用DCU优化时，该矩阵A和右端向量b传输到DCU端的开销，以及结果向量x传输到CPU端的开销可不算在计时范围
   // 若要采用其他的稀疏矩阵压缩格式，需从DCU端的CSR矩阵开始转换，且格式转换的代码必须包含到计时范围内
   const uint N = A_d->nrows;
@@ -216,7 +216,7 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
 }
 
 RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, double *dev_x, double *dev_y,
-                   csr_desc<int, double> d_csr_desc) {
+                   usparse::csr_mat_descr<double, int> d_csr_desc) {
   // 稀疏矩阵A_d需默认以CSR格式压缩存储，使用DCU优化时，该矩阵A和右端向量b传输到DCU端的开销，以及结果向量x传输到CPU端的开销可不算在计时范围
   // 若要采用其他的稀疏矩阵压缩格式，需从DCU端的CSR矩阵开始转换，且格式转换的代码必须包含到计时范围内
   const uint N = A_d->nrows;
@@ -305,8 +305,8 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   usparse::device_cast(d_b, d_b_f, N);
 
   // initialize info descrA handle
-  csr_desc<int, float> d_csr_desc_float(dev_A->nrows, dev_A->ncols, d_csr_desc.nnz, d_csr_desc.row_ptr,
-                                        d_csr_desc.col_index, d_A_val_f);
+  usparse::csr_mat_descr<float, int> d_csr_desc_float(dev_A->nrows, dev_A->ncols, d_csr_desc.nnz, d_csr_desc.row_ptr,
+                                                      d_csr_desc.col_index, d_A_val_f);
   usparse::csrmv_mat_info csrmv_info;
   auto flat_info = csrmv_flat_mtx_info<int, double>(); // the info also works for float type.
   csrmv_info.flat_info = &flat_info;

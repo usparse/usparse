@@ -55,13 +55,13 @@ namespace usparse {
 
   template <typename INDEX_TYPE, typename VALUE_TYPE>
   void device_adaptive_analysis(int trans, const VALUE_TYPE alpha, const VALUE_TYPE beta,
-                                const csr_desc<INDEX_TYPE, VALUE_TYPE> d_csr_desc, const usparse_csrmv_algo algo,
-                                csrmv_mat_info *info = nullptr);
+                                const usparse::csr_mat_descr<VALUE_TYPE, INDEX_TYPE> d_csr_desc,
+                                const usparse_csrmv_algo algo, csrmv_mat_info *info = nullptr);
 
   template <typename INDEX_TYPE, typename VALUE_TYPE, int BETA_Y_POLICY = BETA_Y_POLICY_AUTO>
   void device_adaptive_spmv(int trans, const VALUE_TYPE alpha, const VALUE_TYPE beta,
-                            const csr_desc<INDEX_TYPE, VALUE_TYPE> d_csr_desc, const VALUE_TYPE *dx, VALUE_TYPE *dy,
-                            const usparse_csrmv_algo algo, csrmv_mat_info *info = nullptr);
+                            const usparse::csr_mat_descr<VALUE_TYPE, INDEX_TYPE> d_csr_desc, const VALUE_TYPE *dx,
+                            VALUE_TYPE *dy, const usparse_csrmv_algo algo, csrmv_mat_info *info = nullptr);
 
 } // namespace usparse
 
