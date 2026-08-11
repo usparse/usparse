@@ -317,6 +317,8 @@ template void usparse::device_copy_v2<uint, float>(const float *src, float *dst,
 
 template void usparse::device_cast<uint, double, float>(const double *src, float *dst, const uint N);
 template void usparse::device_cast<uint, float, double>(const float *src, double *dst, const uint N);
+template void usparse::device_cast<int, double, float>(const double *src, float *dst, const int N);
+template void usparse::device_cast<int, float, double>(const float *src, double *dst, const int N);
 
 template void usparse::device_memset<uint, double>(double *src, const uint N);
 template void usparse::device_memset<uint, float>(float *src, const uint N);

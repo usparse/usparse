@@ -8,7 +8,6 @@
 
 #include <hip/hip_runtime.h>
 
-#include "sparseMatrix.hpp"
 
 using RESULT = std::tuple<int, float, double>;
 
@@ -16,10 +15,12 @@ void sovlerTri(int Am, int i, double *H, double *s);
 void rotation2(uint Am, double *H, double *cs, double *sn, double *s, uint i);
 void rotation3(uint Am, double *H, double *cs, double *sn, double *s, uint i);
 
-RESULT gmres(SpM<double> *A_d, double *_x, double *_b, SpM<double> *dev_A, double *dev_x, double *dev_y,
-             usparse::csr_mat_descr<double, int> d_csr_desc);
-RESULT gmres_float(SpM<double> *A_d, double *_x, double *_b, SpM<double> *dev_A, double *dev_x, double *dev_y,
-                   usparse::csr_mat_descr<double, int> d_csr_desc);
+RESULT gmres(const usparse::csr_mat_descr<double, int> d_csr_desc, double *_x, double *_b, double *dev_x,
+             double *dev_y);
+
+RESULT gmres_float(const usparse::csr_mat_descr<double, int> d_csr_desc, double *_x, double *_b, double *dev_x,
+                   double *dev_y);
+
 void assign2(double *a, double *s);
 void fill2(uint Am, double *a, double s);
 
