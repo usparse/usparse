@@ -38,7 +38,7 @@ namespace usparse {
 
 namespace usparse {
   struct csrmv_mat_info {
-    void *flat_info; // with int as bp index
+    void *flat_info = nullptr; // with int as bp index
     hipsparse_spmv_info hipsparse_default_info;
     hipsparse_csr_adaptive_info hipsparse_csr_adaptive_info;
   };

@@ -308,6 +308,8 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   csr_desc<int, float> d_csr_desc_float(dev_A->nrows, dev_A->ncols, d_csr_desc.nnz, d_csr_desc.row_ptr,
                                         d_csr_desc.col_index, d_A_val_f);
   usparse::csrmv_mat_info csrmv_info;
+  auto flat_info = csrmv_flat_mtx_info<int, double>(); // the info also works for float type.
+  csrmv_info.flat_info = &flat_info;
   const usparse::usparse_csrmv_algo csrmv_algo = select_csrmv_algo(d_csr_desc);
   usparse::device_adaptive_analysis<int, double>(0, 1.0, 0.0, d_csr_desc, csrmv_algo, &csrmv_info);
 
