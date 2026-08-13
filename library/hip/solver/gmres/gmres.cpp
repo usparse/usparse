@@ -314,7 +314,11 @@ RESULT gmres_float(const usparse::csr_mat_descr<double, int> d_csr_desc, double 
   const usparse::usparse_csrmv_algo csrmv_algo = select_csrmv_algo(d_csr_desc);
   usparse::device_adaptive_analysis<int, double>(0, 1.0, 0.0, d_csr_desc, csrmv_algo, &csrmv_info);
 
-  const float f_density = static_cast<float>(d_csr_desc.nnz) / (d_csr_desc.rows * d_csr_desc.cols);
+  // avoid negative density and make dotprod_axpy_fusion dispatch launch no kernel at all.
+  const float f_density =
+      static_cast<float>(static_cast<double>(d_csr_desc.nnz) /
+                         (static_cast<double>(d_csr_desc.rows) * static_cast<double>(d_csr_desc.cols)));
+  assert(f_density >= 0.0f && f_density <= 1.0f);
   const int R0_V_MEM_LEN = usparse::get_r0_v_mem_len(N);
 
   // 任何对稀疏矩阵的预处理操作，如稀疏矩阵压缩格式转换、非零元数组或向量的精度转换、稀疏矩阵的非零元特征计算等，均需放在计时范围内，相关内存申请和释放除外
