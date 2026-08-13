@@ -33,4 +33,5 @@ target_link_libraries(gmres-gpu-benchmark PRIVATE
     gmres-device
     ${USPARSE_GMRES_KERNEL_LIB_NAME}
     ${USPARSE_LIB_NAME}
+    ${USPARSE_BENCHMARK_UTILS_LIB}
     )

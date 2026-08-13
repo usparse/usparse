@@ -1,50 +1,43 @@
+
+#include <hip/hip_runtime.h>
+#include <hip/hip_runtime_api.h>
+
 #include "init.hpp"
 #include "kernels/gmres_optimization_config.h"
 #include "kernels/usparse_gmres.h"
-#include <sys/types.h>
 
-void init_device_data(SpM<double> *h_A, double *h_x, SpM<double> *dev_A, double **dev_x, double **dev_y,
-                      var_csr_desc<int, double> *d_csr_desc) {
-  //
-  const int A_num_rows = h_A->nrows;
-  const int A_num_cols = h_A->ncols;
-  const int A_nnz = h_A->nnz;
+usparse::var_csr_desc<int, double> init_device_data(usparse::csr_mat_descr<double, int> h_A, double *h_x,
+                                                    double **dev_x, double **dev_y) {
+  const int A_num_rows = h_A.rows;
+  const int A_num_cols = h_A.cols;
+  const int A_nnz = h_A.nnz;
 
+  usparse::var_csr_desc<int, double> dev_A;
   // device A
-  dev_A->nrows = A_num_rows;
-  dev_A->ncols = A_num_cols;
-  dev_A->nnz = A_nnz;
+  dev_A.rows = A_num_rows;
+  dev_A.cols = A_num_cols;
+  dev_A.nnz = A_nnz;
 
   // malloc A x y on device
-  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dev_A->rows, (A_num_rows + 1) * sizeof(int)));
-  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dev_A->cols, A_nnz * sizeof(int)));
-  USPARSE_HIP_API_CHECK(hipMalloc((void **)&dev_A->vals, A_nnz * sizeof(double)));
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&(dev_A.row_ptr), (A_num_rows + 1) * sizeof(int)));
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&(dev_A.col_index), A_nnz * sizeof(int)));
+  USPARSE_HIP_API_CHECK(hipMalloc((void **)&(dev_A.values), A_nnz * sizeof(double)));
   USPARSE_HIP_API_CHECK(hipMalloc((void **)dev_x, A_num_rows * sizeof(double)));
   USPARSE_HIP_API_CHECK(hipMalloc((void **)dev_y, A_num_rows * sizeof(double)));
 
   // cpoy A from host to device
-  USPARSE_HIP_API_CHECK(hipMemcpy(dev_A->rows, h_A->rows, (A_num_rows + 1) * sizeof(int), hipMemcpyHostToDevice));
-  USPARSE_HIP_API_CHECK(hipMemcpy(dev_A->cols, h_A->cols, A_nnz * sizeof(int), hipMemcpyHostToDevice));
-  USPARSE_HIP_API_CHECK(hipMemcpy(dev_A->vals, h_A->vals, A_nnz * sizeof(double), hipMemcpyHostToDevice));
+  USPARSE_HIP_API_CHECK(hipMemcpy(dev_A.row_ptr, h_A.row_ptr, (A_num_rows + 1) * sizeof(int), hipMemcpyHostToDevice));
+  USPARSE_HIP_API_CHECK(hipMemcpy(dev_A.col_index, h_A.col_index, A_nnz * sizeof(int), hipMemcpyHostToDevice));
+  USPARSE_HIP_API_CHECK(hipMemcpy(dev_A.values, h_A.values, A_nnz * sizeof(double), hipMemcpyHostToDevice));
   USPARSE_HIP_API_CHECK(hipMemcpy(*dev_x, h_x, A_num_rows * sizeof(double), hipMemcpyHostToDevice));
-
-  dev_A->on_device = true;
-
-  d_csr_desc->rows = A_num_rows;
-  d_csr_desc->cols = A_num_cols;
-  d_csr_desc->nnz = A_nnz;
-  d_csr_desc->row_ptr = reinterpret_cast<int *>(dev_A->rows);
-  d_csr_desc->col_index = reinterpret_cast<int *>(dev_A->cols);
-  d_csr_desc->values = dev_A->vals;
-
-  return;
+  return dev_A;
 }
 
 /**
  * initialize matrix info
  */
-void init_matrix_info(SpM<double> *dev_A, rocsparse_handle *handle, rocsparse_mat_descr *descrA,
-                      rocsparse_mat_info *info) {
+void init_matrix_info(const usparse::csr_mat_descr<double, int> dev_A, rocsparse_handle *handle,
+                      rocsparse_mat_descr *descrA, rocsparse_mat_info *info) {
 #ifdef __USPARSE_BUILD_BACKEND_ROCM__
   rocsparse_create_handle(handle);
   // Matrix descriptor
@@ -54,15 +47,15 @@ void init_matrix_info(SpM<double> *dev_A, rocsparse_handle *handle, rocsparse_ma
   // rocsparse_mat_info info;
   rocsparse_create_mat_info(info);
   // Analyse CSR matrix
-  rocsparse_dcsrmv_analysis(*handle, rocsparse_operation_none, dev_A->nrows, dev_A->ncols, dev_A->nnz, *descrA,
-                            dev_A->vals, (int *)dev_A->rows, (int *)dev_A->cols, *info);
+  rocsparse_dcsrmv_analysis(*handle, rocsparse_operation_none, dev_A.rows, dev_A.cols, dev_A.nnz, *descrA, dev_A.values,
+                            dev_A.row_ptr, dev_A.col_index, *info);
 #endif
 }
 
-void destory_device_data(SpM<double> *dev_A, double *d_y, double *d_x) {
-  USPARSE_HIP_API_CHECK(hipFree(dev_A->rows));
-  USPARSE_HIP_API_CHECK(hipFree(dev_A->cols));
-  USPARSE_HIP_API_CHECK(hipFree(dev_A->vals));
+void destory_device_data(usparse::var_csr_desc<int, double> dev_A, double *d_y, double *d_x) {
+  USPARSE_HIP_API_CHECK(hipFree(dev_A.row_ptr));
+  USPARSE_HIP_API_CHECK(hipFree(dev_A.col_index));
+  USPARSE_HIP_API_CHECK(hipFree(dev_A.values));
   USPARSE_HIP_API_CHECK(hipFree(d_y));
   USPARSE_HIP_API_CHECK(hipFree(d_x));
 }
@@ -152,4 +145,35 @@ void initDCU(int device_id) {
   hipDeviceProp_t props;
   USPARSE_HIP_API_CHECK(hipGetDeviceProperties(&props, device_id));
   std::cout << "Using device " << device_id << ": " << props.name << std::endl;
+}
+
+template <typename I, typename T>
+void spmv(const I *rowPtr, const I *colInd, const T *values, const T *x, T *y, I numRows) {
+  for (I i = 0; i < numRows; ++i) {
+    T sum = 0.0;
+    for (I j = rowPtr[i]; j < rowPtr[i + 1]; ++j) {
+      sum += values[j] * x[colInd[j]];
+    }
+    y[i] = sum;
+  }
+}
+
+double calculateNorm(const double *vec, uint N);
+
+void initialize(const usparse::csr_mat_descr<double, int> A, double *x, double *b) {
+  const int N = A.rows;
+
+  for (int i = 0; i < N; i++) {
+    x[i] = sin(i);
+  }
+
+  double beta = calculateNorm(x, N);
+  for (uint i = 0; i < N; i++) {
+    x[i] /= beta;
+  }
+
+  spmv(A.row_ptr, A.col_index, A.values, x, b, N);
+
+  for (uint i = 0; i < N; i++)
+    x[i] = 0.0;
 }

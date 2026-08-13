@@ -313,6 +313,11 @@ void usparse::dotprod_axpy_fusion(DATA_TYPE *d_r0, const DATA_TYPE *d_v, DATA_TY
     constexpr int ELES_PER_THREAD = 2;
     constexpr int STRIDES = 4;
     FUSION_SHORT_MARK(THREADS, ELES_PER_THREAD, STRIDES);
+  } else {
+    constexpr int THREADS = 512;
+    constexpr int ELES_PER_THREAD = 4;
+    constexpr int STRIDES = 4;
+    FUSION_SHORT_MARK(THREADS, ELES_PER_THREAD, STRIDES);
   }
 
 #undef FUSION_SHORT_MARK

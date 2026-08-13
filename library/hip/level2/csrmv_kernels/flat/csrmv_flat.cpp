@@ -91,6 +91,8 @@ void flat_matrix_analyse_imp(hipStream_t stream,
   constexpr int TOTAL_ROUNDS = 1;
   const NNZ_TYPE break_points_len = static_cast<NNZ_TYPE>(TOTAL_ROUNDS * HIP_BLOCKS + 1);
 
+  assert(info != nullptr);
+
   USPARSE_HIP_API_CHECK(
       hipMallocAsync((void **)(&(info->break_points)), break_points_len * sizeof(BP_DATA_TYPE), stream));
   USPARSE_HIP_API_CHECK(hipMemsetAsync(info->break_points, 0, break_points_len * sizeof(BP_DATA_TYPE), stream));

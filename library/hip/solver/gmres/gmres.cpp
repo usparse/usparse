@@ -12,9 +12,8 @@
 
 #include "usparse_matrix.h"
 
-#include "kernels/gmres_optimization_config.h"
 #include "gmres.hpp"
-#include "sparseMatrix.hpp"
+#include "kernels/gmres_optimization_config.h"
 #include "kernels/usparse_gmres.h"
 #include "level1/usparse_blas_level1.h"
 
@@ -36,17 +35,7 @@ double calculateNorm(const double *vec, uint N) {
   return std::sqrt(sum);
 }
 
-void spmv(const uint *rowPtr, const uint *colInd, const double *values, const double *x, double *y, uint numRows) {
-  for (uint i = 0; i < numRows; ++i) {
-    double sum = 0.0;
-    for (uint j = rowPtr[i]; j < rowPtr[i + 1]; ++j) {
-      sum += values[j] * x[colInd[j]];
-    }
-    y[i] = sum;
-  }
-}
-
-template <typename T> usparse::usparse_csrmv_algo select_csrmv_algo(const csr_desc<int, T> d_csr_desc) {
+template <typename T> usparse::usparse_csrmv_algo select_csrmv_algo(const usparse::csr_mat_descr<T, int> d_csr_desc) {
   const float avg_nnz_per_row = static_cast<float>(d_csr_desc.nnz) / d_csr_desc.rows;
   const bool is_very_sparse = (avg_nnz_per_row < 7.0f);
   const bool is_medium_density = (avg_nnz_per_row >= 7.0f && avg_nnz_per_row < 25.0f);
@@ -62,11 +51,12 @@ template <typename T> usparse::usparse_csrmv_algo select_csrmv_algo(const csr_de
   return usparse::usparse_csrmv_algo_flat;
 }
 
-RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, double *dev_x, double *dev_y,
-             csr_desc<int, double> d_csr_desc) {
-  // 稀疏矩阵A_d需默认以CSR格式压缩存储，使用DCU优化时，该矩阵A和右端向量b传输到DCU端的开销，以及结果向量x传输到CPU端的开销可不算在计时范围
+RESULT gmres(const usparse::csr_mat_descr<double, int> d_csr_desc, double *x_d, double *_b, double *dev_x,
+             double *dev_y) {
+  // 稀疏矩阵 h_csr_desc
+  // 需默认以CSR格式压缩存储，使用DCU优化时，该矩阵A和右端向量b传输到DCU端的开销，以及结果向量x传输到CPU端的开销可不算在计时范围
   // 若要采用其他的稀疏矩阵压缩格式，需从DCU端的CSR矩阵开始转换，且格式转换的代码必须包含到计时范围内
-  const uint N = A_d->nrows;
+  const uint N = d_csr_desc.rows;
 
   std::vector<double> r0(N);
   std::vector<double> V((RESTART_TIMES + 1) * N);
@@ -133,8 +123,8 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
   /****GMRES计算过程****/
   do {
     // ==========外迭代============
-    // spmv(A_d->rows, A_d->cols, A_d->vals, x_d, r0.data(), N); // 不可修改此步操作中相关数据的存储精度和SpMV计算精度
-    // copy x from host to device
+    // spmv(h_csr_desc.row_ptr, h_csr_desc.col_index, h_csr_desc.values, x_d, r0.data(), N); //
+    // 不可修改此步操作中相关数据的存储精度和SpMV计算精度 copy x from host to device
 
     // compute y = AX
     usparse::device_adaptive_spmv<int, double, BETA_Y_POLICY_ZERO>(0, 1.0, 0.0, d_csr_desc, dev_x, dev_y,
@@ -225,12 +215,13 @@ RESULT gmres(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, doub
   return make_tuple(iteration, test_time, resid / init_res); // 禁止修改
 }
 
-RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A, double *dev_x, double *dev_y,
-                   csr_desc<int, double> d_csr_desc) {
-  // 稀疏矩阵A_d需默认以CSR格式压缩存储，使用DCU优化时，该矩阵A和右端向量b传输到DCU端的开销，以及结果向量x传输到CPU端的开销可不算在计时范围
+RESULT gmres_float(const usparse::csr_mat_descr<double, int> d_csr_desc, double *x_d, double *_b, double *dev_x,
+                   double *dev_y) {
+  // 稀疏矩阵 d_csr_desc
+  // 需默认以CSR格式压缩存储，使用DCU优化时，该矩阵A和右端向量b传输到DCU端的开销，以及结果向量x传输到CPU端的开销可不算在计时范围
   // 若要采用其他的稀疏矩阵压缩格式，需从DCU端的CSR矩阵开始转换，且格式转换的代码必须包含到计时范围内
-  const uint N = A_d->nrows;
-  const uint NNZ = A_d->nnz;
+  const uint N = d_csr_desc.rows;
+  const uint NNZ = d_csr_desc.nnz;
 
   std::vector<double> r0(N);
   std::vector<double> V((RESTART_TIMES + 1) * N);
@@ -283,7 +274,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   float *d_beta_f = nullptr;
   // apply for float var
   init_device_matrix_float(&d_V_f, &d_H_f, &d_vi_f, &d_sn_f, &d_cs_f, &d_r0_f, &d_A_val_f, &d_s_f, &d_b_f, N,
-                           RESTART_TIMES, dev_A->nnz);
+                           RESTART_TIMES, d_csr_desc.nnz);
 
   USPARSE_HIP_API_CHECK(hipMalloc((void **)&d_b, N * sizeof(double)));
   USPARSE_HIP_API_CHECK(hipMemcpy(dev_x, x_d, N * sizeof(double), hipMemcpyHostToDevice));
@@ -310,19 +301,24 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   USPARSE_HIP_API_CHECK(hipMalloc((void **)&d_temp_buffer, (tmp_buf_len + 1) * sizeof(float)));
   d_beta_f = d_temp_buffer + tmp_buf_len;
 
-  // force conversion precision form dev_A.val to d_A_val_f
-  usparse::device_cast(dev_A->vals, d_A_val_f, dev_A->nnz);
+  // force conversion precision form d_csr_desc.values to d_A_val_f
+  usparse::device_cast(d_csr_desc.values, d_A_val_f, d_csr_desc.nnz);
   usparse::device_cast(d_b, d_b_f, N);
 
   // initialize info descrA handle
-  csr_desc<int, float> d_csr_desc_float(dev_A->nrows, dev_A->ncols, d_csr_desc.nnz, d_csr_desc.row_ptr,
-                                        d_csr_desc.col_index, d_A_val_f);
+  usparse::csr_mat_descr<float, int> d_csr_desc_float(d_csr_desc.rows, d_csr_desc.cols, d_csr_desc.nnz,
+                                                      d_csr_desc.row_ptr, d_csr_desc.col_index, d_A_val_f);
   usparse::csrmv_mat_info csrmv_info;
+  auto flat_info = csrmv_flat_mtx_info<int, double>(); // the info also works for float type.
+  csrmv_info.flat_info = &flat_info;
   const usparse::usparse_csrmv_algo csrmv_algo = select_csrmv_algo(d_csr_desc);
   usparse::device_adaptive_analysis<int, double>(0, 1.0, 0.0, d_csr_desc, csrmv_algo, &csrmv_info);
 
-
-  const float f_density = static_cast<float>(dev_A->nnz) / (dev_A->nrows * dev_A->ncols);
+  // avoid negative density and make dotprod_axpy_fusion dispatch launch no kernel at all.
+  const float f_density =
+      static_cast<float>(static_cast<double>(d_csr_desc.nnz) /
+                         (static_cast<double>(d_csr_desc.rows) * static_cast<double>(d_csr_desc.cols)));
+  assert(f_density >= 0.0f && f_density <= 1.0f);
   const int R0_V_MEM_LEN = usparse::get_r0_v_mem_len(N);
 
   // 任何对稀疏矩阵的预处理操作，如稀疏矩阵压缩格式转换、非零元数组或向量的精度转换、稀疏矩阵的非零元特征计算等，均需放在计时范围内，相关内存申请和释放除外
@@ -330,8 +326,8 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   /****GMRES计算过程****/
   do {
     // ==========外迭代============
-    // spmv(A_d->rows, A_d->cols, A_d->vals, x_d, r0.data(), N); // 不可修改此步操作中相关数据的存储精度和SpMV计算精度
-    // copy x from host to device
+    // spmv(h_csr_desc.row_ptr, h_csr_desc.col_index, h_csr_desc.values, x_d, r0.data(), N); //
+    // 不可修改此步操作中相关数据的存储精度和SpMV计算精度 copy x from host to device
 
     const uint S_LEN = RESTART_TIMES + 1; // the length of array s. (we assume S_LEN < N).
     constexpr bool USE_FUSION = true;     // todo: move to config file.
@@ -342,7 +338,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
       usparse::device_adaptive_spmv<int, double, BETA_Y_POLICY_ZERO>(0, 1.0, 0.0, d_csr_desc, dev_x, dev_y, csrmv_algo,
                                                                      &csrmv_info);
       if (!USE_FUSION) {
-        usparse::device_cast<uint, double, float>(dev_y, d_r0_f, N); // dev_y => d_r0_f
+        usparse::device_cast<int, double, float>(dev_y, d_r0_f, N); // dev_y => d_r0_f
 
         // float
         usparse::device_daxpy<uint, float, float>(-1.0, d_b_f, d_r0_f, N); // d_r0_f += -1.0 * d_b_f.
@@ -550,7 +546,7 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   hipEventElapsedTime(&test_time, test_start_event, test_stop_event); // 禁止修改
 
   if (usparse::GMRES_OPT_VERIFY_SWITCH) {
-    double ver_nrom = Verification(dev_A, dev_x, d_b, d_r0, N);
+    double ver_nrom = Verification(d_csr_desc, dev_x, d_b, d_r0, N);
     if (ver_nrom < REL_RESID_LIMIT) {
       printf("verify precision : pass !   resid_ver =  %.14f  \n", ver_nrom);
     } else {
@@ -567,23 +563,4 @@ RESULT gmres_float(SpM<double> *A_d, double *x_d, double *_b, SpM<double> *dev_A
   USPARSE_HIP_API_CHECK(hipFree(d_b));
   USPARSE_HIP_API_CHECK(hipFree(d_temp_buffer));
   return make_tuple(iteration, test_time, resid / init_res); // 禁止修改
-}
-
-// 此函数禁止修改
-void initialize(SpM<double> *A, double *x, double *b) {
-  int N = A->nrows;
-
-  for (int i = 0; i < N; i++) {
-    x[i] = sin(i);
-  }
-
-  double beta = calculateNorm(x, N);
-  for (uint i = 0; i < N; i++) {
-    x[i] /= beta;
-  }
-
-  spmv(A->rows, A->cols, A->vals, x, b, N);
-
-  for (uint i = 0; i < N; i++)
-    x[i] = 0.0;
 }

@@ -1,14 +1,15 @@
-#include "sparseMatrix.hpp"
 #include <hip/hip_runtime.h>
 #include <iostream>
 #include <vector>
+
+#include "verification.hpp"
 
 #ifdef __USPARSE_BUILD_BACKEND_ROCM__
 
 #include <hipblas.h>
 #include <hipsparse.h>
 
-double Verification(SpM<double> *d_A, double *x, double *b, double *r0, int N) {
+double Verification(const usparse::csr_mat_descr<double, int> d_A, double *x, double *b, double *r0, int N) {
   hipsparseHandle_t spHandle;
   hipsparseCreate(&spHandle);
 
@@ -16,8 +17,10 @@ double Verification(SpM<double> *d_A, double *x, double *b, double *r0, int N) {
   hipblasCreate(&blasHandle);
 
   hipsparseSpMatDescr_t matA;
-  hipsparseCreateCsr(&matA, N, N, d_A->nnz, d_A->rows, d_A->cols, d_A->vals, HIPSPARSE_INDEX_32I, HIPSPARSE_INDEX_32I,
-                     HIPSPARSE_INDEX_BASE_ZERO, HIP_R_64F);
+  hipsparseCreateCsr(&matA, N, N, d_A.nnz, const_cast<void *>(static_cast<const void *>(d_A.row_ptr)),
+                     const_cast<void *>(static_cast<const void *>(d_A.col_index)),
+                     const_cast<void *>(static_cast<const void *>(d_A.values)), HIPSPARSE_INDEX_32I,
+                     HIPSPARSE_INDEX_32I, HIPSPARSE_INDEX_BASE_ZERO, HIP_R_64F);
 
   hipsparseDnVecDescr_t vecX, vecY;
   hipsparseCreateDnVec(&vecX, N, x, HIP_R_64F);
@@ -56,7 +59,7 @@ double Verification(SpM<double> *d_A, double *x, double *b, double *r0, int N) {
 #endif
 
 #ifndef __USPARSE_BUILD_BACKEND_ROCM__
-double Verification(SpM<double> *d_A, double *x, double *b, double *r0, int N) {
+double Verification(const usparse::csr_mat_descr<double, int> d_A, double *x, double *b, double *r0, int N) {
   return 0.0;
 }
 #endif
