@@ -4,6 +4,19 @@ project(usparse)
 set(CMAKE_CXX_STANDARD 14)
 
 include(config.cmake)
+
+if(USPARSE_AMG_TESTS_ENABLE)
+    enable_testing()
+endif()
+
+if(USPARSE_AMG_ONLY)
+    add_subdirectory(library/hip/solver/amg)
+    if(USPARSE_AMG_TESTS_ENABLE)
+        add_subdirectory(tests/amg)
+    endif()
+    return()
+endif()
+
 include(deps.cmake)
 
 if(USPARSE_BUILD_DEP_BY_PKG)

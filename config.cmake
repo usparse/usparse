@@ -1,4 +1,8 @@
 option(USPARSE_ENABLE_HIP "Enable HIP" ON)
+
+option(USPARSE_AMG_ONLY "Build only the CPU AMG library and its tests (no HIP dependencies)" OFF)
+option(USPARSE_AMG_TESTS_ENABLE "Build and register the standalone CPU AMG tests" ON)
+
 option(USPARSE_BUILD_BENCHMARK "build usparse benchmark" OFF)
 # pkg adds more third-party code for comparig/benchmarking
 option(USPARSE_BUILD_DEP_BY_PKG "use pkg for package manager" OFF)
